@@ -8,6 +8,10 @@ data class PixelBox(val left: Int, val top: Int, val right: Int, val bottom: Int
     val centerX: Float get() = (left + right) / 2f
     val centerY: Float get() = (top + bottom) / 2f
 
+    /** `true` se [other] está dentro desta caixa (com 2 px de folga). */
+    fun contains(other: PixelBox): Boolean =
+        other.left >= left - 2 && other.right <= right + 2 && other.top >= top - 2 && other.bottom <= bottom + 2
+
     fun union(other: PixelBox) = PixelBox(
         minOf(left, other.left), minOf(top, other.top),
         maxOf(right, other.right), maxOf(bottom, other.bottom),

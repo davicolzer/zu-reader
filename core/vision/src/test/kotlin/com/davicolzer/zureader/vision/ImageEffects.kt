@@ -30,12 +30,15 @@ object ImageEffects {
         })
 
     /** Redimensiona com interpolação bilinear. */
-    fun scale(img: GrayImage, factor: Double): GrayImage {
-        val w = (img.width * factor).roundToInt()
-        val h = (img.height * factor).roundToInt()
+    fun scale(img: GrayImage, factor: Double): GrayImage = stretch(img, factor, factor)
+
+    /** Estica (ou achata) cada eixo separadamente, com interpolação bilinear. */
+    fun stretch(img: GrayImage, fx: Double, fy: Double): GrayImage {
+        val w = (img.width * fx).roundToInt()
+        val h = (img.height * fy).roundToInt()
         return GrayImage(w, h, IntArray(w * h) { i ->
-            val sx = ((i % w) + 0.5) / factor - 0.5
-            val sy = ((i / w) + 0.5) / factor - 0.5
+            val sx = ((i % w) + 0.5) / fx - 0.5
+            val sy = ((i / w) + 0.5) / fy - 0.5
             val x0 = sx.toInt().coerceIn(0, img.width - 1); val x1 = (x0 + 1).coerceAtMost(img.width - 1)
             val y0 = sy.toInt().coerceIn(0, img.height - 1); val y1 = (y0 + 1).coerceAtMost(img.height - 1)
             val fx = (sx - x0).coerceIn(0.0, 1.0); val fy = (sy - y0).coerceIn(0.0, 1.0)
@@ -62,6 +65,41 @@ object ImageEffects {
         val back = ImageIO.read(bytes.toByteArray().inputStream())
         val pixels = back.raster.getPixels(0, 0, img.width, img.height, IntArray(img.width * img.height))
         return GrayImage(img.width, img.height, pixels)
+    }
+
+    /** Gira [degrees] (sentido horário), interpolação bilinear, cantos preenchidos com [fill]. */
+    fun rotate(img: GrayImage, degrees: Double, fill: Int): GrayImage {
+        val r = Math.toRadians(degrees)
+        val c = kotlin.math.cos(r); val s = kotlin.math.sin(r)
+        val w = (kotlin.math.abs(img.width * c) + kotlin.math.abs(img.height * s)).roundToInt()
+        val h = (kotlin.math.abs(img.width * s) + kotlin.math.abs(img.height * c)).roundToInt()
+        return GrayImage(w, h, IntArray(w * h) { i ->
+            val dx = i % w - w / 2.0; val dy = i / w - h / 2.0
+            val sx = dx * c + dy * s + img.width / 2.0
+            val sy = -dx * s + dy * c + img.height / 2.0
+            val x0 = kotlin.math.floor(sx).toInt(); val y0 = kotlin.math.floor(sy).toInt()
+            if (x0 < 0 || y0 < 0 || x0 + 1 >= img.width || y0 + 1 >= img.height) fill
+            else {
+                val fx = sx - x0; val fy = sy - y0
+                val top = img[x0, y0] * (1 - fx) + img[x0 + 1, y0] * fx
+                val bottom = img[x0, y0 + 1] * (1 - fx) + img[x0 + 1, y0 + 1] * fx
+                (top * (1 - fy) + bottom * fy).roundToInt()
+            }
+        })
+    }
+
+    /** Empilha imagens (de cima para baixo), centralizadas, com [gap] pixels entre elas. */
+    fun stack(images: List<GrayImage>, gap: Int, fill: Int): GrayImage {
+        val w = images.maxOf { it.width }
+        val h = images.sumOf { it.height } + gap * (images.size - 1)
+        val p = IntArray(w * h) { fill }
+        var top = 0
+        for (img in images) {
+            val left = (w - img.width) / 2
+            for (y in 0 until img.height) for (x in 0 until img.width) p[(top + y) * w + left + x] = img[x, y]
+            top += img.height + gap
+        }
+        return GrayImage(w, h, p)
     }
 
     /** Gira 90° no sentido horário. */
