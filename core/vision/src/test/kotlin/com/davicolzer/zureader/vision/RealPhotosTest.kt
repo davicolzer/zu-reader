@@ -37,6 +37,11 @@ class RealPhotosTest {
         Photo("lapide-1.jpg", "THE QUICK BROWN FOX", 1, 0.78, crop = listOf(0.33f, 0.28f, 0.67f, 0.65f)),
         // balão de fala (branco sobre preto) e parede de ladrilhos em relevo
         Photo("balao-fala.jpg", "NICE TO MEET YOU", 1, 0.99),
+        // prints das lápides (melhores que as fotos da tela)
+        Photo("lapide-print-1.png", "JUMPS OVER THE LAZY DOG", 0, 0.7),
+        Photo("lapide-print-1.png", "JUMPS OVER THE LAZY DOG", 0, 0.99, crop = listOf(0.6f, 0.12f, 0.93f, 0.85f)),
+        Photo("lapide-print-2.png", "THE QUICK BROWN FOX", 0, 0.7),
+        Photo("lapide-print-2.png", "THE QUICK BROWN FOX", 0, 0.85, crop = listOf(0.6f, 0.12f, 0.93f, 0.85f)),
         Photo("parede-ladrilhos.jpg", "THE POINTS CONSTELLATE CONSPIRE TO CREATE SHAPES SHAPES TO TESSELLATE", 1, 0.9),
     )
 

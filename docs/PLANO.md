@@ -173,7 +173,7 @@ Fontes: **Silkscreen** (títulos e texto lido, pixel), **Figtree** (interface), 
 2. Fase 0: criar o projeto Android no repositório.
 3. Fechar a Fase 2 com prints reais do jogo: medir o acerto e validar a direção de leitura, como as palavras são separadas e a orientação dos glifos.
 4. Testar num aparelho real: câmera, histórico e TalkBack.
-5. Novos estilos reais: balão de fala (100%) e parede de ladrilhos em relevo (93%) já são lidos; **letreiros de neon** (só o contorno do glifo) ainda não — precisa preencher o contorno antes de ler.
+5. Novos estilos reais: balão de fala (100%), parede de ladrilhos em relevo (93%) e prints das lápides (recortados: 100% e 88%; inteiros ~75%, com lixo do cenário) já são lidos; **letreiros de neon** (só o contorno do glifo) ainda não — precisa preencher o contorno antes de ler.
 6. Leitura: lápide 1 ainda perde letras na ponta das colunas (W) e troca O por D/E; mais fotos reais (com saturação, contraste e brilho diferentes) para o `RealPhotosTest`.
 7. Fase 6b: retomar quando houver mais fotos reais de lápides/pedras (o treino já está pronto para rodar de novo).
 8. Fase 7 (tradução), quando decidido.
