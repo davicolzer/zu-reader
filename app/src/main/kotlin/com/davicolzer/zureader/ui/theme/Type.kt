@@ -36,11 +36,11 @@ val JetBrainsMono = FontFamily(
 )
 
 val ZuTypography = Typography(
-    displayLarge = TextStyle(fontFamily = Silkscreen, fontWeight = FontWeight.Bold, fontSize = 40.sp, lineHeight = 44.sp, letterSpacing = 0.04.em),
-    headlineMedium = TextStyle(fontFamily = Silkscreen, fontWeight = FontWeight.Bold, fontSize = 26.sp, lineHeight = 32.sp, letterSpacing = 0.04.em),
-    headlineSmall = TextStyle(fontFamily = Silkscreen, fontWeight = FontWeight.Bold, fontSize = 22.sp, lineHeight = 28.sp, letterSpacing = 0.04.em),
-    titleLarge = TextStyle(fontFamily = Silkscreen, fontWeight = FontWeight.Bold, fontSize = 18.sp, lineHeight = 24.sp, letterSpacing = 0.06.em),
-    titleSmall = TextStyle(fontFamily = Silkscreen, fontWeight = FontWeight.Bold, fontSize = 14.sp, lineHeight = 20.sp, letterSpacing = 0.06.em),
+    displayLarge = TextStyle(fontFamily = Silkscreen, fontWeight = FontWeight.Bold, fontSize = 40.sp, lineHeight = 44.sp, letterSpacing = 0.01.em),
+    headlineMedium = TextStyle(fontFamily = Silkscreen, fontWeight = FontWeight.Bold, fontSize = 26.sp, lineHeight = 32.sp, letterSpacing = 0.01.em),
+    headlineSmall = TextStyle(fontFamily = Silkscreen, fontWeight = FontWeight.Bold, fontSize = 22.sp, lineHeight = 28.sp, letterSpacing = 0.01.em),
+    titleLarge = TextStyle(fontFamily = Silkscreen, fontWeight = FontWeight.Bold, fontSize = 18.sp, lineHeight = 24.sp, letterSpacing = 0.01.em),
+    titleSmall = TextStyle(fontFamily = Silkscreen, fontWeight = FontWeight.Bold, fontSize = 14.sp, lineHeight = 20.sp, letterSpacing = 0.01.em),
     bodyLarge = TextStyle(fontFamily = Figtree, fontWeight = FontWeight.Normal, fontSize = 16.sp, lineHeight = 24.sp),
     bodyMedium = TextStyle(fontFamily = Figtree, fontWeight = FontWeight.Normal, fontSize = 14.sp, lineHeight = 21.sp),
     bodySmall = TextStyle(fontFamily = Figtree, fontWeight = FontWeight.Normal, fontSize = 12.sp, lineHeight = 17.sp),

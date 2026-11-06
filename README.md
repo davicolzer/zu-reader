@@ -4,6 +4,7 @@ App Android em Kotlin que lê textos no alfabeto Zu, do jogo Fez, a partir de um
 
 - Plano: [docs/PLANO.md](docs/PLANO.md)
 - Design: [docs/design/mockup.png](docs/design/mockup.png) (fonte em [mockup.html](docs/design/mockup.html)) e ícone [icon.svg](docs/design/icon.svg)
+- Tela inicial no Android: [docs/design/home-android.png](docs/design/home-android.png)
 
 ## Versões
 
