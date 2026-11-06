@@ -9,6 +9,11 @@ import androidx.annotation.DrawableRes
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -138,7 +143,7 @@ fun ResultScreen(
                 .padding(horizontal = 20.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            PhotoWithBoxes(bitmap, result)
+            PhotoWithBoxes(bitmap, result, selected = editing, onTapGlyph = { editing = it })
             if (onAdjustCrop != null && reading.glyphs.isNotEmpty()) {
                 PixelOutlinedButton(stringResource(R.string.result_adjust_crop), R.drawable.ic_pixel_crop, onAdjustCrop)
             }
@@ -231,16 +236,24 @@ fun ResultScreen(
     }
 }
 
-/** Foto com uma caixa em cada glifo: turquesa = certo, dourado = com dúvida. */
+/**
+ * Foto com uma caixa em cada glifo (turquesa = certo, dourado = com dúvida) e a letra lida
+ * em cima de cada um. Tocar num glifo da foto abre a correção dele; o selecionado fica em destaque.
+ */
 @Composable
-private fun PhotoWithBoxes(bitmap: ImageBitmap, result: ImageReading) {
+private fun PhotoWithBoxes(bitmap: ImageBitmap, result: ImageReading, selected: Int?, onTapGlyph: (Int) -> Unit) {
     val teal = ZuTheme.colors.teal
     val gold = ZuTheme.colors.gold
+    val labelText = MaterialTheme.colorScheme.background
+    val highlight = MaterialTheme.colorScheme.primary
     val description = stringResource(R.string.photo_description)
+    val measurer = rememberTextMeasurer()
+    val labelStyle = MaterialTheme.typography.titleSmall
+    val glyphs = result.reading.glyphs
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(max = 260.dp)
+            .heightIn(max = 320.dp)
             .clip(RoundedCornerShape(16.dp))
             .background(ZuTheme.colors.ink),
         contentAlignment = Alignment.Center,
@@ -249,21 +262,58 @@ private fun PhotoWithBoxes(bitmap: ImageBitmap, result: ImageReading) {
         val width = minOf(maxWidth, maxHeight * aspect)
         Box(Modifier.size(width, width / aspect).semantics { contentDescription = description }) {
             Image(bitmap, contentDescription = null, contentScale = ContentScale.FillBounds, modifier = Modifier.fillMaxSize())
-            Canvas(Modifier.fillMaxSize()) {
+            Canvas(
+                Modifier
+                    .fillMaxSize()
+                    .pointerInput(glyphs) {
+                        detectTapGestures { tap ->
+                            val scale = size.width / result.width.toFloat()
+                            val x = tap.x / scale
+                            val y = tap.y / scale
+                            // o glifo cuja caixa contém o toque (ou o mais perto, até meio glifo de distância)
+                            val nearest = glyphs.indices.minByOrNull { i ->
+                                val g = glyphs[i].source
+                                kotlin.math.hypot(g.x - x, g.y - y)
+                            } ?: return@detectTapGestures
+                            val g = glyphs[nearest].source
+                            if (kotlin.math.hypot(g.x - x, g.y - y) <= g.size) onTapGlyph(nearest)
+                        }
+                    },
+            ) {
                 val scale = size.width / result.width
                 val stroke = Stroke(width = 2.dp.toPx())
-                for (g in result.reading.glyphs) {
+                val thick = Stroke(width = 4.dp.toPx())
+                glyphs.forEachIndexed { i, g ->
                     val cx = g.source.x * scale
                     val cy = g.source.y * scale
                     val halfW = g.source.width / 2 * scale + 3
                     val halfH = g.source.height / 2 * scale + 3
+                    val color = if (g.isLowConfidence) gold else teal
                     rotate(result.skewDegrees, pivot = Offset(cx, cy)) {
                         drawRect(
-                            color = if (g.isLowConfidence) gold else teal,
+                            color = if (i == selected) highlight else color,
                             topLeft = Offset(cx - halfW, cy - halfH),
                             size = Size(2 * halfW, 2 * halfH),
-                            style = stroke,
+                            style = if (i == selected) thick else stroke,
                         )
+                        // letra lida: etiqueta dentro da caixa, no canto de cima, proporcional ao glifo
+                        val fontPx = (halfH * 0.6f).coerceIn(9.sp.toPx(), 18.sp.toPx())
+                        val layout = measurer.measure(
+                            if (g.isLowConfidence) "${g.letter}?" else g.letter.toString(),
+                            labelStyle.copy(fontSize = fontPx.toSp(), color = labelText),
+                        )
+                        val pad = 2.dp.toPx()
+                        val boxW = layout.size.width + 2 * pad
+                        val boxH = layout.size.height + pad
+                        val left = cx - halfW
+                        val top = cy - halfH
+                        drawRoundRect(
+                            color = if (i == selected) highlight else color,
+                            topLeft = Offset(left, top),
+                            size = Size(boxW, boxH),
+                            cornerRadius = CornerRadius(3.dp.toPx()),
+                        )
+                        drawText(layout, topLeft = Offset(left + pad, top + pad / 2))
                     }
                 }
             }
