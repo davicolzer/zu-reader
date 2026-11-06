@@ -28,7 +28,7 @@
     <string name="result_twin_letters">%1$s usam o mesmo glifo no Zu. A letra foi escolhida pelo contexto do inglês; toque no glifo para trocar.</string>
     <string name="home_write">Escrever à mão</string>
     <string name="write_title">Escrever em Zu</string>
-    <string name="write_empty">Toque nos glifos abaixo para escrever. A mensagem aparece aqui em Zu, em colunas, como no jogo.</string>
+    <string name="write_empty">Toque nos glifos para escrever. A mensagem aparece aqui em Zu.</string>
     <string name="write_by_glyphs">Glifos</string>
     <string name="write_by_letters">Letras e números</string>
     <string name="write_space">Espaço</string>

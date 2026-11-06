@@ -6,6 +6,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -100,11 +101,15 @@ fun WriteScreen(
             )
         },
     ) { padding ->
+      BoxWithConstraints(Modifier.fillMaxSize().padding(padding).navigationBarsPadding()) {
+        // teclas do tamanho que cabe: grandes em tela alta; em tela baixa encolhem (até 36 dp)
+        // para a mensagem em Zu continuar com espaço
+        fun lines(n: Int) = (n + layout.columns - 1) / layout.columns
+        val rows = if (byLetters) lines(26) + lines(11) else layout.letterRows().size + lines(ZuNumerals.glyphs.size)
+        val keyHeight = ((maxHeight - MESSAGE_MIN - FIXED_PARTS) / rows - ROW_GAP).coerceIn(MIN_KEY, layout.keyHeight)
         Column(
             Modifier
                 .fillMaxSize()
-                .padding(padding)
-                .navigationBarsPadding()
                 .padding(horizontal = 16.dp, vertical = 4.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
@@ -120,14 +125,17 @@ fun WriteScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 ZuPreview(message, direction, Modifier.fillMaxWidth().weight(1f))
-                Text(
-                    ReadingMode.MIXED.display(message) + "_",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.fillMaxWidth().semantics { contentDescription = message },
-                )
+                // sem nada escrito, a dica usa a área toda (cabe em tela pequena)
+                if (message.isNotEmpty()) {
+                    Text(
+                        ReadingMode.MIXED.display(message) + "_",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.fillMaxWidth().semantics { contentDescription = message },
+                    )
+                }
             }
 
             SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
@@ -151,13 +159,14 @@ fun WriteScreen(
 
             if (!byLetters) {
                 // pelo desenho (ver KeyboardLayout) e, embaixo, todos os desenhos de números
-                KeyGrid(layout, layout.letterRows(), ZuNumerals.glyphs.chunked(layout.columns)) { glyph, modifier ->
+                KeyGrid(layout, keyHeight, layout.letterRows(), ZuNumerals.glyphs.chunked(layout.columns)) { glyph, modifier ->
                     GlyphKey(glyph, modifier) { text += SharedLetters.typed(glyph) }
                 }
             } else {
                 // um de cada, na ordem: A–Z e depois 0–10
-                val symbols = ('A'..'Z').toList() + ('0'..'9').toList() + ReadingMode.TEN
-                KeyGrid(layout, symbols.chunked(layout.columns), emptyList()) { symbol, modifier ->
+                // letras em cima e, separados, os números
+                val numberSymbols = ('0'..'9').toList() + ReadingMode.TEN
+                KeyGrid(layout, keyHeight, ('A'..'Z').toList().chunked(layout.columns), numberSymbols.chunked(layout.columns)) { symbol, modifier ->
                     LetterKey(symbol, modifier) { text += symbol }
                 }
             }
@@ -181,8 +190,21 @@ fun WriteScreen(
                 ) { onDone(message) }
             }
         }
+      }
     }
 }
+
+/** Espaço mínimo da mensagem em Zu. */
+private val MESSAGE_MIN = 150.dp
+
+/** Altura do resto da tela fora as teclas: escolha Glifos/Letras, linha de ações, separação e espaços. */
+private val FIXED_PARTS = 190.dp
+
+/** Espaço entre linhas de teclas. */
+private val ROW_GAP = 5.dp
+
+/** Menor altura de tecla. */
+private val MIN_KEY = 36.dp
 
 /**
  * Como as letras ficam no teclado de glifos, sempre agrupadas pelo desenho:
@@ -203,14 +225,22 @@ private enum class KeyboardLayout(val columns: Int, val keyHeight: androidx.comp
     }
 }
 
+/** Espaço entre as letras e os números. */
+private val SEPARATOR_HEIGHT = 12.dp
+
 /** Grade de teclas: [top] e, depois de um respiro, [bottom] (as linhas incompletas são completadas com vazio). */
 @Composable
-private fun <T> KeyGrid(layout: KeyboardLayout, top: List<List<T>>, bottom: List<List<T>>, key: @Composable (T, Modifier) -> Unit) {
+private fun <T> KeyGrid(layout: KeyboardLayout, keyHeight: androidx.compose.ui.unit.Dp, top: List<List<T>>, bottom: List<List<T>>, key: @Composable (T, Modifier) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
         for ((index, row) in (top + bottom).withIndex()) {
-            if (index == top.size && bottom.isNotEmpty()) Spacer(Modifier.height(3.dp))
+            // separação entre letras e números: um respiro com uma linha fina no meio
+            if (index == top.size && bottom.isNotEmpty()) {
+                Box(Modifier.fillMaxWidth().height(SEPARATOR_HEIGHT), contentAlignment = Alignment.Center) {
+                    Box(Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.outlineVariant))
+                }
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                row.forEach { key(it, Modifier.weight(1f).height(layout.keyHeight)) }
+                row.forEach { key(it, Modifier.weight(1f).height(keyHeight)) }
                 repeat(layout.columns - row.size) { Spacer(Modifier.weight(1f)) }
             }
         }
@@ -227,7 +257,9 @@ private fun ZuPreview(message: String, direction: ReadingDirection, modifier: Mo
         if (glyphs.isEmpty()) {
             Text(
                 stringResource(R.string.write_empty),
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
             )
