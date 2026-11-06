@@ -47,7 +47,7 @@ import com.davicolzer.zureader.ui.theme.ZuTheme
 import kotlinx.coroutines.launch
 
 /**
- * Tela inicial. A câmera chega na Fase 3; até lá o botão mostra "Disponível em breve".
+ * Tela inicial: fotografar ou escolher uma imagem da galeria.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

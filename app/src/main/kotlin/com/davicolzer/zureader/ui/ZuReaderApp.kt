@@ -22,6 +22,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.davicolzer.zureader.R
 import com.davicolzer.zureader.reader.ReaderUiState
 import com.davicolzer.zureader.reader.ReaderViewModel
+import com.davicolzer.zureader.ui.camera.CameraScreen
+import com.davicolzer.zureader.ui.crop.CropScreen
 import com.davicolzer.zureader.ui.home.HomeScreen
 import com.davicolzer.zureader.ui.result.ResultScreen
 
@@ -35,10 +37,25 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
 
     when (val s = state) {
         ReaderUiState.Home, ReaderUiState.CouldNotOpen -> HomeScreen(
+            onTakePhoto = viewModel::openCamera,
             onPickFromGallery = pickImage,
             errorMessage = if (s == ReaderUiState.CouldNotOpen) stringResource(R.string.error_open_image) else null,
             onErrorShown = viewModel::goHome,
         )
+        ReaderUiState.Camera -> {
+            BackHandler(onBack = viewModel::goHome)
+            CameraScreen(onCaptured = viewModel::onCaptured, onPickFromGallery = pickImage, onClose = viewModel::goHome)
+        }
+        is ReaderUiState.Crop -> {
+            BackHandler(onBack = viewModel::openCamera)
+            CropScreen(
+                image = s.image,
+                suggestion = s.suggestion,
+                onConfirm = viewModel::confirmCrop,
+                onUseWhole = viewModel::useWholePhoto,
+                onRetake = viewModel::openCamera,
+            )
+        }
         ReaderUiState.Reading -> ReadingProgress()
         is ReaderUiState.Result -> {
             BackHandler(onBack = viewModel::goHome)

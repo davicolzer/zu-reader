@@ -35,4 +35,27 @@
     <string name="result_copied">Texto copiado</string>
     <string name="error_open_image">Não foi possível abrir essa imagem. Tente outra.</string>
     <string name="photo_description">Imagem escolhida com os glifos encontrados marcados</string>
+    <string name="close">Fechar</string>
+    <string name="camera_flash_on">Ligar flash</string>
+    <string name="camera_flash_off">Desligar flash</string>
+    <string name="camera_shutter">Tirar foto</string>
+    <string name="camera_aim">Aponte para o texto Zu</string>
+    <string name="camera_hold">Segure firme e toque para fotografar</string>
+    <string name="camera_order">Leitura: de cima para baixo, da direita para a esquerda</string>
+    <plurals name="camera_glyph_count">
+        <item quantity="one">%1$d glifo</item>
+        <item quantity="many">%1$d glifos</item>
+        <item quantity="other">%1$d glifos</item>
+    </plurals>
+    <string name="camera_permission_title">A câmera está bloqueada</string>
+    <string name="camera_permission_body">O Zu Reader usa a câmera só para fotografar o texto. Nada sai do seu celular.</string>
+    <string name="camera_permission_allow">Permitir câmera</string>
+    <string name="camera_permission_settings">Abrir configurações</string>
+    <string name="camera_unavailable">Não foi possível abrir a câmera. Use uma imagem da galeria.</string>
+    <string name="camera_capture_failed">A foto não saiu. Tente de novo.</string>
+    <string name="crop_title">AJUSTAR RECORTE</string>
+    <string name="crop_hint">Arraste os cantos até as bordas do texto. Se a foto foi tirada de lado, isso endireita o texto.</string>
+    <string name="crop_confirm">Ler texto</string>
+    <string name="crop_whole">Usar a foto inteira</string>
+    <string name="crop_description">Foto capturada com o recorte marcado</string>
 </resources>

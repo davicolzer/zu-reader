@@ -25,7 +25,22 @@ data class ImageReading(
     val height: Int,
     /** Inclinação do texto na imagem, em graus (positivo = sentido horário). */
     val skewDegrees: Float = 0f,
-)
+) {
+    /**
+     * Recorte sugerido: a área do texto com [margin] glifo de folga em volta,
+     * limitada à imagem. `null` se nada foi lido.
+     */
+    fun suggestedCrop(margin: Float = 0.75f): Quad? {
+        val glyphs = reading.glyphs
+        if (glyphs.isEmpty()) return null
+        val pad = glyphs.map { it.source.size }.sorted()[glyphs.size / 2] * margin
+        val left = (glyphs.minOf { it.source.x - it.source.width / 2 } - pad).coerceAtLeast(0f)
+        val top = (glyphs.minOf { it.source.y - it.source.height / 2 } - pad).coerceAtLeast(0f)
+        val right = (glyphs.maxOf { it.source.x + it.source.width / 2 } + pad).coerceAtMost(width.toFloat())
+        val bottom = (glyphs.maxOf { it.source.y + it.source.height / 2 } + pad).coerceAtMost(height.toFloat())
+        return Quad(Point(left, top), Point(right, top), Point(right, bottom), Point(left, bottom))
+    }
+}
 
 /**
  * Imagem → texto: limiar de Otsu, correção de inclinação, manchas de tinta, caixas de glifo
@@ -36,18 +51,22 @@ class ZuImageReader(
     private val reader: ZuReader = ZuReader(),
     private val classifier: GlyphClassifier = GlyphClassifier(),
 ) {
-    fun read(image: GrayImage): ImageReading {
+    /**
+     * @param deskew corrigir inclinação. Desligar deixa a leitura ~2× mais rápida
+     * (útil no visor ao vivo da câmera).
+     */
+    fun read(image: GrayImage, deskew: Boolean = true): ImageReading {
         val threshold = Binarizer.otsu(image)
         return listOf(true, false)
-            .map { dark -> readWithPolarity(image, threshold, dark) }
+            .map { dark -> readWithPolarity(image, threshold, dark, deskew) }
             .maxBy { it.second }
             .first
     }
 
-    private fun readWithPolarity(image: GrayImage, threshold: Int, inkIsDark: Boolean): Pair<ImageReading, Float> {
+    private fun readWithPolarity(image: GrayImage, threshold: Int, inkIsDark: Boolean, deskew: Boolean): Pair<ImageReading, Float> {
         val raw = Binarizer.mask(image, threshold, inkIsDark)
         // Endireitar só pode ajudar: lê como veio e endireitado, e fica com o melhor.
-        val angle = Deskew.estimate(raw, image.width, image.height)
+        val angle = if (deskew) Deskew.estimate(raw, image.width, image.height) else 0f
         val straight = readMask(image, Deskew.apply(raw, image.width, image.height, 0f), inkIsDark)
         if (angle == 0f) return straight
         val tilted = readMask(image, Deskew.apply(raw, image.width, image.height, angle), inkIsDark)

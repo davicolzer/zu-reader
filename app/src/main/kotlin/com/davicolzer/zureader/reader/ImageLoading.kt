@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.ImageDecoder
+import android.graphics.Matrix
 import android.net.Uri
 import android.os.Build
 import com.davicolzer.zureader.vision.GrayImage
@@ -37,6 +38,26 @@ object ImageLoading {
         val options = BitmapFactory.Options().apply { inSampleSize = sample }
         return context.contentResolver.openInputStream(uri).use { BitmapFactory.decodeStream(it, null, options) }
             ?: throw IllegalArgumentException("Imagem inválida: $uri")
+    }
+
+    /** Gira [bitmap] para ficar em pé e reduz para no máximo [maxSide]. */
+    fun upright(bitmap: Bitmap, rotationDegrees: Int, maxSide: Int = MAX_SIDE): Bitmap {
+        val scale = minOf(1f, maxSide / max(bitmap.width, bitmap.height).toFloat())
+        if (rotationDegrees == 0 && scale == 1f) return bitmap
+        val matrix = Matrix().apply {
+            postScale(scale, scale)
+            postRotate(rotationDegrees.toFloat())
+        }
+        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+    }
+
+    /** Imagem em tons de cinza como Bitmap (para mostrar o recorte endireitado). */
+    fun toBitmap(gray: GrayImage): Bitmap {
+        val argb = IntArray(gray.pixels.size) { i ->
+            val v = gray.pixels[i]
+            (0xFF shl 24) or (v shl 16) or (v shl 8) or v
+        }
+        return Bitmap.createBitmap(argb, gray.width, gray.height, Bitmap.Config.ARGB_8888)
     }
 
     fun toGray(bitmap: Bitmap): GrayImage {

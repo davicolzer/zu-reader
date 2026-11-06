@@ -142,7 +142,7 @@ Fontes: **Silkscreen** (títulos e texto lido, pixel), **Figtree** (interface), 
 | **1. Alfabeto + decoder** ✅ | `core/zu`: 24 glifos, classificador por distância, ordenação de colunas, modelo de pares de letras do inglês, escolha da orientação | Testes: frases sintéticas lidas certas em pé e giradas (≥ 4 letras); 99,8% de acerto por caractere com 1 bloco errado em cada glifo |
 | **2. Visão em imagem estática** 🟡 | `core/vision` (Kotlin puro); galeria → tela de resultado com caixas, texto e letra a letra | Imagens sintéticas: 100% com borrão, ruído, JPEG, escala, baixo contraste, sujeira, cenário e foto girada. **Falta**: ≥ 95% em 30 prints reais do jogo |
 | **2.5. Glifos distorcidos e de tamanhos variados** ✅ | Largura e altura do glifo medidas separadamente; grupos por tamanho (ex.: título e corpo, separados por quebra de linha); inclinação corrigida pela projeção mais "pontuda" (±12°), usada só quando melhora a leitura; filtro de nitidez e tamanho mínimo (2 px por bloco) contra ruído | Testes sintéticos: 100% com esticamento vertical e horizontal de 0,5× a 3×, inclinação de ±3° a ±10°, título grande + texto pequeno (também com a foto girada) e combinação inclinada + esticada + JPEG. Leitura de 1680×1309 px em ~200 ms na JVM |
-| **3. Câmera** | CameraX, overlay ao vivo, captura, recorte por cantos | ≥ 85% das letras corretas em 30 fotos de monitor/TV |
+| **3. Câmera** 🟡 | CameraX (preview, análise e captura em 4:3); permissão com explicação e atalho para as configurações; visor ao vivo com caixas, contador e texto lido a cada 300 ms (quadros de 640 px, só o plano Y); flash; captura girada e reduzida fora da thread principal; tela de recorte com 4 cantos arrastáveis (sugestão automática em volta do texto) e correção de perspectiva por homografia | Testes sintéticos: foto de lado em trapézio não é lida sem recorte e é lida 100% depois (também com cantos marcados com erro de alguns pixels); conversão de quadros e mapeamento das caixas testados. **Falta**: ≥ 85% em 30 fotos reais de monitor/TV e teste em aparelho |
 | **4. Resultado e tradução** | Tela de resultado, correção de letra, ML Kit EN→PT, copiar/compartilhar, histórico (Room) | Fluxo completo foto → texto → tradução → salvo |
 | **5. Polimento** | Acessibilidade (TalkBack, contraste, alvos ≥ 48 dp), tema claro, estados vazios e de erro, ícone final, release assinado | Checklist de acessibilidade ok; APK/AAB gerado no CI |
 | **6. Evolução (opcional)** | Modelo TFLite treinado com dados sintéticos + correções do usuário; números Zu; leitura totalmente ao vivo | Acurácia em fotos ≥ 95% |
@@ -160,6 +160,7 @@ Fontes: **Silkscreen** (títulos e texto lido, pixel), **Figtree** (interface), 
 | Moiré e reflexo em foto de tela | Desfoque antes do limiar, dica na câmera ("afaste um pouco"), importar print pela galeria |
 | K/Q e U/V com o mesmo glifo; B/H/N/T e F/L/R/Y a 2 blocos de distância | Contexto do inglês escolhe; empates marcados como dúvida com alternativas |
 | Texto girado | As 4 orientações são testadas; textos de até 3 letras ficam na orientação da foto |
+| Foto muito de lado (texto em trapézio) | Recorte por 4 cantos com correção de perspectiva (Fase 3) |
 | Glifos colados ou muito pequenos | Exigir tamanho mínimo; recorte manual; zoom na câmera |
 | Foto de lado ou imagem esticada deixa o glifo retangular | Resolvido na Fase 2.5 (esticamento até 3×, inclinação até ±10°). Perspectiva forte (trapézio) fica para a Fase 3 |
 | Marca "Fez" | Nome do app sem "Fez"; aviso de projeto de fã; nenhum asset do jogo |
@@ -169,4 +170,5 @@ Fontes: **Silkscreen** (títulos e texto lido, pixel), **Figtree** (interface), 
 1. Aprovar este plano e o design (`docs/design/mockup.png`).
 2. Fase 0: criar o projeto Android no repositório.
 3. Fechar a Fase 2 com prints reais do jogo: medir o acerto e validar a direção de leitura, como as palavras são separadas e a orientação dos glifos.
-4. Fase 3: câmera.
+4. Testar a câmera num aparelho real e medir com fotos de monitor/TV.
+5. Fase 4: tradução EN → PT, correção de letra e histórico.
