@@ -2,7 +2,6 @@ package com.davicolzer.zureader.zu
 
 /**
  * Glifo como uma grade quadrada de blocos (true = bloco preenchido).
- * Base do classificador da Fase 1.
  */
 class BitMatrix private constructor(
     val size: Int,
@@ -16,6 +15,20 @@ class BitMatrix private constructor(
         for (r in 0 until size) for (c in 0 until size) {
             out[c * size + (size - 1 - r)] = this[r, c]
         }
+        return BitMatrix(size, out)
+    }
+
+    /** Gira [quarterTurns] × 90° no sentido horário (aceita valores negativos). */
+    fun rotate(quarterTurns: Int): BitMatrix {
+        var m = this
+        repeat(Math.floorMod(quarterTurns, 4)) { m = m.rotate90() }
+        return m
+    }
+
+    /** Cópia com o bloco em ([row], [col]) invertido. Útil para simular ruído. */
+    fun toggled(row: Int, col: Int): BitMatrix {
+        val out = bits.copyOf()
+        out[row * size + col] = !out[row * size + col]
         return BitMatrix(size, out)
     }
 

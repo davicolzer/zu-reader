@@ -13,16 +13,19 @@ Um app Android simples:
 
 Nome sugerido: **Zu Reader**. Evitar "Fez" no nome publicado na Play Store para não esbarrar em marca registrada. O repositório pode continuar `fez-translate`.
 
-## 2. O que sabemos do alfabeto Zu (validar na Fase 1)
+## 2. O alfabeto Zu (validado na Fase 1)
 
-| Ponto | O que as fontes dizem | Como o app trata |
+| Ponto | O que sabemos | Como o app trata |
 |---|---|---|
-| Natureza | Cifra de substituição: cada glifo = uma letra latina | Tabela glifo → letra, sem dicionário |
-| Forma | Glifos quadrados em pixel art, compostos por blocos | Ler cada glifo como uma matriz de bits |
-| Direção | Colunas de cima para baixo, colunas da direita para a esquerda | Ordem padrão, com opção "horizontal" nas configurações |
-| Rotação | No jogo, o texto pode aparecer girado conforme a câmera | Testar as 4 rotações e ficar com a de melhor pontuação |
-| Números | Sistema numérico separado, formado de outro jeito | Fora do MVP (Fase 6) |
-| Quantidade | Fontes divergem sobre o total de letras (24 ou 26); algumas letras podem compartilhar glifo | Conferir na sala da Pedra de Roseta do jogo e registrar letras ambíguas |
+| Natureza | Cifra de substituição: cada glifo = uma letra latina | Tabela glifo → letra (`ZuAlphabet`) |
+| Forma | Grade 5×5 de blocos | `BitMatrix` 5×5 |
+| Quantidade | **24 glifos para 26 letras**: K/Q e U/V compartilham glifo | O modelo de inglês escolhe a letra pelo contexto (QUICK, OVER) |
+| Estrutura | **6 formas, cada uma em 4 rotações** (ex.: A, G, M, S são a mesma forma girada) | Nunca girar glifo por glifo: a rotação muda a letra |
+| Rotação da foto | Um texto girado também forma letras válidas | Testar as 4 orientações do texto inteiro e escolher a mais parecida com inglês |
+| Direção | Colunas de cima para baixo, da direita para a esquerda | Padrão; opção horizontal |
+| Números | Sistema separado (0–10, com variantes de 3–7) | Fora do MVP (Fase 6); os desenhos já estão na fonte de referência |
+
+Fonte dos desenhos: [FEZ Pixel Font, de TakWolf](https://github.com/TakWolf/fez-pixel-font) (CC0). O alfabeto pertence à Polytron.
 
 Referências: [StrategyWiki: Fez/Alphabet](https://StrategyWiki.org/wiki/Fez/Alphabet), [dCode: Fez alphabet](https://www.dcode.fr/fez-alphabet), [Zu Language typeface (itch.io)](https://themizarkshow.itch.io/zu-language).
 
@@ -63,37 +66,23 @@ fez-translate/
 
 `core/zu` é Kotlin/JVM puro: toda a lógica de reconhecimento testável sem emulador.
 
-### Modelos principais
+### Modelos principais (`core/zu`)
 
 ```kotlin
-// core/zu
-@JvmInline value class BitMatrix(val rows: List<BooleanArray>)
+class BitMatrix                       // grade de blocos; rotate(), hammingDistance()
+data class ZuGlyph(val letters: String, val pattern: BitMatrix)   // "KQ", "UV" ou uma letra
+data class PlacedGlyph(val x: Float, val y: Float, val size: Float, val bits: BitMatrix)
 
-data class ZuGlyph(val letter: Char, val pattern: BitMatrix)
+class GlyphClassifier { fun classify(bits: BitMatrix): GlyphClassification }
+object ZuLayout { fun order(...); fun compose(text, ...); fun rotate(glyphs, quarterTurns) }
 
-data class DetectedGlyph(
-    val bounds: RectF,          // posição na foto
-    val bits: BitMatrix,        // glifo normalizado
-)
-
-data class GlyphReading(
-    val glyph: DetectedGlyph,
-    val letter: Char,
-    val confidence: Float,      // 0..1
-    val alternatives: List<Pair<Char, Float>>, // top-3 para a tela de correção
-)
-
-data class ZuReading(
-    val text: String,
-    val glyphs: List<GlyphReading>,
-    val rotation: Int,          // 0, 90, 180, 270
-    val direction: ReadingDirection,
-)
-
-interface ZuRecognizer {
-    suspend fun read(image: Bitmap): ZuReading
-}
+class ZuReader { fun read(glyphs: List<PlacedGlyph>, rotation: Int? = null): ZuReading }
+data class ZuReading(val text: String, val glyphs: List<GlyphReading>, val rotation: Int, ...)
+data class GlyphReading(val source: PlacedGlyph, val letter: Char, val confidence: Float,
+                        val alternatives: List<LetterScore>)
 ```
+
+A Fase 2 só precisa transformar a foto em `List<PlacedGlyph>`; o resto já existe.
 
 ## 4. Pipeline de leitura
 
@@ -111,10 +100,10 @@ flowchart LR
 1. **Pré-processamento**: escala de cinza; desfoque gaussiano leve (reduz o moiré de foto tirada da tela); limiar adaptativo/Otsu; inverter se o texto for claro em fundo escuro (detectar pela proporção de pixels); abertura/fechamento morfológico.
 2. **Recorte da área** (opcional): o usuário ajusta os 4 cantos; aplicamos `warpPerspective` para endireitar a foto tirada de lado.
 3. **Segmentação**: `findContours` → caixas delimitadoras; filtrar por proporção ≈ 1:1 e por tamanho próximo da mediana (os glifos têm tamanho uniforme); juntar blocos do mesmo glifo pela distância entre eles.
-4. **Normalização**: cada caixa é reamostrada para a grade nativa do glifo (ex.: 5×5 ou a que a Fase 1 confirmar), tirando a média de pixels em cada célula → `BitMatrix`.
-5. **Classificação**: distância de Hamming/IoU contra os templates, em 4 rotações. Confiança = `1 - distância_normalizada`, com margem para a segunda opção. Abaixo de 0,7 vira "letra com dúvida" (dourado na UI).
-6. **Orientação global**: escolher a rotação que maximiza a soma das confianças de todos os glifos (o texto inteiro gira junto).
-7. **Ordenação**: agrupar caixas em colunas pelo centro X (agrupamento 1D com tolerância de meia largura de glifo); colunas da direita para a esquerda, glifos de cima para baixo. Espaços: lacunas maiores que ~1,5 glifo viram espaço.
+4. **Normalização**: cada caixa é reamostrada para a grade 5×5 do glifo, tirando a média de pixels em cada célula → `BitMatrix`.
+5. **Classificação**: distância de Hamming contra os 24 modelos, sem girar o glifo. Confiança = folga para o segundo colocado × proximidade do modelo (exato = 1; 1 bloco errado sem empate = 0,8; empate = 0). Abaixo de 0,7 vira "letra com dúvida" (dourado na UI).
+6. **Ordenação**: agrupar em colunas pelo centro X (tolerância de meio glifo); colunas da direita para a esquerda, glifos de cima para baixo. Fim de coluna e vãos maiores que 1,75 glifo viram espaço (suposição a validar com prints reais).
+7. **Texto e orientação**: para cada uma das 4 orientações, Viterbi sobre pares de letras do inglês escolhe a sequência mais provável (resolve K/Q, U/V e blocos com ruído). Vence a orientação de maior pontuação; girar a foto tem um custo fixo, porque fotos costumam estar em pé e textos de até 3 letras são ambíguos.
 8. **Tradução**: ML Kit traduz o texto em inglês; mostramos os dois.
 
 Na câmera ao vivo, os passos 1 a 5 rodam no `ImageAnalysis` a cada ~300 ms em resolução reduzida, só para desenhar as caixas e o contador "7 glifos". A leitura completa roda na foto em resolução cheia.
@@ -148,7 +137,7 @@ Fontes: **Silkscreen** (títulos e texto lido, pixel), **Figtree** (interface), 
 | Fase | Entrega | Pronto quando |
 |---|---|---|
 | **0. Setup** ✅ | Projeto Gradle multi-módulo (version catalog), tema Compose com a paleta, ícone, CI no GitHub Actions. JDK 25 LTS, Gradle 9.8.2, Kotlin 2.4.21, AGP 9.5.1 | `./gradlew build` verde no CI; app abre a tela inicial |
-| **1. Alfabeto + decoder** | `core/zu`: tabela dos glifos (montada a partir da Pedra de Roseta do jogo), `BitMatrix`, classificador por template com rotações, ordenação de colunas | Testes unitários: matrizes sintéticas → texto correto, inclusive girado e com 1–2 bits de ruído |
+| **1. Alfabeto + decoder** ✅ | `core/zu`: 24 glifos, classificador por distância, ordenação de colunas, modelo de pares de letras do inglês, escolha da orientação | Testes: frases sintéticas lidas certas em pé e giradas (≥ 4 letras); 99,8% de acerto por caractere com 1 bloco errado em cada glifo |
 | **2. Visão em imagem estática** | `core/vision` com OpenCV; tela de galeria → resultado | ≥ 95% das letras corretas em um conjunto de 30 prints do jogo |
 | **3. Câmera** | CameraX, overlay ao vivo, captura, recorte por cantos | ≥ 85% das letras corretas em 30 fotos de monitor/TV |
 | **4. Resultado e tradução** | Tela de resultado, correção de letra, ML Kit EN→PT, copiar/compartilhar, histórico (Room) | Fluxo completo foto → texto → tradução → salvo |
@@ -158,7 +147,7 @@ Fontes: **Silkscreen** (títulos e texto lido, pixel), **Figtree** (interface), 
 ### Dados de teste
 
 - **Prints**: capturas do próprio jogo (de quem tem o jogo), guardadas fora do repositório público se houver dúvida de direitos.
-- **Sintéticos**: script que renderiza os templates com ruído, desfoque, perspectiva, moiré e variação de cor. Serve para os testes da Fase 1 e para treinar o modelo da Fase 6.
+- **Sintéticos**: script que renderiza os templates com ruído, desfoque, perspectiva, moiré e variação de cor. Serve para os testes da Fase 2 e para treinar o modelo da Fase 6.
 - Métrica: taxa de acerto por letra e por frase, registrada a cada PR no CI.
 
 ## 7. Riscos
@@ -166,8 +155,8 @@ Fontes: **Silkscreen** (títulos e texto lido, pixel), **Figtree** (interface), 
 | Risco | Mitigação |
 |---|---|
 | Moiré e reflexo em foto de tela | Desfoque antes do limiar, dica na câmera ("afaste um pouco"), importar print pela galeria |
-| Letras com glifo igual ou muito parecido | Mostrar alternativas e deixar o usuário corrigir; registrar pares ambíguos na tabela |
-| Texto girado ou espelhado | Busca nas 4 rotações; opção de espelhar se a Fase 1 mostrar necessidade |
+| K/Q e U/V com o mesmo glifo; B/H/N/T e F/L/R/Y a 2 blocos de distância | Contexto do inglês escolhe; empates marcados como dúvida com alternativas |
+| Texto girado | As 4 orientações são testadas; textos de até 3 letras ficam na orientação da foto |
 | Glifos colados ou muito pequenos | Exigir tamanho mínimo; recorte manual; zoom na câmera |
 | Marca "Fez" | Nome do app sem "Fez"; aviso de projeto de fã; nenhum asset do jogo |
 
@@ -175,4 +164,4 @@ Fontes: **Silkscreen** (títulos e texto lido, pixel), **Figtree** (interface), 
 
 1. Aprovar este plano e o design (`docs/design/mockup.png`).
 2. Fase 0: criar o projeto Android no repositório.
-3. Fase 1: cadastrar a tabela de glifos. Para isso, o melhor ponto de partida é um print nítido da sala da Pedra de Roseta.
+3. Fase 2: com prints reais do jogo, validar a direção de leitura, como as palavras são separadas e a orientação dos glifos.
