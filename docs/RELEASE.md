@@ -1,9 +1,18 @@
 # Release do Zu Reader
 
-O CI (`.github/workflows/android.yml`) gera em cada push na `main` e em cada PR:
+O CI (`.github/workflows/android.yml`) tem três etapas:
 
-- `zu-reader-debug`: APK de debug, para instalar direto no aparelho;
-- `zu-reader-release`: APK e AAB de release (com R8). Sem os secrets abaixo, saem **sem assinatura**.
+1. **Testes e lint**: testes do leitor e da visão, lint do app.
+2. **Build dos APKs**: APK de teste, APK e AAB de release.
+3. **Publicar release**: só na `main` (ou rodando a action à mão em **Actions → Android CI → Run workflow**). Cria uma release em **Releases** com os arquivos.
+
+## Instalar para testar
+
+Na página da release, baixe `zu-reader-<versão>-teste.apk` no celular e abra. Ele é assinado com a
+chave de teste do projeto (`app/debug.keystore`, senha pública `android`), então cada versão nova
+instala por cima da anterior. O número da versão (`versionCode`) é o número da execução do CI.
+
+A chave de teste serve só para testes. Para publicar, use uma chave própria (abaixo).
 
 ## Assinar o release
 

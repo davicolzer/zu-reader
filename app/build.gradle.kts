@@ -13,8 +13,9 @@ android {
         applicationId = "com.davicolzer.zureader"
         minSdk = 26
         targetSdk = 37
-        versionCode = 1
-        versionName = "0.1.0"
+        // No CI, cada execução gera um número maior, para o Android aceitar a atualização.
+        versionCode = providers.environmentVariable("GITHUB_RUN_NUMBER").orNull?.toIntOrNull() ?: 1
+        versionName = "0.5.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -23,6 +24,14 @@ android {
     // Sem elas, o release sai sem assinatura. Ver docs/RELEASE.md.
     val keystorePath = providers.environmentVariable("ZU_KEYSTORE_PATH").orNull
     signingConfigs {
+        // Chave de debug fixa (senha pública "android"), só para testes: assim cada APK de
+        // teste gerado pelo CI instala por cima do anterior. Não usar para publicar.
+        getByName("debug") {
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
         if (keystorePath != null) {
             create("release") {
                 storeFile = file(keystorePath)
