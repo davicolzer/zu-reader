@@ -131,6 +131,29 @@ class ZuReaderTest {
     }
 
     @Test
+    fun `corrigir uma letra refaz o texto e mantem os espacos`() {
+        val reading = reader.read(ZuLayout.compose("OPEN THE DOOR"))
+        val fixed = reading.withLetter(4, 'S') // T de THE
+        assertEquals("OPEN SHE DOOR", fixed.text)
+        assertEquals('S', fixed.glyphs[4].letter)
+        assertTrue(fixed.glyphs[4].corrected)
+        assertEquals(1f, fixed.glyphs[4].confidence)
+        assertEquals(reading.glyphs.size, fixed.glyphs.size)
+    }
+
+    @Test
+    fun `letra corrigida deixa de ser duvida`() {
+        val h = ZuAlphabet.glyphFor('H').pattern
+        val tie = (0 until 25).map { h.toggled(it / 5, it % 5) }
+            .first { GlyphClassifier().classify(it).confidence < GlyphClassifier.LOW_CONFIDENCE }
+        val glyphs = ZuLayout.compose("THE").toMutableList()
+        glyphs[1] = glyphs[1].copy(bits = tie)
+        val reading = reader.read(glyphs, rotation = 0)
+        assertTrue(reading.glyphs[1].isLowConfidence)
+        assertTrue(!reading.withLetter(1, 'H').glyphs[1].isLowConfidence)
+    }
+
+    @Test
     fun `lista vazia`() {
         assertEquals("", reader.read(emptyList()).text)
     }

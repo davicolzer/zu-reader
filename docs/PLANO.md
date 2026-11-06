@@ -114,7 +114,7 @@ Na câmera ao vivo, os passos 1 a 5 rodam no `ImageAnalysis` a cada ~300 ms em r
 1. **Início**: botão "Fotografar" (vermelho), "Escolher da galeria", lista de recentes.
 2. **Câmera**: guia com cantos dourados, caixas turquesa nos glifos detectados, dourado nos duvidosos, contador de glifos, flash, galeria.
 3. **Resultado**: foto com as caixas, texto lido em fonte pixel, faixa glifo → letra, ações Copiar / Compartilhar / Salvar.
-4. **Corrigir letra** (bottom sheet): glifo ampliado, top-3 sugestões com confiança, teclado A–Z. A correção atualiza o texto na hora e fica salva como exemplo local.
+4. **Corrigir letra** (bottom sheet): glifo ampliado, até 3 sugestões, teclado A–Z. A correção atualiza o texto na hora. Usar as correções para melhorar o reconhecimento fica para a Fase 6.
 5. **Histórico** e **Configurações** (direção de leitura, tema claro/escuro).
 
 ### Identidade visual
@@ -142,7 +142,7 @@ Fontes: **Silkscreen** (títulos e texto lido, pixel), **Figtree** (interface), 
 | **2. Visão em imagem estática** 🟡 | `core/vision` (Kotlin puro); galeria → tela de resultado com caixas, texto e letra a letra | Imagens sintéticas: 100% com borrão, ruído, JPEG, escala, baixo contraste, sujeira, cenário e foto girada. **Falta**: ≥ 95% em 30 prints reais do jogo |
 | **2.5. Glifos distorcidos e de tamanhos variados** ✅ | Largura e altura do glifo medidas separadamente; grupos por tamanho (ex.: título e corpo, separados por quebra de linha); inclinação corrigida pela projeção mais "pontuda" (±12°), usada só quando melhora a leitura; filtro de nitidez e tamanho mínimo (2 px por bloco) contra ruído | Testes sintéticos: 100% com esticamento vertical e horizontal de 0,5× a 3×, inclinação de ±3° a ±10°, título grande + texto pequeno (também com a foto girada) e combinação inclinada + esticada + JPEG. Leitura de 1680×1309 px em ~200 ms na JVM |
 | **3. Câmera** 🟡 | CameraX (preview, análise e captura em 4:3); permissão com explicação e atalho para as configurações; visor ao vivo com caixas, contador e texto lido a cada 300 ms (quadros de 640 px, só o plano Y); flash; captura girada e reduzida fora da thread principal; tela de recorte com 4 cantos arrastáveis (sugestão automática em volta do texto) e correção de perspectiva por homografia | Testes sintéticos: foto de lado em trapézio não é lida sem recorte e é lida 100% depois (também com cantos marcados com erro de alguns pixels); conversão de quadros e mapeamento das caixas testados. **Falta**: ≥ 85% em 30 fotos reais de monitor/TV e teste em aparelho |
-| **4. Correção e histórico** | Tela de correção de letra (bottom sheet com sugestões e teclado A–Z), salvar leituras, histórico (Room) e lista de recentes na tela inicial | Fluxo completo foto → texto → correção → salvo e reaberto pelo histórico |
+| **4. Correção e histórico** ✅ | Toque numa letra da faixa abre o painel de correção (glifo ampliado, sugestões, teclado A–Z); letras corrigidas ficam em turquesa e deixam de ser dúvida. Salvar guarda imagem (JPEG) e leitura completa (Room 2.8.5 + formato `ReadingCodec`); correções numa leitura salva são gravadas na hora. Recentes na tela inicial, tela de histórico, apagar com confirmação | Testes: troca de letra mantendo espaços e quebras de linha; gravação e leitura da leitura completa (ida e volta, inclusive com letra corrigida, inclinação e dois blocos). Banco verificado em compilação pelo Room. **Falta**: testar o fluxo num aparelho |
 | **5. Polimento** | Acessibilidade (TalkBack, contraste, alvos ≥ 48 dp), tema claro, estados vazios e de erro, ícone final, release assinado | Checklist de acessibilidade ok; APK/AAB gerado no CI |
 | **6. Evolução (opcional)** | Modelo TFLite treinado com dados sintéticos + correções do usuário; números Zu; leitura totalmente ao vivo | Acurácia em fotos ≥ 95% |
 | **7. Tradução (opcional)** | ML Kit Translation EN → PT no aparelho, mostrando inglês e português | Só se o projeto decidir retomar a tradução |
@@ -171,4 +171,4 @@ Fontes: **Silkscreen** (títulos e texto lido, pixel), **Figtree** (interface), 
 2. Fase 0: criar o projeto Android no repositório.
 3. Fechar a Fase 2 com prints reais do jogo: medir o acerto e validar a direção de leitura, como as palavras são separadas e a orientação dos glifos.
 4. Testar a câmera num aparelho real e medir com fotos de monitor/TV.
-5. Fase 4: correção de letra e histórico.
+5. Fase 5: polimento (acessibilidade, tema claro, configurações, release).

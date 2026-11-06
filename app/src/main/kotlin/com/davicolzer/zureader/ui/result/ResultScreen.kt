@@ -28,6 +28,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import com.davicolzer.zureader.ui.correct.CorrectionSheet
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -76,7 +84,14 @@ fun ResultScreen(
     result: ImageReading,
     onBack: () -> Unit,
     onPickAnother: () -> Unit,
+    savedId: Long? = null,
+    onCorrect: (index: Int, letter: Char) -> Unit = { _, _ -> },
+    onSave: () -> Unit = {},
+    onDelete: () -> Unit = {},
 ) {
+    var editing by remember { mutableStateOf<Int?>(null) }
+    var confirmDelete by remember { mutableStateOf(false) }
+    val savedMessage = stringResource(R.string.result_saved_message)
     val context = LocalContext.current
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -96,6 +111,13 @@ fun ResultScreen(
                     }
                 },
                 title = { Text(stringResource(R.string.result_title), style = MaterialTheme.typography.titleLarge) },
+                actions = {
+                    if (savedId != null) {
+                        IconButton(onClick = { confirmDelete = true }) {
+                            Icon(painterResource(R.drawable.ic_pixel_trash), stringResource(R.string.result_delete), Modifier.size(22.dp))
+                        }
+                    }
+                },
             )
         },
     ) { padding ->
@@ -136,14 +158,13 @@ fun ResultScreen(
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                GlyphStrip(reading.glyphs, reading.rotation)
-                if (reading.glyphs.any { it.isLowConfidence }) {
-                    Text(
-                        stringResource(R.string.result_low_confidence),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = ZuTheme.colors.gold,
-                    )
-                }
+                GlyphStrip(reading.glyphs, reading.rotation, onTap = { editing = it })
+                val doubt = reading.glyphs.any { it.isLowConfidence }
+                Text(
+                    stringResource(if (doubt) R.string.result_low_confidence else R.string.result_tap_to_fix),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (doubt) ZuTheme.colors.gold else MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -154,11 +175,44 @@ fun ResultScreen(
                 ActionTile(R.drawable.ic_pixel_share, stringResource(R.string.result_share), Modifier.weight(1f)) {
                     shareText(context, reading.text)
                 }
-                ActionTile(R.drawable.ic_pixel_gallery, stringResource(R.string.result_other_image), Modifier.weight(1f), primary = true) {
-                    onPickAnother()
+                if (savedId == null) {
+                    ActionTile(R.drawable.ic_pixel_save, stringResource(R.string.result_save), Modifier.weight(1f), primary = true) {
+                        onSave()
+                        scope.launch { snackbar.showSnackbar(savedMessage) }
+                    }
+                } else {
+                    ActionTile(R.drawable.ic_pixel_check, stringResource(R.string.result_saved), Modifier.weight(1f), enabled = false) {}
                 }
             }
         }
+    }
+
+    editing?.let { index ->
+        reading.glyphs.getOrNull(index)?.let { glyph ->
+            CorrectionSheet(
+                glyph = glyph,
+                rotation = reading.rotation,
+                onSelect = { letter -> onCorrect(index, letter); editing = null },
+                onDismiss = { editing = null },
+            )
+        }
+    }
+
+    if (confirmDelete) {
+        AlertDialog(
+            onDismissRequest = { confirmDelete = false },
+            title = { Text(stringResource(R.string.result_delete_title)) },
+            text = { Text(stringResource(R.string.result_delete_body)) },
+            confirmButton = {
+                TextButton(onClick = { confirmDelete = false; onDelete() }) {
+                    Text(stringResource(R.string.result_delete), color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmDelete = false }) { Text(stringResource(R.string.cancel)) }
+            },
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        )
     }
 }
 
@@ -217,19 +271,26 @@ private fun ReadText(text: String, glyphs: List<GlyphReading>) {
 }
 
 @Composable
-private fun GlyphStrip(glyphs: List<GlyphReading>, rotation: Int) {
+private fun GlyphStrip(glyphs: List<GlyphReading>, rotation: Int, onTap: (Int) -> Unit) {
     Row(
         modifier = Modifier.horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        for (g in glyphs) {
+        glyphs.forEachIndexed { index, g ->
             val low = g.isLowConfidence
-            val color = if (low) ZuTheme.colors.gold else MaterialTheme.colorScheme.onSurface
+            val color = when {
+                low -> ZuTheme.colors.gold
+                g.corrected -> ZuTheme.colors.teal
+                else -> MaterialTheme.colorScheme.onSurface
+            }
+            val label = stringResource(if (low) R.string.glyph_letter_doubt else R.string.glyph_letter, g.letter.toString())
             Column(
                 modifier = Modifier
                     .clip(RoundedCornerShape(10.dp))
                     .background(MaterialTheme.colorScheme.surfaceContainer)
                     .then(if (low) Modifier.border(BorderStroke(1.5.dp, ZuTheme.colors.gold), RoundedCornerShape(10.dp)) else Modifier)
+                    .clickable { onTap(index) }
+                    .semantics(mergeDescendants = true) { contentDescription = label; role = Role.Button }
                     .padding(horizontal = 8.dp, vertical = 8.dp)
                     .width(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -244,14 +305,25 @@ private fun GlyphStrip(glyphs: List<GlyphReading>, rotation: Int) {
 }
 
 @Composable
-private fun ActionTile(@DrawableRes icon: Int, label: String, modifier: Modifier = Modifier, primary: Boolean = false, onClick: () -> Unit) {
+private fun ActionTile(
+    @DrawableRes icon: Int,
+    label: String,
+    modifier: Modifier = Modifier,
+    primary: Boolean = false,
+    enabled: Boolean = true,
+    onClick: () -> Unit,
+) {
     val background = if (primary) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainer
-    val content = if (primary) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+    val content = when {
+        !enabled -> ZuTheme.colors.teal
+        primary -> MaterialTheme.colorScheme.onPrimary
+        else -> MaterialTheme.colorScheme.onSurface
+    }
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(12.dp))
             .background(background)
-            .clickable(onClick = onClick)
+            .clickable(enabled = enabled, onClick = onClick)
             .padding(vertical = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(6.dp),

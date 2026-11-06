@@ -4,7 +4,7 @@ App Android em Kotlin que lê textos no alfabeto Zu, do jogo Fez, a partir de um
 
 - Plano: [docs/PLANO.md](docs/PLANO.md)
 - Design: [docs/design/mockup.png](docs/design/mockup.png) (fonte em [mockup.html](docs/design/mockup.html)) e ícone [icon.svg](docs/design/icon.svg)
-- Telas no Android: [início](docs/design/home-android.png), [câmera](docs/design/camera-android.png), [recorte](docs/design/crop-android.png), [resultado do recorte](docs/design/crop-result-android.png), [resultado](docs/design/result-android.png) e [título e texto inclinados](docs/design/result-inclinado-android.png)
+- Telas no Android: [início](docs/design/home-android.png), [câmera](docs/design/camera-android.png), [recorte](docs/design/crop-android.png), [resultado do recorte](docs/design/crop-result-android.png), [resultado](docs/design/result-android.png) e [título e texto inclinados](docs/design/result-inclinado-android.png), [correção](docs/design/correction-android.png), [leitura salva](docs/design/result-saved-android.png) e [recentes](docs/design/home-recent-android.png)
 - Imagens de exemplo para testar pela galeria: [docs/samples/](docs/samples/)
 
 ## Versões
@@ -24,7 +24,7 @@ O Gradle roda no JDK 25. O bytecode é gerado para Java 21, que é o que o Andro
 ## Estrutura
 
 ```
-app/        Activity, tema, telas (Compose)
+app/        Activity, tema, telas (Compose), câmera (CameraX), histórico (Room)
 core/zu/    Kotlin puro: alfabeto Zu, classificador, ordenação e leitura (testável sem emulador)
 core/vision/ Kotlin puro: imagem → glifos (limiar, manchas, caixas, grade 5×5)
 tools/      scripts de apoio (tabela de pares de letras do inglês)

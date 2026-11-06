@@ -24,12 +24,14 @@ import com.davicolzer.zureader.reader.ReaderUiState
 import com.davicolzer.zureader.reader.ReaderViewModel
 import com.davicolzer.zureader.ui.camera.CameraScreen
 import com.davicolzer.zureader.ui.crop.CropScreen
+import com.davicolzer.zureader.ui.history.HistoryScreen
 import com.davicolzer.zureader.ui.home.HomeScreen
 import com.davicolzer.zureader.ui.result.ResultScreen
 
 @Composable
 fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val recent by viewModel.recent.collectAsStateWithLifecycle()
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) viewModel.read(uri)
     }
@@ -41,7 +43,15 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
             onPickFromGallery = pickImage,
             errorMessage = if (s == ReaderUiState.CouldNotOpen) stringResource(R.string.error_open_image) else null,
             onErrorShown = viewModel::goHome,
+            recent = recent,
+            onOpenSaved = viewModel::openSaved,
+            onSeeAll = viewModel::openHistory,
         )
+        ReaderUiState.History -> {
+            val all by viewModel.allHistory.collectAsStateWithLifecycle()
+            BackHandler(onBack = viewModel::goHome)
+            HistoryScreen(all, onOpen = viewModel::openSaved, onBack = viewModel::goHome)
+        }
         ReaderUiState.Camera -> {
             BackHandler(onBack = viewModel::goHome)
             CameraScreen(onCaptured = viewModel::onCaptured, onPickFromGallery = pickImage, onClose = viewModel::goHome)
@@ -58,8 +68,18 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
         }
         ReaderUiState.Reading -> ReadingProgress()
         is ReaderUiState.Result -> {
-            BackHandler(onBack = viewModel::goHome)
-            ResultScreen(s.image, s.result, onBack = viewModel::goHome, onPickAnother = pickImage)
+            val back = if (s.savedId != null) viewModel::openHistory else viewModel::goHome
+            BackHandler(onBack = back)
+            ResultScreen(
+                image = s.image,
+                result = s.result,
+                onBack = back,
+                onPickAnother = pickImage,
+                savedId = s.savedId,
+                onCorrect = viewModel::correct,
+                onSave = viewModel::save,
+                onDelete = viewModel::deleteCurrent,
+            )
         }
     }
 }

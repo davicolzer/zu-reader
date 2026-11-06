@@ -13,8 +13,10 @@ data class GlyphReading(
     val confidence: Float,
     /** Outras letras possíveis, da mais provável à menos provável (até 3). */
     val alternatives: List<LetterScore>,
+    /** `true` se a letra foi escolhida pelo usuário. */
+    val corrected: Boolean = false,
 ) {
-    val isLowConfidence: Boolean get() = confidence < GlyphClassifier.LOW_CONFIDENCE
+    val isLowConfidence: Boolean get() = !corrected && confidence < GlyphClassifier.LOW_CONFIDENCE
 }
 
 /** Resultado da leitura de um texto em Zu. */
@@ -29,6 +31,22 @@ data class ZuReading(
     /** Pontuação da leitura (log-probabilidade, em milésimos de nat). Só serve para comparar. */
     val score: Int,
 ) {
+    /**
+     * Troca a letra do glifo [index] (na ordem de leitura) por [letter], marcando como corrigida.
+     * Espaços e quebras de linha do texto são mantidos.
+     */
+    fun withLetter(index: Int, letter: Char): ZuReading {
+        require(index in glyphs.indices) { "Glifo $index não existe (há ${glyphs.size})" }
+        require(letter in 'A'..'Z') { "Letra inválida: '$letter'" }
+        val updated = glyphs.toMutableList()
+        updated[index] = glyphs[index].copy(letter = letter, confidence = 1f, corrected = true)
+        var g = 0
+        val newText = buildString {
+            for (ch in text) append(if (ch == ' ' || ch == '\n') ch else updated[g++].letter)
+        }
+        return copy(text = newText, glyphs = updated)
+    }
+
     companion object {
         val EMPTY = ZuReading("", emptyList(), 0, ReadingDirection.VERTICAL_RIGHT_TO_LEFT, 0)
     }
