@@ -38,6 +38,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -128,10 +129,10 @@ fun WriteScreen(
                 // sem nada escrito, a dica usa a área toda (cabe em tela pequena)
                 if (message.isNotEmpty()) {
                     Text(
-                        ReadingMode.MIXED.display(message) + "_",
+                        englishLine(message, text.endsWith('\n')),
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onBackground,
-                        maxLines = 2,
+                        maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.fillMaxWidth().semantics { contentDescription = message },
                     )
@@ -172,8 +173,16 @@ fun WriteScreen(
             }
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ActionKey(stringResource(R.string.write_space), null, Modifier.weight(1.4f)) {
-                    if (text.isNotEmpty() && !text.endsWith(' ')) text += ' '
+                ActionKey(stringResource(R.string.write_space), null, Modifier.weight(1.3f)) {
+                    if (text.isNotEmpty() && !text.endsWith(' ') && !text.endsWith('\n')) text += ' '
+                }
+                ActionKey(
+                    stringResource(if (direction == ReadingDirection.VERTICAL_RIGHT_TO_LEFT) R.string.write_new_column else R.string.write_new_line),
+                    R.drawable.ic_pixel_newline,
+                    Modifier.weight(1f),
+                ) {
+                    // próxima coluna (ou linha); não começa com quebra nem repete espaço antes dela
+                    if (message.isNotEmpty()) text = text.trimEnd(' ') + '\n'
                 }
                 ActionKey(stringResource(R.string.write_delete), R.drawable.ic_pixel_backspace, Modifier.weight(1f)) {
                     text = text.dropLast(1)
@@ -182,7 +191,7 @@ fun WriteScreen(
                 ActionKey(
                     stringResource(R.string.write_done),
                     R.drawable.ic_pixel_check,
-                    Modifier.weight(1.6f),
+                    Modifier.weight(1.9f),
                     container = MaterialTheme.colorScheme.primary,
                     content = MaterialTheme.colorScheme.onPrimary,
                     showLabel = true,
@@ -194,8 +203,21 @@ fun WriteScreen(
     }
 }
 
+/** O texto em inglês com cursor; mensagem longa mostra o final (onde o usuário está digitando). */
+private fun englishLine(message: String, endsWithBreak: Boolean): String {
+    val full = ReadingMode.MIXED.display(message).replace("\n", " | ") + (if (endsWithBreak) " | " else "")
+    return (if (full.length > ENGLISH_MAX) "…" + full.takeLast(ENGLISH_MAX) else full) + "_"
+}
+
+/** Quantos caracteres do texto em inglês mostrar (o final). */
+private const val ENGLISH_MAX = 26
+
 /** Espaço mínimo da mensagem em Zu. */
-private val MESSAGE_MIN = 150.dp
+private val MESSAGE_MIN = 170.dp
+
+/** Tamanho dos glifos na mensagem: nunca menor (legível) nem maior que isto. */
+private val PREVIEW_MIN_GLYPH = 26.dp
+private val PREVIEW_MAX_GLYPH = 44.dp
 
 /** Altura do resto da tela fora as teclas: escolha Glifos/Letras, linha de ações, separação e espaços. */
 private val FIXED_PARTS = 190.dp
@@ -264,16 +286,25 @@ private fun ZuPreview(message: String, direction: ReadingDirection, modifier: Mo
                 textAlign = TextAlign.Center,
             )
         } else {
-            Canvas(Modifier.fillMaxSize()) {
+            Canvas(Modifier.fillMaxSize().clipToBounds()) {
                 val half = glyphs.first().size / 2
                 val minX = glyphs.minOf { it.x } - half
                 val maxX = glyphs.maxOf { it.x } + half
                 val minY = glyphs.minOf { it.y } - half
                 val maxY = glyphs.maxOf { it.y } + half
-                // escala para caber, sem passar de 40 dp por glifo
-                val scale = minOf(size.width / (maxX - minX), size.height / (maxY - minY), 40.dp.toPx() / (2 * half))
-                val offX = (size.width - (maxX - minX) * scale) / 2
-                val offY = (size.height - (maxY - minY) * scale) / 2
+                // tamanho: cabe tudo se der; se não, a coluna (ou linha) inteira continua cabendo e
+                // as colunas mais recentes ficam à vista; nunca maior que PREVIEW_MAX_GLYPH
+                val fitAll = minOf(size.width / (maxX - minX), size.height / (maxY - minY))
+                val fitLine = if (direction == ReadingDirection.VERTICAL_RIGHT_TO_LEFT) size.height / (maxY - minY) else size.width / (maxX - minX)
+                val scale = minOf(maxOf(fitAll, minOf(fitLine, PREVIEW_MIN_GLYPH.toPx() / (2 * half))), PREVIEW_MAX_GLYPH.toPx() / (2 * half))
+                val contentW = (maxX - minX) * scale
+                val contentH = (maxY - minY) * scale
+                // se não couber, a parte mais recente fica à vista (o último glifo no centro)
+                val newest = glyphs.last()
+                fun place(content: Float, area: Float, lastPos: Float) =
+                    if (content <= area) (area - content) / 2 else (area / 2 - lastPos * scale).coerceIn(area - content, 0f)
+                val offX = place(contentW, size.width, newest.x - minX)
+                val offY = place(contentH, size.height, newest.y - minY)
                 val cell = 2 * half * scale / 5
                 glyphs.forEachIndexed { i, g ->
                     val left = offX + (g.x - half - minX) * scale

@@ -32,6 +32,8 @@
     <string name="write_by_glyphs">Glifos</string>
     <string name="write_by_letters">Letras e números</string>
     <string name="write_space">Espaço</string>
+    <string name="write_new_column">Nova coluna</string>
+    <string name="write_new_line">Nova linha</string>
     <string name="write_delete">Apagar</string>
     <string name="write_clear">Limpar tudo</string>
     <string name="write_done">Pronto</string>

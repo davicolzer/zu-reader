@@ -43,4 +43,20 @@ class ZuWriterTest {
         assertNull(ZuWriter.write("  "))
         assertEquals("", ZuWriter.normalize("!? "))
     }
+
+    @Test
+    fun `quebra de coluna`() {
+        // cabe numa coluna de 6, mas a quebra manda QUICK para a próxima
+        val (_, result) = ZuWriter.write("THE\nQUICK")!!
+        assertEquals("THE\nQUICK", result.reading.text)
+        val g = result.reading.glyphs
+        assertEquals(g[0].source.x, g[2].source.x)
+        // colunas da direita para a esquerda: a segunda coluna fica à esquerda, começando no topo
+        assert(g[3].source.x < g[0].source.x)
+        assertEquals(g[0].source.y, g[3].source.y)
+        // quebras nas pontas não contam; espaços em volta da quebra somem
+        assertEquals("THE\nQUICK", ZuWriter.normalize("\nthe \n quick\n"))
+        // salva e abre igual
+        assertEquals(result.reading.text, ReadingCodec.decode(ReadingCodec.encode(result)).reading.text)
+    }
 }

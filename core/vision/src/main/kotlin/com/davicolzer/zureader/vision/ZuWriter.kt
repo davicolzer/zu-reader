@@ -21,9 +21,15 @@ object ZuWriter {
     private const val BLOCK_PX = 10
     private const val MARGIN_BLOCKS = 4
 
-    /** Só letras, números (o 10 é `#`) e um espaço entre palavras, em maiúsculas. */
+    /**
+     * Só letras, números (o 10 é `#`), um espaço entre palavras e `\n` onde o usuário quebrou a
+     * coluna (ou linha), em maiúsculas. Quebras no começo ou no fim não contam.
+     */
     fun normalize(text: String): String =
-        text.uppercase().filter { ZuMixed.contains(it) || it.isWhitespace() }.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }.joinToString(" ")
+        text.uppercase().split('\n')
+            .map { line -> line.filter { ZuMixed.contains(it) || it.isWhitespace() }.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }.joinToString(" ") }
+            .joinToString("\n")
+            .trim('\n')
 
     /** Escrita, números ou os dois, pelo que o texto tem. */
     fun modeOf(text: String): ReadingMode {
@@ -52,6 +58,7 @@ object ZuWriter {
         val minX = placed.minOf { it.x - size / 2 }
         val minY = placed.minOf { it.y - size / 2 }
         val symbols = clean.filter { !it.isWhitespace() }
+        check(symbols.length == placed.size) { "Glifos e símbolos não batem" }
         val glyphs = placed.mapIndexed { i, g ->
             val left = (g.x - size / 2 - minX).roundToInt() + margin
             val top = (g.y - size / 2 - minY).roundToInt() + margin
