@@ -7,8 +7,6 @@
     <string name="home_take_photo">Fotografar</string>
     <string name="home_pick_gallery">Escolher da galeria</string>
     <string name="home_recent">Recentes</string>
-    <string name="home_recent_empty_title">Nenhuma leitura ainda</string>
-    <string name="home_recent_empty_body">Os textos que você ler aparecem aqui.</string>
     <string name="coming_soon">Disponível em breve</string>
     <string name="fan_notice">Projeto de fã, sem vínculo com a Polytron.</string>
     <string name="back">Voltar</string>
@@ -26,7 +24,8 @@
         <item quantity="many">%1$d glifos · imagem girada %2$d°</item>
         <item quantity="other">%1$d glifos · imagem girada %2$d°</item>
     </plurals>
-    <string name="result_low_confidence">Letras em dourado têm dúvida. A correção chega numa próxima versão.</string>
+    <string name="result_low_confidence">Letras em dourado têm dúvida. Toque numa letra para corrigir.</string>
+    <string name="result_tap_to_fix">Toque numa letra para corrigir.</string>
     <string name="result_empty_title">Nenhum glifo encontrado</string>
     <string name="result_empty_body">Escolha uma imagem com o texto Zu bem visível. Recortar perto do texto ajuda.</string>
     <string name="result_copy">Copiar</string>
@@ -58,4 +57,22 @@
     <string name="crop_confirm">Ler texto</string>
     <string name="crop_whole">Usar a foto inteira</string>
     <string name="crop_description">Foto capturada com o recorte marcado</string>
+    <string name="result_save">Salvar</string>
+    <string name="result_saved">Salvo</string>
+    <string name="result_saved_message">Salvo no histórico</string>
+    <string name="result_delete">Apagar</string>
+    <string name="result_delete_title">Apagar esta leitura?</string>
+    <string name="result_delete_body">A imagem e o texto saem do histórico.</string>
+    <string name="cancel">Cancelar</string>
+    <string name="glyph_letter">Letra %1$s</string>
+    <string name="glyph_letter_doubt">Letra %1$s, com dúvida</string>
+    <string name="correct_title">QUAL É ESTA LETRA?</string>
+    <string name="correct_body_doubt">Confiança baixa. Escolha uma sugestão ou toque na letra certa.</string>
+    <string name="correct_body">Lida como %1$s. Se estiver errada, toque na letra certa.</string>
+    <string name="correct_suggestions">SUGESTÕES</string>
+    <string name="correct_current">atual</string>
+    <string name="history_title">HISTÓRICO</string>
+    <string name="history_see_all">Ver tudo</string>
+    <string name="history_empty_title">Nada salvo ainda</string>
+    <string name="history_empty_body">Leia um texto e toque em Salvar para guardar aqui.</string>
 </resources>

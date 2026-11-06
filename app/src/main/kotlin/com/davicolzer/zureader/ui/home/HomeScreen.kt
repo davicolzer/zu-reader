@@ -25,6 +25,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -40,6 +41,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.davicolzer.zureader.R
+import com.davicolzer.zureader.data.HistoryItem
+import com.davicolzer.zureader.ui.history.HistoryEmpty
+import com.davicolzer.zureader.ui.history.HistoryRow
 import com.davicolzer.zureader.ui.components.PixelOutlinedButton
 import com.davicolzer.zureader.ui.components.PixelPrimaryButton
 import com.davicolzer.zureader.ui.theme.ZuReaderTheme
@@ -57,6 +61,9 @@ fun HomeScreen(
     onOpenSettings: (() -> Unit)? = null,
     errorMessage: String? = null,
     onErrorShown: () -> Unit = {},
+    recent: List<HistoryItem> = emptyList(),
+    onOpenSaved: (Long) -> Unit = {},
+    onSeeAll: () -> Unit = {},
 ) {
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -122,8 +129,15 @@ fun HomeScreen(
                 onClick = onPickFromGallery ?: notYet,
             )
             Spacer(Modifier.height(6.dp))
-            Text(stringResource(R.string.home_recent), style = MaterialTheme.typography.titleSmall)
-            RecentEmptyState()
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.home_recent), style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                if (recent.isNotEmpty()) {
+                    TextButton(onClick = onSeeAll) {
+                        Text(stringResource(R.string.history_see_all), color = ZuTheme.colors.gold, style = MaterialTheme.typography.labelMedium)
+                    }
+                }
+            }
+            if (recent.isEmpty()) HistoryEmpty() else recent.forEach { HistoryRow(it, onOpenSaved) }
             Spacer(Modifier.height(8.dp))
             Text(
                 stringResource(R.string.fan_notice),
@@ -158,29 +172,6 @@ private fun HeroCard() {
         Text(stringResource(R.string.home_hero_title), style = MaterialTheme.typography.headlineSmall)
         Text(
             stringResource(R.string.home_hero_body),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-}
-
-@Composable
-private fun RecentEmptyState() {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainer)
-            .padding(horizontal = 16.dp, vertical = 18.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        Text(
-            stringResource(R.string.home_recent_empty_title),
-            style = MaterialTheme.typography.titleSmall,
-            color = ZuTheme.colors.gold,
-        )
-        Text(
-            stringResource(R.string.home_recent_empty_body),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
