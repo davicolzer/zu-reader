@@ -1,5 +1,18 @@
 package com.davicolzer.zureader.ui.result
 
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculateCentroid
+import androidx.compose.foundation.gestures.calculatePan
+import androidx.compose.foundation.gestures.calculateZoom
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.input.pointer.positionChange
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalViewConfiguration
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
+import com.davicolzer.zureader.vision.Viewport
+import kotlin.math.roundToInt
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -9,7 +22,6 @@ import androidx.annotation.DrawableRes
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.drawText
@@ -67,7 +79,6 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
@@ -147,6 +158,13 @@ fun ResultScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             PhotoWithBoxes(bitmap, result, selected = editing, onTapGlyph = { editing = it })
+            if (reading.glyphs.isNotEmpty()) {
+                Text(
+                    stringResource(R.string.result_zoom_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             if (onAdjustCrop != null && reading.glyphs.isNotEmpty()) {
                 PixelOutlinedButton(stringResource(R.string.result_adjust_crop), R.drawable.ic_pixel_crop, onAdjustCrop)
             }
@@ -283,31 +301,65 @@ private fun PhotoWithBoxes(bitmap: ImageBitmap, result: ImageReading, selected: 
         val aspect = result.width / result.height.toFloat()
         val width = minOf(maxWidth, maxHeight * aspect)
         Box(Modifier.size(width, width / aspect).semantics { contentDescription = description }) {
-            Image(bitmap, contentDescription = null, contentScale = ContentScale.FillBounds, modifier = Modifier.fillMaxSize())
+            val density = LocalDensity.current
+            val viewW = with(density) { width.toPx() }
+            val viewH = viewW / aspect
+            // zoom: dois dedos ampliam e arrastam; ampliada, um dedo também arrasta; toque corrige o glifo
+            var view by remember(result, viewW) { mutableStateOf(Viewport.fit(viewW, viewH, result.width, result.height)) }
+            val slop = LocalViewConfiguration.current.touchSlop
             Canvas(
                 Modifier
                     .fillMaxSize()
-                    .pointerInput(glyphs) {
-                        detectTapGestures { tap ->
-                            val scale = size.width / result.width.toFloat()
-                            val x = tap.x / scale
-                            val y = tap.y / scale
+                    .clipToBounds()
+                    .pointerInput(glyphs, viewW) {
+                        awaitEachGesture {
+                            val down = awaitFirstDown(requireUnconsumed = false)
+                            var moved = 0f
+                            var multi = false
+                            while (true) {
+                                val event = awaitPointerEvent()
+                                val pressed = event.changes.filter { it.pressed }
+                                if (pressed.isEmpty()) break
+                                if (pressed.size >= 2) {
+                                    multi = true
+                                    val c = event.calculateCentroid()
+                                    val pan = event.calculatePan()
+                                    view = view.zoomedAt(c.x, c.y, event.calculateZoom()).panned(pan.x, pan.y)
+                                    event.changes.forEach { it.consume() }
+                                } else {
+                                    val change = pressed.first()
+                                    val d = change.positionChange()
+                                    moved += kotlin.math.abs(d.x) + kotlin.math.abs(d.y)
+                                    // sem zoom, o arrasto de um dedo fica para a rolagem da tela
+                                    if (view.zoom > 1f && !multi) {
+                                        view = view.panned(d.x, d.y)
+                                        change.consume()
+                                    }
+                                }
+                            }
+                            if (multi || moved > slop) return@awaitEachGesture
+                            val p = view.toImage(down.position.x, down.position.y)
                             // o glifo cuja caixa contém o toque (ou o mais perto, até meio glifo de distância)
-                            val nearest = glyphs.indices.minByOrNull { i ->
-                                val g = glyphs[i].source
-                                kotlin.math.hypot(g.x - x, g.y - y)
-                            } ?: return@detectTapGestures
+                            val nearest = glyphs.indices.minByOrNull { k ->
+                                val g = glyphs[k].source
+                                kotlin.math.hypot(g.x - p.x, g.y - p.y)
+                            } ?: return@awaitEachGesture
                             val g = glyphs[nearest].source
-                            if (kotlin.math.hypot(g.x - x, g.y - y) <= g.size) onTapGlyph(nearest)
+                            if (kotlin.math.hypot(g.x - p.x, g.y - p.y) <= g.size) onTapGlyph(nearest)
                         }
                     },
             ) {
-                val scale = size.width / result.width
+                drawImage(
+                    bitmap,
+                    dstOffset = IntOffset(view.left.roundToInt(), view.top.roundToInt()),
+                    dstSize = IntSize((result.width * view.scale).roundToInt(), (result.height * view.scale).roundToInt()),
+                )
+                val scale = view.scale
                 val stroke = Stroke(width = 2.dp.toPx())
                 val thick = Stroke(width = 4.dp.toPx())
                 glyphs.forEachIndexed { i, g ->
-                    val cx = g.source.x * scale
-                    val cy = g.source.y * scale
+                    val cx = g.source.x * scale + view.left
+                    val cy = g.source.y * scale + view.top
                     val halfW = g.source.width / 2 * scale + 3
                     val halfH = g.source.height / 2 * scale + 3
                     val color = if (g.isLowConfidence) gold else teal
