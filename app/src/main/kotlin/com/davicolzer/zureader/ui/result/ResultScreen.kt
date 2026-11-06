@@ -49,6 +49,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -183,13 +184,18 @@ private fun PhotoWithBoxes(bitmap: ImageBitmap, result: ImageReading) {
                 val scale = size.width / result.width
                 val stroke = Stroke(width = 2.dp.toPx())
                 for (g in result.reading.glyphs) {
-                    val half = g.source.size / 2 * scale
-                    drawRect(
-                        color = if (g.isLowConfidence) gold else teal,
-                        topLeft = Offset(g.source.x * scale - half - 3, g.source.y * scale - half - 3),
-                        size = Size(2 * half + 6, 2 * half + 6),
-                        style = stroke,
-                    )
+                    val cx = g.source.x * scale
+                    val cy = g.source.y * scale
+                    val halfW = g.source.width / 2 * scale + 3
+                    val halfH = g.source.height / 2 * scale + 3
+                    rotate(result.skewDegrees, pivot = Offset(cx, cy)) {
+                        drawRect(
+                            color = if (g.isLowConfidence) gold else teal,
+                            topLeft = Offset(cx - halfW, cy - halfH),
+                            size = Size(2 * halfW, 2 * halfH),
+                            style = stroke,
+                        )
+                    }
                 }
             }
         }
@@ -202,7 +208,7 @@ private fun ReadText(text: String, glyphs: List<GlyphReading>) {
     val styled = buildAnnotatedString {
         var g = 0
         for (ch in text) {
-            if (ch == ' ') { append(ch); continue }
+            if (ch == ' ' || ch == '\n') { append(ch); continue }
             val low = glyphs.getOrNull(g++)?.isLowConfidence == true
             if (low) withStyle(SpanStyle(color = gold)) { append(ch) } else append(ch)
         }

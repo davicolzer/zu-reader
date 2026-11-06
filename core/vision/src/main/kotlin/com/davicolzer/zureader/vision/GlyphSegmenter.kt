@@ -1,7 +1,7 @@
 package com.davicolzer.zureader.vision
 
 /**
- * Junta as manchas de tinta em caixas de glifo.
+ * Junta as manchas de tinta em caixas de glifo, agrupadas por tamanho.
  *
  * A maioria dos glifos Zu tem duas peças separadas por um vão de 1 bloco, do mesmo
  * tamanho do espaço entre glifos; por isso não dá para juntar peças pela distância.
@@ -10,49 +10,85 @@ package com.davicolzer.zureader.vision
  *
  * Então cortamos em faixas por um eixo (colunas de texto) e, dentro de cada faixa,
  * pelo outro (glifos). Testamos as duas ordens e ficamos com a que gera mais caixas
- * quadradas do mesmo tamanho.
+ * do mesmo tamanho. Largura e altura são medidas separadamente, então glifos
+ * esticados ou achatados também servem.
+ *
+ * Textos com tamanhos diferentes (ex.: título e corpo) viram grupos separados.
  */
 object GlyphSegmenter {
     private const val MIN_AREA = 4
+    private const val MAX_GROUPS = 4
 
-    fun segment(components: List<PixelBox>): List<PixelBox> {
-        val pieces = components.filter { it.area >= MIN_AREA }
-        if (pieces.isEmpty()) return emptyList()
+    /** Menor lado de glifo legível: 2 px por bloco. */
+    const val MIN_GLYPH_PX = 10
 
-        val glyphSize = estimatePieceSize(pieces)
-        val block = glyphSize / 5f
+    /** Lista de grupos; cada grupo tem glifos do mesmo tamanho. */
+    fun segmentGroups(components: List<PixelBox>): List<List<PixelBox>> {
+        var remaining = removeOutliers(components.filter { it.area >= MIN_AREA })
+        val groups = mutableListOf<List<PixelBox>>()
+        while (remaining.isNotEmpty() && groups.size < MAX_GROUPS) {
+            val (w, h) = dominantSize(bestCut(remaining, 1, 1, null)) ?: break
+            val boxes = segmentWithSize(remaining, w, h)
+            // um grupo extra de 1 glifo costuma ser sujeira do cenário
+            if (boxes.isEmpty() || (groups.isNotEmpty() && boxes.size < 2)) break
+            groups += boxes
+            remaining = remaining.filterNot { piece -> boxes.any { it.contains(piece) } }
+        }
+        return groups
+    }
 
-        // Tira sujeira e manchas grandes demais (molduras, cenário) e corta.
-        val clean = pieces.filter { it.size <= glyphSize * 1.3f && it.area >= 0.25f * block * block }
-        val tolerance = (0.3f * block).toInt().coerceAtLeast(1)
-        val boxes = bestCut(clean, tolerance)
-        val size = estimateSize(boxes) ?: return emptyList()
-        return boxes.filter { isSquare(it) && it.size in (size * 0.75f).toInt()..(size * 1.3f).toInt() }
+    /** Todos os glifos, sem separar por tamanho. */
+    fun segment(components: List<PixelBox>): List<PixelBox> = segmentGroups(components).flatten()
+
+    private fun segmentWithSize(pieces: List<PixelBox>, width: Int, height: Int): List<PixelBox> {
+        val blockW = width / 5f
+        val blockH = height / 5f
+        val fitting = pieces.filter {
+            it.width <= width * 1.3f && it.height <= height * 1.3f && it.area >= 0.25f * blockW * blockH
+        }
+        val tolX = (0.3f * blockW).toInt().coerceAtLeast(1)
+        val tolY = (0.3f * blockH).toInt().coerceAtLeast(1)
+        return bestCut(fitting, tolX, tolY, width to height).filter {
+            matches(it, width, height, 0.75f, 1.3f) && it.width >= MIN_GLYPH_PX && it.height >= MIN_GLYPH_PX
+        }
+    }
+
+    /** Descarta molduras e manchas enormes antes de medir. */
+    private fun removeOutliers(pieces: List<PixelBox>): List<PixelBox> {
+        if (pieces.isEmpty()) return pieces
+        val rough = pieces.map { it.size }.sorted()[pieces.size / 2]
+        return pieces.filter { it.size <= rough * 4 }
     }
 
     /**
-     * Lado provável do glifo a partir das peças: a peça principal de cada glifo ocupa
-     * a largura ou a altura inteira, e as peças soltas têm 1–2 blocos. A mediana das
-     * peças grandes ignora tanto as soltas quanto molduras e manchas enormes.
+     * Tamanho (largura, altura) mais comum entre as caixas: para cada caixa, conta quantas
+     * têm largura e altura parecidas; vence a que tiver mais vizinhas.
      */
-    private fun estimatePieceSize(pieces: List<PixelBox>): Int {
-        val sizes = pieces.map { it.size }.sorted()
-        val rough = sizes[sizes.size / 2]
-        val big = sizes.filter { it >= rough * 0.6f && it <= rough * 3 }
-        return big[big.size / 2]
+    private fun dominantSize(boxes: List<PixelBox>): Pair<Int, Int>? {
+        if (boxes.isEmpty()) return null
+        val best = boxes.maxBy { b -> boxes.count { matches(it, b.width, b.height, 0.8f, 1.25f) } * 10_000L + b.area }
+        val similar = boxes.filter { matches(it, best.width, best.height, 0.8f, 1.25f) }
+        val w = similar.map { it.width }.sorted()[similar.size / 2]
+        val h = similar.map { it.height }.sorted()[similar.size / 2]
+        return w to h
     }
 
-    private fun bestCut(pieces: List<PixelBox>, tolerance: Int): List<PixelBox> {
-        val xFirst = cut(pieces, tolerance, xFirst = true)
-        val yFirst = cut(pieces, tolerance, xFirst = false)
-        return if (score(yFirst) > score(xFirst)) yFirst else xFirst
+    private fun matches(b: PixelBox, width: Int, height: Int, low: Float, high: Float): Boolean =
+        b.width >= width * low && b.width <= width * high + 1 && b.height >= height * low && b.height <= height * high + 1
+
+    private fun bestCut(pieces: List<PixelBox>, tolX: Int, tolY: Int, size: Pair<Int, Int>?): List<PixelBox> {
+        val xFirst = cut(pieces, tolX, tolY, xFirst = true)
+        val yFirst = cut(pieces, tolX, tolY, xFirst = false)
+        return if (score(yFirst, size) > score(xFirst, size)) yFirst else xFirst
     }
 
-    private fun cut(pieces: List<PixelBox>, tolerance: Int, xFirst: Boolean): List<PixelBox> {
-        val first: (PixelBox) -> IntRange = if (xFirst) { b -> b.left until b.right } else { b -> b.top until b.bottom }
-        val second: (PixelBox) -> IntRange = if (xFirst) { b -> b.top until b.bottom } else { b -> b.left until b.right }
-        return group(pieces, first, tolerance).flatMap { strip ->
-            group(strip, second, tolerance).map { it.reduce(PixelBox::union) }
+    private fun cut(pieces: List<PixelBox>, tolX: Int, tolY: Int, xFirst: Boolean): List<PixelBox> {
+        val xRange: (PixelBox) -> IntRange = { b -> b.left until b.right }
+        val yRange: (PixelBox) -> IntRange = { b -> b.top until b.bottom }
+        val (first, firstTol) = if (xFirst) xRange to tolX else yRange to tolY
+        val (second, secondTol) = if (xFirst) yRange to tolY else xRange to tolX
+        return group(pieces, first, firstTol).flatMap { strip ->
+            group(strip, second, secondTol).map { it.reduce(PixelBox::union) }
         }
     }
 
@@ -73,15 +109,8 @@ object GlyphSegmenter {
         return groups
     }
 
-    private fun isSquare(b: PixelBox): Boolean = b.width >= b.height * 0.8f && b.height >= b.width * 0.8f
-
-    private fun estimateSize(boxes: List<PixelBox>): Int? {
-        val sizes = boxes.filter(::isSquare).map { it.size }.sorted()
-        return sizes.getOrNull(sizes.size / 2)
-    }
-
-    private fun score(boxes: List<PixelBox>): Int {
-        val size = estimateSize(boxes) ?: return 0
-        return boxes.count { isSquare(it) && it.size in (size * 0.85f).toInt()..(size * 1.15f).toInt() + 1 }
+    private fun score(boxes: List<PixelBox>, size: Pair<Int, Int>?): Int {
+        val (w, h) = size ?: dominantSize(boxes) ?: return 0
+        return boxes.count { matches(it, w, h, 0.85f, 1.15f) }
     }
 }

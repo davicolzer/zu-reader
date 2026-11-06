@@ -100,7 +100,9 @@ flowchart LR
 1. **Limiar**: escala de cinza (transparência vira branco) e limiar de Otsu. Testa texto escuro e texto claro e fica com o que encontra mais glifos confiáveis.
 2. **Manchas**: componentes conectados (vizinhança de 8).
 3. **Caixas de glifo**: a maioria dos glifos tem duas peças separadas por 1 bloco, o mesmo vão entre glifos, então não dá para juntar por distância. Mas todo glifo tem tinta em todas as linhas e colunas: a sombra das peças em cada eixo é contínua e do tamanho do glifo. Corta-se em faixas por um eixo e depois pelo outro (as duas ordens são testadas). Manchas grandes demais (molduras, cenário), sujeira e quadrados sólidos são descartados.
-4. **Grade 5×5**: cada célula vira bloco se mais da metade do seu miolo for tinta → `BitMatrix`.
+4. **Grade 5×5 de cada glifo**: cada célula vira bloco se mais da metade do seu miolo for tinta → `BitMatrix`. Células "meio a meio" indicam ruído e o glifo é descartado.
+
+Antes do passo 2, a inclinação é medida (±12°) e a máscara é endireitada; a leitura endireitada só é usada se for melhor que a original. No passo 3, largura e altura do glifo são medidas separadamente (aceita imagem esticada) e glifos de tamanhos diferentes formam blocos separados, lidos com a mesma orientação.
 5. **Classificação**: distância de Hamming contra os 24 modelos, sem girar o glifo. Confiança = folga para o segundo colocado × proximidade do modelo (exato = 1; 1 bloco errado sem empate = 0,8; empate = 0). Abaixo de 0,7 vira "letra com dúvida" (dourado na UI).
 6. **Ordenação**: agrupar em colunas pelo centro X (tolerância de meio glifo); colunas da direita para a esquerda, glifos de cima para baixo. Fim de coluna e vãos maiores que 1,75 glifo viram espaço (suposição a validar com prints reais).
 7. **Texto e orientação**: para cada uma das 4 orientações, Viterbi sobre pares de letras do inglês escolhe a sequência mais provável (resolve K/Q, U/V e blocos com ruído). Vence a orientação de maior pontuação; girar a foto tem um custo fixo, porque fotos costumam estar em pé e textos de até 3 letras são ambíguos.
@@ -139,7 +141,7 @@ Fontes: **Silkscreen** (títulos e texto lido, pixel), **Figtree** (interface), 
 | **0. Setup** ✅ | Projeto Gradle multi-módulo (version catalog), tema Compose com a paleta, ícone, CI no GitHub Actions. JDK 25 LTS, Gradle 9.8.2, Kotlin 2.4.21, AGP 9.5.1 | `./gradlew build` verde no CI; app abre a tela inicial |
 | **1. Alfabeto + decoder** ✅ | `core/zu`: 24 glifos, classificador por distância, ordenação de colunas, modelo de pares de letras do inglês, escolha da orientação | Testes: frases sintéticas lidas certas em pé e giradas (≥ 4 letras); 99,8% de acerto por caractere com 1 bloco errado em cada glifo |
 | **2. Visão em imagem estática** 🟡 | `core/vision` (Kotlin puro); galeria → tela de resultado com caixas, texto e letra a letra | Imagens sintéticas: 100% com borrão, ruído, JPEG, escala, baixo contraste, sujeira, cenário e foto girada. **Falta**: ≥ 95% em 30 prints reais do jogo |
-| **2.5. Glifos distorcidos e de tamanhos variados** | Parar de exigir glifo quadrado: medir largura e altura do glifo separadamente e ler a grade 5×5 de cada letra sobre o retângulo real. Aceitar imagens esticadas ou achatadas (proporção de 1:3 a 3:1), textos com tamanhos diferentes na mesma imagem (ex.: título grande e texto pequeno) e inclinação leve (até ±10°, com endireitamento automático) | Testes sintéticos: ≥ 95% de acerto com esticamento vertical e horizontal de 0,5× a 3×, tamanhos misturados e inclinação de ±10°. Hoje acima de ~1,2× de esticamento nada é lido |
+| **2.5. Glifos distorcidos e de tamanhos variados** ✅ | Largura e altura do glifo medidas separadamente; grupos por tamanho (ex.: título e corpo, separados por quebra de linha); inclinação corrigida pela projeção mais "pontuda" (±12°), usada só quando melhora a leitura; filtro de nitidez e tamanho mínimo (2 px por bloco) contra ruído | Testes sintéticos: 100% com esticamento vertical e horizontal de 0,5× a 3×, inclinação de ±3° a ±10°, título grande + texto pequeno (também com a foto girada) e combinação inclinada + esticada + JPEG. Leitura de 1680×1309 px em ~200 ms na JVM |
 | **3. Câmera** | CameraX, overlay ao vivo, captura, recorte por cantos | ≥ 85% das letras corretas em 30 fotos de monitor/TV |
 | **4. Resultado e tradução** | Tela de resultado, correção de letra, ML Kit EN→PT, copiar/compartilhar, histórico (Room) | Fluxo completo foto → texto → tradução → salvo |
 | **5. Polimento** | Acessibilidade (TalkBack, contraste, alvos ≥ 48 dp), tema claro, estados vazios e de erro, ícone final, release assinado | Checklist de acessibilidade ok; APK/AAB gerado no CI |
@@ -159,7 +161,7 @@ Fontes: **Silkscreen** (títulos e texto lido, pixel), **Figtree** (interface), 
 | K/Q e U/V com o mesmo glifo; B/H/N/T e F/L/R/Y a 2 blocos de distância | Contexto do inglês escolhe; empates marcados como dúvida com alternativas |
 | Texto girado | As 4 orientações são testadas; textos de até 3 letras ficam na orientação da foto |
 | Glifos colados ou muito pequenos | Exigir tamanho mínimo; recorte manual; zoom na câmera |
-| Foto de lado ou imagem esticada deixa o glifo retangular | Fase 2.5: largura e altura medidas separadamente, endireitamento de inclinação leve |
+| Foto de lado ou imagem esticada deixa o glifo retangular | Resolvido na Fase 2.5 (esticamento até 3×, inclinação até ±10°). Perspectiva forte (trapézio) fica para a Fase 3 |
 | Marca "Fez" | Nome do app sem "Fez"; aviso de projeto de fã; nenhum asset do jogo |
 
 ## 8. Próximos passos
@@ -167,5 +169,4 @@ Fontes: **Silkscreen** (títulos e texto lido, pixel), **Figtree** (interface), 
 1. Aprovar este plano e o design (`docs/design/mockup.png`).
 2. Fase 0: criar o projeto Android no repositório.
 3. Fechar a Fase 2 com prints reais do jogo: medir o acerto e validar a direção de leitura, como as palavras são separadas e a orientação dos glifos.
-4. Fase 2.5: glifos distorcidos e de tamanhos variados.
-5. Fase 3: câmera.
+4. Fase 3: câmera.
