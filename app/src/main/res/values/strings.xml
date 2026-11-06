@@ -55,7 +55,7 @@
     <string name="camera_unavailable">Não foi possível abrir a câmera. Use uma imagem da galeria.</string>
     <string name="camera_capture_failed">A foto não saiu. Tente de novo.</string>
     <string name="crop_title">AJUSTAR RECORTE</string>
-    <string name="crop_hint">Puxe os cantos ou as bordas até o texto, arraste o quadro por dentro, ou toque fora e arraste para desenhar um novo.</string>
+    <string name="crop_hint">Puxe os cantos para mudar o tamanho, arraste o quadro por dentro, ou toque fora e arraste para desenhar um novo. Use dois dedos para ampliar a foto.</string>
     <string name="crop_confirm">Ler texto</string>
     <string name="crop_whole">Usar a imagem inteira</string>
     <string name="crop_description">Imagem com o recorte marcado</string>
