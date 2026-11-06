@@ -14,6 +14,10 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -64,11 +68,13 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.davicolzer.zureader.R
 import com.davicolzer.zureader.ui.components.MiniGlyph
 import com.davicolzer.zureader.ui.components.PixelPrimaryButton
@@ -141,6 +147,7 @@ fun ResultScreen(
                     stringResource(R.string.result_text_label),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.semantics { heading() },
                 )
                 ReadText(reading.text, reading.glyphs)
                 val count = reading.glyphs.size
@@ -157,6 +164,7 @@ fun ResultScreen(
                     stringResource(R.string.result_glyphs_label),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.semantics { heading() },
                 )
                 GlyphStrip(reading.glyphs, reading.rotation, onTap = { editing = it })
                 val doubt = reading.glyphs.any { it.isLowConfidence }
@@ -167,7 +175,8 @@ fun ResultScreen(
                 )
             }
 
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            // alturas iguais mesmo com fonte grande
+            Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 ActionTile(R.drawable.ic_pixel_copy, stringResource(R.string.result_copy), Modifier.weight(1f)) {
                     copyText(context, reading.text)
                     scope.launch { snackbar.showSnackbar(copied) }
@@ -292,7 +301,7 @@ private fun GlyphStrip(glyphs: List<GlyphReading>, rotation: Int, onTap: (Int) -
                     .clickable { onTap(index) }
                     .semantics(mergeDescendants = true) { contentDescription = label; role = Role.Button }
                     .padding(horizontal = 8.dp, vertical = 8.dp)
-                    .width(24.dp),
+                    .width(32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
@@ -321,6 +330,7 @@ private fun ActionTile(
     }
     Column(
         modifier = modifier
+            .fillMaxHeight()
             .clip(RoundedCornerShape(12.dp))
             .background(background)
             .clickable(enabled = enabled, onClick = onClick)
@@ -329,7 +339,14 @@ private fun ActionTile(
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Icon(painterResource(icon), contentDescription = null, tint = content, modifier = Modifier.size(20.dp))
-        Text(label, style = MaterialTheme.typography.labelMedium, color = content)
+        // encolhe para caber numa linha em vez de quebrar a palavra
+        BasicText(
+            label,
+            style = MaterialTheme.typography.labelMedium.copy(color = content),
+            maxLines = 1,
+            autoSize = TextAutoSize.StepBased(minFontSize = 9.sp, maxFontSize = MaterialTheme.typography.labelMedium.fontSize),
+            modifier = Modifier.padding(horizontal = 6.dp),
+        )
     }
 }
 

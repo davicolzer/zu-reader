@@ -7,11 +7,15 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.davicolzer.zureader.ZuReaderApplication
 import com.davicolzer.zureader.data.HistoryItem
+import com.davicolzer.zureader.data.Settings
+import com.davicolzer.zureader.data.ThemeMode
 import com.davicolzer.zureader.vision.GrayImage
 import com.davicolzer.zureader.vision.ImageReading
 import com.davicolzer.zureader.vision.Perspective
 import com.davicolzer.zureader.vision.Quad
 import com.davicolzer.zureader.vision.ZuImageReader
+import com.davicolzer.zureader.zu.ReadingDirection
+import com.davicolzer.zureader.zu.ZuReader
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,12 +35,21 @@ sealed interface ReaderUiState {
     /** [savedId] não nulo = leitura que está no histórico; correções são gravadas nela. */
     data class Result(val image: Bitmap, val result: ImageReading, val savedId: Long? = null) : ReaderUiState
     data object History : ReaderUiState
+    data object Settings : ReaderUiState
     data object CouldNotOpen : ReaderUiState
 }
 
 class ReaderViewModel(application: Application) : AndroidViewModel(application) {
-    private val imageReader = ZuImageReader()
-    private val history = (application as ZuReaderApplication).history
+    private val app = application as ZuReaderApplication
+    private val history = app.history
+
+    val settings: StateFlow<Settings> =
+        app.settings.settings.stateIn(viewModelScope, SharingStarted.Eagerly, Settings())
+
+    /** Leitor com a direção escolhida nas configurações. */
+    private val imageReader: ZuImageReader
+        get() = readers.getOrPut(settings.value.direction) { ZuImageReader(ZuReader(direction = settings.value.direction)) }
+    private val readers = java.util.concurrent.ConcurrentHashMap<ReadingDirection, ZuImageReader>()
     private val _state = MutableStateFlow<ReaderUiState>(ReaderUiState.Home)
     val state: StateFlow<ReaderUiState> = _state.asStateFlow()
 
@@ -120,6 +133,18 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
             history.delete(id)
             _state.value = ReaderUiState.History
         }
+    }
+
+    fun openSettings() {
+        _state.value = ReaderUiState.Settings
+    }
+
+    fun setDirection(direction: ReadingDirection) {
+        viewModelScope.launch { app.settings.setDirection(direction) }
+    }
+
+    fun setTheme(theme: ThemeMode) {
+        viewModelScope.launch { app.settings.setTheme(theme) }
     }
 
     fun goHome() {

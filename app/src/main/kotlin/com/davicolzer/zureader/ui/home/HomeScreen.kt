@@ -37,6 +37,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -130,7 +132,11 @@ fun HomeScreen(
             )
             Spacer(Modifier.height(6.dp))
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(stringResource(R.string.home_recent), style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                Text(
+                    stringResource(R.string.home_recent),
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.weight(1f).semantics { heading() },
+                )
                 if (recent.isNotEmpty()) {
                     TextButton(onClick = onSeeAll) {
                         Text(stringResource(R.string.history_see_all), color = ZuTheme.colors.gold, style = MaterialTheme.typography.labelMedium)

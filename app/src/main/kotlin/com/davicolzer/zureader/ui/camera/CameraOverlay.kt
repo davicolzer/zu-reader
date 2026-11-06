@@ -34,7 +34,9 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
@@ -60,6 +62,7 @@ fun CameraOverlay(
     onToggleFlash: () -> Unit,
     onGallery: () -> Unit,
     onShutter: () -> Unit,
+    horizontal: Boolean = false,
 ) {
     val teal = ZuTheme.colors.teal
     val gold = ZuTheme.colors.gold
@@ -142,6 +145,7 @@ fun CameraOverlay(
                         modifier = Modifier
                             .clip(RoundedCornerShape(10.dp))
                             .background(Scrim)
+                            .semantics { liveRegion = LiveRegionMode.Polite }
                             .padding(horizontal = 14.dp, vertical = 8.dp),
                     )
                 }
@@ -151,7 +155,7 @@ fun CameraOverlay(
                     textAlign = TextAlign.Center,
                 )
                 Text(
-                    stringResource(R.string.camera_order),
+                    stringResource(if (horizontal) R.string.camera_order_horizontal else R.string.camera_order),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
@@ -161,7 +165,7 @@ fun CameraOverlay(
                     Spacer(Modifier.weight(1f))
                     Shutter(capturing, onShutter)
                     Spacer(Modifier.weight(1f))
-                    Spacer(Modifier.size(44.dp))
+                    Spacer(Modifier.size(48.dp))
                 }
             }
         }
@@ -192,7 +196,7 @@ private fun Shutter(capturing: Boolean, onClick: () -> Unit) {
 private fun RoundControl(icon: Int, description: String, onClick: () -> Unit) {
     Box(
         Modifier
-            .size(44.dp)
+            .size(48.dp)
             .clip(RoundedCornerShape(12.dp))
             .background(Scrim)
             .clickable(onClick = onClick)

@@ -19,6 +19,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.davicolzer.zureader.BuildConfig
 import com.davicolzer.zureader.R
 import com.davicolzer.zureader.reader.ReaderUiState
 import com.davicolzer.zureader.reader.ReaderViewModel
@@ -26,12 +27,15 @@ import com.davicolzer.zureader.ui.camera.CameraScreen
 import com.davicolzer.zureader.ui.crop.CropScreen
 import com.davicolzer.zureader.ui.history.HistoryScreen
 import com.davicolzer.zureader.ui.home.HomeScreen
+import com.davicolzer.zureader.ui.settings.SettingsScreen
+import com.davicolzer.zureader.ui.theme.ZuReaderTheme
 import com.davicolzer.zureader.ui.result.ResultScreen
 
 @Composable
 fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val recent by viewModel.recent.collectAsStateWithLifecycle()
+    val settings by viewModel.settings.collectAsStateWithLifecycle()
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) viewModel.read(uri)
     }
@@ -40,6 +44,7 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
     when (val s = state) {
         ReaderUiState.Home, ReaderUiState.CouldNotOpen -> HomeScreen(
             onTakePhoto = viewModel::openCamera,
+            onOpenSettings = viewModel::openSettings,
             onPickFromGallery = pickImage,
             errorMessage = if (s == ReaderUiState.CouldNotOpen) stringResource(R.string.error_open_image) else null,
             onErrorShown = viewModel::goHome,
@@ -54,7 +59,25 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
         }
         ReaderUiState.Camera -> {
             BackHandler(onBack = viewModel::goHome)
-            CameraScreen(onCaptured = viewModel::onCaptured, onPickFromGallery = pickImage, onClose = viewModel::goHome)
+            // a câmera é sempre escura, independente do tema
+            ZuReaderTheme(darkTheme = true) {
+                CameraScreen(
+                    onCaptured = viewModel::onCaptured,
+                    onPickFromGallery = pickImage,
+                    onClose = viewModel::goHome,
+                    direction = settings.direction,
+                )
+            }
+        }
+        ReaderUiState.Settings -> {
+            BackHandler(onBack = viewModel::goHome)
+            SettingsScreen(
+                settings = settings,
+                versionName = BuildConfig.VERSION_NAME,
+                onDirection = viewModel::setDirection,
+                onTheme = viewModel::setTheme,
+                onBack = viewModel::goHome,
+            )
         }
         is ReaderUiState.Crop -> {
             BackHandler(onBack = viewModel::openCamera)

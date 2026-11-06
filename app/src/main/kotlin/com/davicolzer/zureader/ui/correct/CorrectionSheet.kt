@@ -28,6 +28,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -68,7 +69,7 @@ private fun CorrectionBody(glyph: GlyphReading, rotation: Int, onSelect: (Char) 
         Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 20.dp).navigationBarsPadding(),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text(stringResource(R.string.correct_title), style = MaterialTheme.typography.titleLarge)
+        Text(stringResource(R.string.correct_title), style = MaterialTheme.typography.titleLarge, modifier = Modifier.semantics { heading() })
         Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(
                 Modifier
@@ -112,9 +113,9 @@ private fun CorrectionBody(glyph: GlyphReading, rotation: Int, onSelect: (Char) 
             }
         }
 
-        // teclado A–Z, 9 por linha
+        // teclado A–Z, 6 por linha: cada tecla fica com pelo menos 48 dp
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            ('A'..'Z').chunked(9).forEach { row ->
+            ('A'..'Z').chunked(KEYS_PER_ROW).forEach { row ->
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     for (letter in row) {
                         val label = letter.toString()
@@ -131,9 +132,11 @@ private fun CorrectionBody(glyph: GlyphReading, rotation: Int, onSelect: (Char) 
                             Text(label, style = MaterialTheme.typography.titleSmall)
                         }
                     }
-                    repeat(9 - row.size) { Box(Modifier.weight(1f).size(1.dp)) }
+                    repeat(KEYS_PER_ROW - row.size) { Box(Modifier.weight(1f).size(1.dp)) }
                 }
             }
         }
     }
 }
+
+private const val KEYS_PER_ROW = 6
