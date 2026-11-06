@@ -218,7 +218,7 @@ class ZuImageReader(
         val h = deskewed.height
         val segmentation = Binarizer.erode(deskewed.mask, w, h, erosion)
         val components = Components.find(segmentation, w, h)
-        val strips = if (mode == ReadingMode.NUMBERS) splitStrips(components, deskewed) else emptyList()
+        val strips = if (mode != ReadingMode.TEXT) splitStrips(components, deskewed) else emptyList()
         return (GlyphSegmenter.segmentGroups(components) + strips)
             .map { group ->
                 group.map { b ->
@@ -415,7 +415,7 @@ class ZuImageReader(
             learned: List<ZuGlyph> = emptyList(),
             escalateWhenEmpty: Boolean = true,
         ): ZuImageReader {
-            val examples = learned.filter { g -> g.letters.all { ReadingMode.of(it) == mode } }
+            val examples = if (mode == ReadingMode.MIXED) learned else learned.filter { g -> g.letters.all { ReadingMode.of(it) == mode } }
             val classifier = GlyphClassifier(alphabet = mode.glyphSet.glyphs, learned = examples)
             return ZuImageReader(ZuReader(classifier, direction, languageModel = mode.usesLanguageModel), classifier, mode, escalateWhenEmpty)
         }
@@ -429,7 +429,7 @@ class ZuImageReader(
             direction: ReadingDirection = ReadingDirection.VERTICAL_RIGHT_TO_LEFT,
             learned: List<ZuGlyph> = emptyList(),
         ): ImageTextReader = choice.mode?.let { forMode(it, direction, learned) }
-            ?: AutoModeReader(ReadingMode.entries.map { forMode(it, direction, learned, escalateWhenEmpty = it == ReadingMode.TEXT) })
+            ?: AutoModeReader(ReadingMode.entries.map { forMode(it, direction, learned, escalateWhenEmpty = it != ReadingMode.NUMBERS) })
 
         /** Confiança média mínima para manter um bloco que não é o principal. */
         const val MIN_EXTRA_BLOCK_CONFIDENCE = 0.5

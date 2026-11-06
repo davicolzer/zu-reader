@@ -178,7 +178,12 @@ class ZuReader(
         return out to total
     }
 
-    private fun transition(prev: Char, next: Char): Int = if (languageModel) EnglishModel.logProb(prev, next) else 0
+    private fun transition(prev: Char, next: Char): Int = when {
+        !languageModel -> 0
+        // no modo misto, um número no meio do texto custa o mesmo que um par de letras comum
+        ReadingMode.isNumber(prev) || ReadingMode.isNumber(next) -> NUMBER_TRANSITION
+        else -> EnglishModel.logProb(prev, next)
+    }
 
     private fun alternatives(classification: GlyphClassification, chosen: Char): List<LetterScore> =
         classification.matches
@@ -188,6 +193,9 @@ class ZuReader(
             .take(3)
 
     companion object {
+        /** Custo (milésimos de nat) de entrar ou sair de um número no modo misto: ≈ um par de letras comum. */
+        const val NUMBER_TRANSITION = -3000
+
         const val UNKNOWN = '?'
 
         /** Custo de cada bloco diferente do modelo (milésimos de nat). */

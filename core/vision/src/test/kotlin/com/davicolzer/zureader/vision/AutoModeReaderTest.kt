@@ -1,6 +1,7 @@
 package com.davicolzer.zureader.vision
 
 import com.davicolzer.zureader.zu.ReadingMode
+import com.davicolzer.zureader.zu.ZuMixed
 import com.davicolzer.zureader.zu.ZuNumerals
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -46,5 +47,25 @@ class AutoModeReaderTest {
     @Test
     fun `um modo so e o leitor do modo`() {
         assertEquals(ReadingMode.NUMBERS, ZuImageReader.forChoice(ModeChoice.NUMBERS).read(ZuRenderer.render("THE")).mode)
+    }
+
+    @Test
+    fun `letras e numeros na mesma frase`() {
+        for (text in listOf("ROOM 12", "OPEN DOOR 3", "THE 7 KEYS", "GATE 4 IS OPEN", "LEVEL #")) {
+            val result = auto.read(ZuRenderer.render(text, glyphSet = ZuMixed))
+            assertEquals(ReadingMode.MIXED, result.mode, text)
+            assertEquals(text, result.reading.text)
+        }
+        assertEquals("LEVEL 10", ReadingMode.MIXED.display("LEVEL #"))
+    }
+
+    @Test
+    fun `misto com ruido e com B ao lado de 0`() {
+        val noisy = ImageEffects.jpeg(ImageEffects.noise(ImageEffects.boxBlur(ZuRenderer.render("ROOM 12 BOB", glyphSet = ZuMixed), 1), 12.0), 0.7f)
+        val result = auto.read(noisy)
+        assertEquals(ReadingMode.MIXED, result.mode)
+        assertEquals("ROOM 12 BOB", result.reading.text)
+        // B e 0 juntos: cada um vira o que é
+        assertEquals("B0B 0", auto.read(ZuRenderer.render("B0B 0", glyphSet = ZuMixed)).reading.text)
     }
 }

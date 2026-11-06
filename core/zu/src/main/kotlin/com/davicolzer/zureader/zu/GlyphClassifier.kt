@@ -36,9 +36,12 @@ class GlyphClassifier(
      * Folga que vale confiança total: a menor distância entre desenhos de símbolos diferentes do
      * conjunto, até 2. Nas letras é 2; nos números, que só mudam no miolo 3×3, alguns ficam a 1 bloco.
      */
-    private val fullMargin: Int = alphabet.flatMap { a ->
-        alphabet.filter { b -> b.letters.none { it in a.letters } }.map { b -> a.pattern.hammingDistance(b.pattern) }
-    }.minOrNull()?.coerceIn(1, 2) ?: 2
+    private val fullMargin: Map<ReadingMode, Int> = alphabet.groupBy { ReadingMode.of(it.primary) }.mapValues { (_, family) ->
+        // por família (letras, números): no modo misto as letras continuam pedindo 2 blocos de folga
+        family.flatMap { a ->
+            family.filter { b -> b.letters.none { it in a.letters } }.map { b -> a.pattern.hammingDistance(b.pattern) }
+        }.minOrNull()?.coerceIn(1, 2) ?: 2
+    }
 
     fun classify(bits: BitMatrix): GlyphClassification {
         val ranked = templates
@@ -48,7 +51,8 @@ class GlyphClassifier(
         val best = ranked[0]
         // segundo colocado = o melhor modelo de OUTRA letra (exemplos da mesma letra não tiram confiança)
         val d2 = ranked.firstOrNull { m -> m.glyph.letters.none { it in best.glyph.letters } }?.distance ?: Int.MAX_VALUE
-        val confidence = if (best.learned && best.distance == 0) 1f else confidence(best.distance, d2)
+        val margin = fullMargin[ReadingMode.of(best.glyph.primary)] ?: 2
+        val confidence = if (best.learned && best.distance == 0) 1f else confidence(best.distance, d2, margin)
         return GlyphClassification(accepted, confidence)
     }
 
@@ -57,7 +61,7 @@ class GlyphClassifier(
      * × proximidade do modelo (0 blocos diferentes = 1).
      * Letras: exato 1,0; um bloco errado sem empate 0,8; empate 0.
      */
-    private fun confidence(d1: Int, d2: Int): Float {
+    private fun confidence(d1: Int, d2: Int, fullMargin: Int): Float {
         if (d1 > maxDistance) return 0f
         val margin = (d2 - d1).coerceAtMost(fullMargin) / fullMargin.toFloat()
         val closeness = 1f - d1 / (maxDistance + 1f)

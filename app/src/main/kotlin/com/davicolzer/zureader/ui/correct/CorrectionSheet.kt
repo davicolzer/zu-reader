@@ -72,7 +72,7 @@ private fun CorrectionBody(glyph: GlyphReading, rotation: Int, onSelect: (Char) 
         Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 20.dp).navigationBarsPadding(),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text(stringResource(if (mode == ReadingMode.TEXT) R.string.correct_title else R.string.correct_title_numbers), style = MaterialTheme.typography.titleLarge, modifier = Modifier.semantics { heading() })
+        Text(stringResource(if (mode != ReadingMode.NUMBERS) R.string.correct_title else R.string.correct_title_numbers), style = MaterialTheme.typography.titleLarge, modifier = Modifier.semantics { heading() })
         Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(
                 Modifier
@@ -97,7 +97,7 @@ private fun CorrectionBody(glyph: GlyphReading, rotation: Int, onSelect: (Char) 
             )
         }
 
-        val twin = if (mode == ReadingMode.TEXT) ZuAlphabet.twin(glyph.letter) else null
+        val twin = if (mode != ReadingMode.NUMBERS) ZuAlphabet.twin(glyph.letter) else null
         val suggestions = (listOfNotNull(glyph.letter, twin) + glyph.alternatives.map { it.letter })
             .filter { it in mode.keyboard }.distinct().take(3)
         if (suggestions.isNotEmpty()) {

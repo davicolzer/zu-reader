@@ -158,7 +158,7 @@ fun ResultScreen(
 
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
-                    stringResource(if (mode == ReadingMode.TEXT) R.string.result_text_label else R.string.result_numbers_label),
+                    stringResource(if (mode != ReadingMode.NUMBERS) R.string.result_text_label else R.string.result_numbers_label),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.semantics { heading() },
@@ -175,7 +175,7 @@ fun ResultScreen(
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    stringResource(if (mode == ReadingMode.TEXT) R.string.result_glyphs_label else R.string.result_glyphs_label_numbers),
+                    stringResource(if (mode != ReadingMode.NUMBERS) R.string.result_glyphs_label else R.string.result_glyphs_label_numbers),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.semantics { heading() },
@@ -195,7 +195,7 @@ fun ResultScreen(
                     color = if (doubt) ZuTheme.colors.gold else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 // K/Q e U/V são o mesmo glifo: avisa quando aparecem
-                val pairs = if (mode != ReadingMode.TEXT) emptyList() else reading.glyphs
+                val pairs = if (mode == ReadingMode.NUMBERS) emptyList() else reading.glyphs
                     .mapNotNull { g -> ZuAlphabet.twin(g.letter)?.let { listOf(g.letter, it).sorted().joinToString(" e ") } }
                     .distinct().sorted()
                 if (pairs.isNotEmpty()) {
@@ -354,7 +354,7 @@ private fun ReadText(text: String, glyphs: List<GlyphReading>, mode: ReadingMode
         for (ch in text) {
             when (ch) {
                 '\n' -> { append('\n'); afterSymbol = false; pendingSpace = false }
-                ' ' -> if (mode == ReadingMode.TEXT) append(' ') else pendingSpace = afterSymbol
+                ' ' -> if (mode != ReadingMode.NUMBERS) append(' ') else pendingSpace = afterSymbol
                 else -> {
                     if (mode == ReadingMode.NUMBERS) {
                         if (pendingSpace) append(" / ") else if (afterSymbol) append(' ')
