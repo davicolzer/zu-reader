@@ -143,6 +143,8 @@ fun WriteScreen(
                     .heightIn(min = 80.dp)
                     .clip(RoundedCornerShape(16.dp))
                     .background(ZuTheme.colors.ink)
+                    // tocar na mensagem abre ela inteira em tela cheia
+                    .clickable(enabled = message.isNotEmpty(), role = Role.Button, onClickLabel = stringResource(R.string.write_expand)) { fullScreen = true }
                     .padding(12.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
@@ -158,15 +160,6 @@ fun WriteScreen(
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f).semantics { contentDescription = message },
                         )
-                        // mensagem grande: o teclado tem prioridade; ampliar abre a mensagem inteira
-                        IconButton(onClick = { fullScreen = true }, modifier = Modifier.size(40.dp)) {
-                            Icon(
-                                painterResource(R.drawable.ic_pixel_expand),
-                                contentDescription = stringResource(R.string.write_expand),
-                                tint = MaterialTheme.colorScheme.tertiary,
-                                modifier = Modifier.size(22.dp),
-                            )
-                        }
                     }
                 }
             }
@@ -448,12 +441,23 @@ private fun ZuPreview(message: String, direction: ReadingDirection, modifier: Mo
                 }
                 val contentW = (maxX - minX) * scale
                 val contentH = (maxY - minY) * scale
-                // se não couber, a parte mais recente fica à vista (o último glifo no centro)
+                // Segue o cursor: se não couber, o último glifo fica junto da borda para onde a
+                // mensagem cresce (colunas novas à esquerda; linhas novas embaixo), e o resto
+                // mostra o que veio logo antes
                 val newest = glyphs.last()
-                fun place(content: Float, area: Float, lastPos: Float) =
-                    if (content <= area) (area - content) / 2 else (area / 2 - lastPos * scale).coerceIn(area - content, 0f)
-                val offX = place(contentW, size.width, newest.x - minX)
-                val offY = place(contentH, size.height, newest.y - minY)
+                val glyphPx = 2 * half * scale
+                val edge = 2.dp.toPx()
+                val vertical = direction == ReadingDirection.VERTICAL_RIGHT_TO_LEFT
+                val offX = when {
+                    contentW <= size.width -> (size.width - contentW) / 2
+                    vertical -> (edge - (newest.x - half - minX) * scale).coerceIn(size.width - contentW, 0f)
+                    else -> (size.width / 2 - (newest.x - minX) * scale).coerceIn(size.width - contentW, 0f)
+                }
+                val offY = when {
+                    contentH <= size.height -> (size.height - contentH) / 2
+                    !vertical -> (size.height - edge - (newest.y - minY) * scale - glyphPx / 2).coerceIn(size.height - contentH, 0f)
+                    else -> (size.height / 2 - (newest.y - minY) * scale).coerceIn(size.height - contentH, 0f)
+                }
                 val cell = 2 * half * scale / 5
                 glyphs.forEachIndexed { i, g ->
                     val left = offX + (g.x - half - minX) * scale
