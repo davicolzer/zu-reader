@@ -68,8 +68,10 @@ class ZuImageReader(
         val windows = if (thorough) ADAPTIVE_WINDOWS else QUICK_WINDOWS
         val first = candidates(luma, deskew, windows)
         if (!thorough || !isWeak(first)) return choose(luma, listOf(first))
+        // Segunda etapa: máscaras afinadas (separam glifos que a foto juntou) e versões de cor.
+        val thinned = ERODE_RADII.map { r -> candidates(luma, deskew = false, windows = ERODE_WINDOWS, erosion = r) }
         val variants = listOf(luma.stretched(), image.red(), image.green(), image.blue(), image.saturation())
-        return choose(luma, listOf(first) + variants.map { candidates(it, deskew = false, windows = QUICK_WINDOWS) })
+        return choose(luma, listOf(first) + thinned + variants.map { candidates(it, deskew = false, windows = QUICK_WINDOWS) })
     }
 
     /** Leitura fraca: poucos glifos ou confiança média baixa no melhor candidato. */
@@ -78,8 +80,11 @@ class ZuImageReader(
         return glyphs.size < WEAK_GLYPHS || glyphs.map { it.confidence }.average() < WEAK_CONFIDENCE
     }
 
-    /** Uma leitura candidata por máscara: limiar único e limiar local em várias escalas, nas duas polaridades. */
-    private fun candidates(image: GrayImage, deskew: Boolean, windows: List<Float>): List<Candidate> {
+    /**
+     * Uma leitura candidata por máscara: limiar único e limiar local em várias escalas, nas duas polaridades.
+     * Com [erosion] > 0, os glifos são separados numa cópia afinada da máscara (ver [Binarizer.erode]).
+     */
+    private fun candidates(image: GrayImage, deskew: Boolean, windows: List<Float>, erosion: Int = 0): List<Candidate> {
         val threshold = Binarizer.otsu(image)
         val masks = buildList {
             // limiar único: bom para prints limpos e recortes só com a parede
@@ -98,7 +103,7 @@ class ZuImageReader(
                 for (dark in listOf(true, false)) add(Binarizer.adaptiveMask(smooth, window, dark) to dark)
             }
         }
-        return masks.map { (mask, dark) -> readWithMask(image, mask, dark, deskew) }
+        return masks.map { (mask, dark) -> readWithMask(image, mask, dark, deskew, erosion) }
     }
 
     /**
@@ -154,30 +159,42 @@ class ZuImageReader(
             val a = glyphs[i]
             val b = glyphs[j]
             if (maxOf(a.size, b.size) / minOf(a.size, b.size) > MERGE_SIZE_RATIO) continue
-            val pad = maxOf(a.size, b.size)
-            if (bounds(listOf(a), pad / 2).intersects(bounds(listOf(b), pad / 2))) parent[find(i)] = find(j)
+            val pad = maxOf(a.size, b.size) * MERGE_GAP / 2
+            if (bounds(listOf(a), pad).intersects(bounds(listOf(b), pad))) parent[find(i)] = find(j)
         }
         return glyphs.indices.groupBy(::find).values.map { idx -> idx.map { glyphs[it] } }
     }
 
-    private fun readWithMask(image: GrayImage, raw: BooleanArray, inkIsDark: Boolean, deskew: Boolean): Candidate {
+    private fun readWithMask(image: GrayImage, raw: BooleanArray, inkIsDark: Boolean, deskew: Boolean, erosion: Int = 0): Candidate {
         // Endireitar só pode ajudar: lê como veio e endireitado, e fica com o melhor.
         val angle = if (deskew) Deskew.estimate(raw, image.width, image.height) else 0f
         val straightMask = Deskew.apply(raw, image.width, image.height, 0f)
-        val straightGroups = extractGroups(straightMask)
+        val straightGroups = extractGroups(straightMask, erosion)
         val straight = readGroups(image, straightGroups, straightMask, inkIsDark)
         val glyphs = straightGroups.flatten()
         if (angle == 0f) return Candidate(straight.first, straight.second, glyphs)
         val tiltedMask = Deskew.apply(raw, image.width, image.height, angle)
-        val tilted = readGroups(image, extractGroups(tiltedMask), tiltedMask, inkIsDark)
+        val tilted = readGroups(image, extractGroups(tiltedMask, erosion), tiltedMask, inkIsDark)
         val chosen = if (tilted.second > straight.second) tilted else straight
         return Candidate(chosen.first, chosen.second, glyphs)
     }
 
-    /** Glifos de uma máscara, agrupados por tamanho (coordenadas da máscara endireitada). */
-    private fun extractGroups(deskewed: DeskewedMask): List<List<PlacedGlyph>> {
-        val components = Components.find(deskewed.mask, deskewed.width, deskewed.height)
+    /**
+     * Glifos de uma máscara, agrupados por tamanho (coordenadas da máscara endireitada).
+     * Com [erosion] > 0, as caixas saem da máscara afinada e são ampliadas de volta; a grade 5×5
+     * de cada glifo é sempre lida na máscara original.
+     */
+    private fun extractGroups(deskewed: DeskewedMask, erosion: Int = 0): List<List<PlacedGlyph>> {
+        val w = deskewed.width
+        val h = deskewed.height
+        val segmentation = Binarizer.erode(deskewed.mask, w, h, erosion)
+        val components = Components.find(segmentation, w, h)
         return GlyphSegmenter.segmentGroups(components)
+            .map { group ->
+                group.map { b ->
+                    PixelBox((b.left - erosion).coerceAtLeast(0), (b.top - erosion).coerceAtLeast(0), (b.right + erosion).coerceAtMost(w), (b.bottom + erosion).coerceAtMost(h))
+                }
+            }
             .map { boxes ->
                 boxes.mapNotNull { box ->
                     val sampled = GlyphSampler.sampleWithQuality(deskewed.mask, deskewed.width, box)
@@ -240,7 +257,7 @@ class ZuImageReader(
                 val sa = a.map { it.size }.sorted()[a.size / 2]
                 val sb = b.map { it.size }.sorted()[b.size / 2]
                 if (maxOf(sa, sb) / minOf(sa, sb) > MERGE_SIZE_RATIO) continue
-                val pad = maxOf(sa, sb)
+                val pad = maxOf(sa, sb) * MERGE_GAP / 2
                 if (bounds(a, pad).intersects(bounds(b, pad))) {
                     a += b
                     merged.removeAt(j)
@@ -274,12 +291,19 @@ class ZuImageReader(
         const val WEAK_GLYPHS = 4
         const val WEAK_CONFIDENCE = 0.85
 
+        /** Segunda etapa: raios de erosão e janelas das máscaras afinadas. */
+        val ERODE_RADII = listOf(1, 2)
+        val ERODE_WINDOWS = listOf(0.18f, 0.27f, 0.4f)
+
         /** Na combinação de máscaras: votos mínimos, ou confiança mínima, para um glifo entrar. */
         const val MIN_VOTES = 2
         const val SURE_CONFIDENCE = 0.8f
 
-        /** Grupos com tamanhos até esta proporção, e encostados, são o mesmo texto. */
+        /** Grupos com tamanhos até esta proporção, e a até [MERGE_GAP] glifos um do outro, são o mesmo texto. */
         const val MERGE_SIZE_RATIO = 1.5f
+
+        /** Vão máximo, em glifos, entre partes do mesmo texto (ex.: duas palavras na mesma coluna). */
+        const val MERGE_GAP = 2.5f
 
         /** Lados da janela do limiar local, como fração do maior lado da imagem. */
         val ADAPTIVE_WINDOWS = listOf(0.06f, 0.12f, 0.18f, 0.27f, 0.4f, 0.6f)

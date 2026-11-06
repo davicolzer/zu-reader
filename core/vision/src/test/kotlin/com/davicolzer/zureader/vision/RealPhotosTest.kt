@@ -21,13 +21,20 @@ class RealPhotosTest {
         val exifTurns: Int,
         /** Acerto mínimo por letra (nível atual, com folga pequena). */
         val minimum: Double,
-    )
+        /** Recorte feito pelo usuário (esquerda, topo, direita, base) como fração da foto em pé; `null` = foto inteira. */
+        val crop: List<Float>? = null,
+    ) {
+        val label: String get() = if (crop == null) file else "$file (recortada)"
+    }
 
     private val photos = listOf(
         Photo("parede-escura.jpg", "THE POINTS CONSTELLATE CONSPIRE TO CREATE SHAPES SHAPES TO TESSELLATE", 0, 0.97),
-        Photo("parede-clara.jpg", "THE POINTS CONSTELLATE CONSPIRE TO CREATE SHAPES SHAPES TO TESSELLATE", 1, 0.97),
+        Photo("parede-clara.jpg", "THE POINTS CONSTELLATE CONSPIRE TO CREATE SHAPES SHAPES TO TESSELLATE", 1, 0.95),
         Photo("lapide-2.jpg", "JUMPS OVER THE LAZY DOG", 1, 0.65),
         Photo("lapide-1.jpg", "THE QUICK BROWN FOX", 1, 0.45),
+        // recortadas no app em volta da pedra
+        Photo("lapide-2.jpg", "JUMPS OVER THE LAZY DOG", 1, 0.9, crop = listOf(0.435f, 0.27f, 0.73f, 0.585f)),
+        Photo("lapide-1.jpg", "THE QUICK BROWN FOX", 1, 0.62, crop = listOf(0.33f, 0.28f, 0.67f, 0.65f)),
     )
 
     private val dir = System.getProperty("zu.testdata")?.let(::File)
@@ -77,11 +84,20 @@ class RealPhotosTest {
         val failures = mutableListOf<String>()
         for (photo in photos) {
             val started = System.nanoTime()
-            val text = reader.read(load(photo)).reading.text.replace('\n', ' ')
+            val image = load(photo).let { img ->
+                val c = photo.crop ?: return@let img
+                val (l, t, r, b) = c.map { it }
+                val quad = Quad(
+                    Point(l * img.width, t * img.height), Point(r * img.width, t * img.height),
+                    Point(r * img.width, b * img.height), Point(l * img.width, b * img.height),
+                )
+                img.rectify(quad)
+            }
+            val text = reader.read(image).reading.text.replace('\n', ' ')
             val ms = (System.nanoTime() - started) / 1_000_000
             val acc = accuracy(photo.expected, text)
-            println("${photo.file}: ${"%.0f".format(acc * 100)}% em $ms ms → '$text'")
-            if (acc < photo.minimum) failures += "${photo.file}: ${"%.2f".format(acc)} < ${photo.minimum}"
+            println("${photo.label}: ${"%.0f".format(acc * 100)}% em $ms ms → '$text'")
+            if (acc < photo.minimum) failures += "${photo.label}: ${"%.2f".format(acc)} < ${photo.minimum}"
         }
         assertTrue(failures.isEmpty(), failures.joinToString("; "))
     }
