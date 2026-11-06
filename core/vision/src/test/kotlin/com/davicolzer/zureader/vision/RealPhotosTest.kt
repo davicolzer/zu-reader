@@ -35,6 +35,9 @@ class RealPhotosTest {
         // recortadas no app em volta da pedra
         Photo("lapide-2.jpg", "JUMPS OVER THE LAZY DOG", 1, 0.9, crop = listOf(0.435f, 0.27f, 0.73f, 0.585f)),
         Photo("lapide-1.jpg", "THE QUICK BROWN FOX", 1, 0.78, crop = listOf(0.33f, 0.28f, 0.67f, 0.65f)),
+        // balão de fala (branco sobre preto) e parede de ladrilhos em relevo
+        Photo("balao-fala.jpg", "NICE TO MEET YOU", 1, 0.99),
+        Photo("parede-ladrilhos.jpg", "THE POINTS CONSTELLATE CONSPIRE TO CREATE SHAPES SHAPES TO TESSELLATE", 1, 0.9),
     )
 
     private val dir = System.getProperty("zu.testdata")?.let(::File)

@@ -205,7 +205,8 @@ class ZuImageReader(
         val h = deskewed.height
         val segmentation = Binarizer.erode(deskewed.mask, w, h, erosion)
         val components = Components.find(segmentation, w, h)
-        return GlyphSegmenter.segmentGroups(components)
+        val strips = if (mode == ReadingMode.NUMBERS) splitStrips(components, deskewed) else emptyList()
+        return (GlyphSegmenter.segmentGroups(components) + strips)
             .map { group ->
                 group.map { b ->
                     PixelBox((b.left - erosion).coerceAtLeast(0), (b.top - erosion).coerceAtLeast(0), (b.right + erosion).coerceAtMost(w), (b.bottom + erosion).coerceAtMost(h))
@@ -261,6 +262,32 @@ class ZuImageReader(
         }
         return found
     }
+
+    /**
+     * Placas de números: os números ficam encostados e as molduras se juntam numa faixa só, com
+     * vizinhos dividindo a linha de borda (cada número ocupa 4 blocos na faixa, mais 1 da borda
+     * final). Uma mancha comprida com a largura de um glifo é fatiada assim; cada fatia de 5×5
+     * blocos que for um número vira um glifo. Cada faixa vira um grupo.
+     */
+    private fun splitStrips(components: List<PixelBox>, deskewed: DeskewedMask): List<List<PixelBox>> =
+        components.mapNotNull { c ->
+            val vertical = c.height >= c.width
+            val across = if (vertical) c.width else c.height
+            val along = if (vertical) c.height else c.width
+            if (across < GlyphSegmenter.MIN_GLYPH_PX || along < across * 1.6f) return@mapNotNull null
+            val block = across / 5f
+            val n = Math.round((along / block - 1) / 4f)
+            if (n < 2 || kotlin.math.abs(along - (4 * n + 1) * block) > block * 0.6f) return@mapNotNull null
+            val slices = (0 until n).map { k ->
+                val start = (if (vertical) c.top else c.left) + k * 4 * block
+                if (vertical) PixelBox(c.left, start.toInt(), c.right, (start + 5 * block).toInt().coerceAtMost(deskewed.height))
+                else PixelBox(start.toInt(), c.top, (start + 5 * block).toInt().coerceAtMost(deskewed.width), c.bottom)
+            }.filter { box ->
+                val sampled = GlyphSampler.sampleWithQuality(deskewed.mask, deskewed.width, box)
+                sampled.crispness >= GlyphSampler.MIN_CRISPNESS && classifier.classify(sampled.bits).isGlyph
+            }
+            slices.takeIf { it.size >= 2 }
+        }
 
     /** Melhor leitura de um glifo em volta de ([cx], [cy]), ou `null` se ali não há um glifo. */
     private fun sampleSlot(deskewed: DeskewedMask, cx: Float, cy: Float, w: Float, h: Float): PlacedGlyph? {
