@@ -65,6 +65,12 @@ class ZuImageReader(
     private val reader: ZuReader = ZuReader(),
     private val classifier: GlyphClassifier = GlyphClassifier(),
     private val mode: ReadingMode = ReadingMode.TEXT,
+    /**
+     * Fazer a segunda etapa (versões de cor, afinadas, neon) mesmo quando a primeira não achou
+     * quase nada. No modo automático, o leitor de números desliga isto: numa imagem de texto ele
+     * não acha números, e a segunda etapa só gastaria tempo.
+     */
+    private val escalateWhenEmpty: Boolean = true,
 ) : ImageTextReader {
     /**
      * @param deskew corrigir inclinação.
@@ -83,10 +89,13 @@ class ZuImageReader(
         val windows = if (thorough) ADAPTIVE_WINDOWS else QUICK_WINDOWS
         val first = candidates(luma, deskew, windows)
         if (!thorough || !isWeak(first)) return choose(luma, listOf(first))
+        if (!escalateWhenEmpty && first.maxOf { it.reading.reading.glyphs.size } < 1) return choose(luma, listOf(first))
         // Segunda etapa: máscaras afinadas (separam glifos que a foto juntou) e versões de cor.
         val thinned = ERODE_RADII.map { r -> candidates(luma, deskew = false, windows = ERODE_WINDOWS, erosion = r) }
         val variants = listOf(luma.stretched(), image.red(), image.green(), image.blue(), image.saturation())
-        return choose(luma, listOf(first) + thinned + variants.map { candidates(it, deskew = false, windows = QUICK_WINDOWS) })
+        // letreiros de neon: só o contorno do glifo é desenhado; preenchido, vira o glifo
+        val outlines = FILL_GAPS.map { g -> candidates(luma, deskew = false, windows = QUICK_WINDOWS, fill = g) }
+        return choose(luma, listOf(first) + thinned + outlines + variants.map { candidates(it, deskew = false, windows = QUICK_WINDOWS) })
     }
 
     /** Leitura fraca: poucos glifos ou confiança média baixa no melhor candidato. */
@@ -99,7 +108,7 @@ class ZuImageReader(
      * Uma leitura candidata por máscara: limiar único e limiar local em várias escalas, nas duas polaridades.
      * Com [erosion] > 0, os glifos são separados numa cópia afinada da máscara (ver [Binarizer.erode]).
      */
-    private fun candidates(image: GrayImage, deskew: Boolean, windows: List<Float>, erosion: Int = 0): List<Candidate> {
+    private fun candidates(image: GrayImage, deskew: Boolean, windows: List<Float>, erosion: Int = 0, fill: Int = -1): List<Candidate> {
         val threshold = Binarizer.otsu(image)
         val masks = buildList {
             // limiar único: bom para prints limpos e recortes só com a parede
@@ -118,7 +127,11 @@ class ZuImageReader(
                 for (dark in listOf(true, false)) add(Binarizer.adaptiveMask(smooth, window, dark) to dark)
             }
         }
-        return masks.map { (mask, dark) -> readWithMask(image, mask, dark, deskew, erosion) }
+        return masks.map { (raw, dark) ->
+            // [fill] ≥ 0: fecha falhas do contorno (engrossando [fill] px) e preenche o miolo
+            val mask = if (fill < 0) raw else Binarizer.fillHoles(Binarizer.dilate(raw, image.width, image.height, fill), image.width, image.height)
+            readWithMask(image, mask, dark, deskew, erosion)
+        }
     }
 
     /**
@@ -400,10 +413,11 @@ class ZuImageReader(
             mode: ReadingMode,
             direction: ReadingDirection = ReadingDirection.VERTICAL_RIGHT_TO_LEFT,
             learned: List<ZuGlyph> = emptyList(),
+            escalateWhenEmpty: Boolean = true,
         ): ZuImageReader {
             val examples = learned.filter { g -> g.letters.all { ReadingMode.of(it) == mode } }
             val classifier = GlyphClassifier(alphabet = mode.glyphSet.glyphs, learned = examples)
-            return ZuImageReader(ZuReader(classifier, direction, languageModel = mode.usesLanguageModel), classifier, mode)
+            return ZuImageReader(ZuReader(classifier, direction, languageModel = mode.usesLanguageModel), classifier, mode, escalateWhenEmpty)
         }
 
         /**
@@ -415,7 +429,7 @@ class ZuImageReader(
             direction: ReadingDirection = ReadingDirection.VERTICAL_RIGHT_TO_LEFT,
             learned: List<ZuGlyph> = emptyList(),
         ): ImageTextReader = choice.mode?.let { forMode(it, direction, learned) }
-            ?: AutoModeReader(ReadingMode.entries.map { forMode(it, direction, learned) })
+            ?: AutoModeReader(ReadingMode.entries.map { forMode(it, direction, learned, escalateWhenEmpty = it == ReadingMode.TEXT) })
 
         /** Confiança média mínima para manter um bloco que não é o principal. */
         const val MIN_EXTRA_BLOCK_CONFIDENCE = 0.5
@@ -433,6 +447,9 @@ class ZuImageReader(
 
         /** Na combinação de máscaras: votos mínimos, ou confiança mínima, para um glifo entrar. */
         const val MIN_VOTES = 2
+
+        /** Neon: quanto engrossar o contorno (px) antes de preencher o miolo, para fechar falhas. */
+        val FILL_GAPS = listOf(1)
 
         /** Passo do ajuste de posição ao ler uma vaga da grade (fração do glifo). */
         const val SLOT_SHIFT = 0.06f

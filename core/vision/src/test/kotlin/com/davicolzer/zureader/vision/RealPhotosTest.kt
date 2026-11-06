@@ -40,8 +40,12 @@ class RealPhotosTest {
         // prints das lápides (melhores que as fotos da tela)
         Photo("lapide-print-1.png", "JUMPS OVER THE LAZY DOG", 0, 0.7),
         Photo("lapide-print-1.png", "JUMPS OVER THE LAZY DOG", 0, 0.99, crop = listOf(0.6f, 0.12f, 0.93f, 0.85f)),
-        Photo("lapide-print-2.png", "THE QUICK BROWN FOX", 0, 0.7),
+        // inteira: as folhas do cenário viram letras soltas (a variante de neon troca F por M)
+        Photo("lapide-print-2.png", "THE QUICK BROWN FOX", 0, 0.65),
         Photo("lapide-print-2.png", "THE QUICK BROWN FOX", 0, 0.85, crop = listOf(0.6f, 0.12f, 0.93f, 0.85f)),
+        // letreiros de neon (só o contorno do glifo), recortados em volta de cada placa
+        Photo("neon-cidade.png", "WORK", 0, 0.7, crop = listOf(0.725f, 0.285f, 0.770f, 0.565f)),
+        Photo("neon-cidade.png", "EAT MEAT", 0, 0.8, crop = listOf(0.221f, 0.457f, 0.244f, 0.611f)),
         Photo("parede-ladrilhos.jpg", "THE POINTS CONSTELLATE CONSPIRE TO CREATE SHAPES SHAPES TO TESSELLATE", 1, 0.9),
     )
 
