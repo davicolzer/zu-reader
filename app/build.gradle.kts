@@ -13,8 +13,9 @@ android {
         applicationId = "com.davicolzer.zureader"
         minSdk = 26
         targetSdk = 37
-        // No CI, cada execução gera um número maior, para o Android aceitar a atualização.
-        versionCode = providers.environmentVariable("GITHUB_RUN_NUMBER").orNull?.toIntOrNull() ?: 1
+        // Número da build = quantidade de commits (o CI informa em ZU_BUILD_NUMBER). Sempre cresce,
+        // em qualquer fluxo, para o Android aceitar a atualização por cima da versão anterior.
+        versionCode = providers.environmentVariable("ZU_BUILD_NUMBER").orNull?.toIntOrNull() ?: 1
         versionName = "0.5.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

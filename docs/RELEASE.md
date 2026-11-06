@@ -16,7 +16,7 @@ Como a `main` não roda testes, o que entra nela deve passar por PR.
 
 Na página da release, baixe `zu-reader-<versão>-teste.apk` no celular e abra. Ele é assinado com a
 chave de teste do projeto (`app/debug.keystore`, senha pública `android`), então cada versão nova
-instala por cima da anterior. O número da versão (`versionCode`) é o número da execução do CI.
+instala por cima da anterior. O número da build (`versionCode`, e o "build.N" no nome) é a quantidade de commits: sempre cresce, nos dois fluxos.
 
 A chave de teste serve só para testes. Para publicar, use uma chave própria (abaixo).
 

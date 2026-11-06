@@ -48,8 +48,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - name: Baixar o código
+      - name: Baixar o código (com histórico, para o número da build)
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       - name: Preparar ambiente
         uses: ./.github/actions/preparar
