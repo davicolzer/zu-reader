@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Chapéu fez usado dentro do app (sem fundo). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="16dp"
+    android:height="16dp"
+    android:viewportWidth="16"
+    android:viewportHeight="16">
+    <group android:translateX="-1" android:translateY="1">
+        <path android:fillColor="#A3172B" android:pathData="M6,3h5v1h-5z" />
+        <path android:fillColor="#D7263D" android:pathData="M5,4h6v1h-6z M5,5h7v2h-7z M4,7h8v1h-8z" />
+        <path android:fillColor="#A3172B" android:pathData="M4,8h9v1h-9z M3,9h10v2h-10z" />
+        <path android:fillColor="#F0566A" android:pathData="M5,4h1v3h-1z M4,7h1v1h-1z" />
+        <path android:fillColor="#F5B700" android:pathData="M11,3h1v1h-1z M12,4h1v1h-1z M13,5h1v3h-1z M12,8h3v2h-3z M12,10h1v1h-1z M14,10h1v1h-1z" />
+    </group>
+</vector>

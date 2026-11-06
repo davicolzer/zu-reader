@@ -147,7 +147,7 @@ Fontes: **Silkscreen** (títulos e texto lido, pixel), **Figtree** (interface), 
 
 | Fase | Entrega | Pronto quando |
 |---|---|---|
-| **0. Setup** | Projeto Gradle multi-módulo (version catalog), tema Compose com a paleta, ícone, CI no GitHub Actions | `./gradlew build` verde no CI; app abre a tela inicial |
+| **0. Setup** ✅ | Projeto Gradle multi-módulo (version catalog), tema Compose com a paleta, ícone, CI no GitHub Actions. JDK 25 LTS, Gradle 9.8.2, Kotlin 2.4.21, AGP 9.5.1 | `./gradlew build` verde no CI; app abre a tela inicial |
 | **1. Alfabeto + decoder** | `core/zu`: tabela dos glifos (montada a partir da Pedra de Roseta do jogo), `BitMatrix`, classificador por template com rotações, ordenação de colunas | Testes unitários: matrizes sintéticas → texto correto, inclusive girado e com 1–2 bits de ruído |
 | **2. Visão em imagem estática** | `core/vision` com OpenCV; tela de galeria → resultado | ≥ 95% das letras corretas em um conjunto de 30 prints do jogo |
 | **3. Câmera** | CameraX, overlay ao vivo, captura, recorte por cantos | ≥ 85% das letras corretas em 30 fotos de monitor/TV |
