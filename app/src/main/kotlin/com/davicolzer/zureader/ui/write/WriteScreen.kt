@@ -23,6 +23,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -55,6 +58,7 @@ import com.davicolzer.zureader.zu.ReadingMode
 import com.davicolzer.zureader.zu.SharedLetters
 import com.davicolzer.zureader.zu.ZuAlphabet
 import com.davicolzer.zureader.zu.ZuGlyph
+import com.davicolzer.zureader.zu.ZuMixed
 import com.davicolzer.zureader.zu.ZuNumerals
 
 /**
@@ -69,8 +73,10 @@ fun WriteScreen(
     direction: ReadingDirection,
     onDone: (String) -> Unit,
     onBack: () -> Unit,
+    startWithLetters: Boolean = false,
 ) {
     var text by rememberSaveable(draft) { mutableStateOf(draft) }
+    var byLetters by rememberSaveable { mutableStateOf(startWithLetters) }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -95,7 +101,7 @@ fun WriteScreen(
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             // K/Q e U/V dividem o glifo: a letra vem do contexto do inglês e muda enquanto o usuário digita
-            val message = SharedLetters.resolve(ZuWriter.normalize(text))
+            val message = ZuWriter.normalize(SharedLetters.resolve(text))
             ZuPreview(message, direction)
             // texto em inglês, com cursor
             Text(
@@ -104,18 +110,53 @@ fun WriteScreen(
                 modifier = Modifier.fillMaxWidth().semantics { contentDescription = message },
             )
 
-            // Quem digita não sabe o que os glifos significam: o teclado é organizado pelo desenho.
-            // Letras: uma linha por forma, com as 4 rotações (K/Q e U/V numa tecla só); embaixo,
-            // os números na mesma grade. Um glifo de cada.
+            // Dois jeitos de digitar: pelos glifos (quem copia do jogo e não sabe o que significam)
+            // ou pelas letras e números (quem quer ver o próprio texto em Zu)
+            SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                listOf(false, true).forEachIndexed { i, letters ->
+                    SegmentedButton(
+                        selected = byLetters == letters,
+                        onClick = { byLetters = letters },
+                        shape = SegmentedButtonDefaults.itemShape(index = i, count = 2),
+                        icon = {},
+                        colors = SegmentedButtonDefaults.colors(
+                            activeContainerColor = MaterialTheme.colorScheme.tertiary,
+                            activeContentColor = MaterialTheme.colorScheme.onTertiary,
+                            inactiveContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+                            inactiveContentColor = MaterialTheme.colorScheme.onSurface,
+                        ),
+                    ) {
+                        Text(stringResource(if (letters) R.string.write_by_letters else R.string.write_by_glyphs), style = MaterialTheme.typography.labelLarge)
+                    }
+                }
+            }
+
             val numbers = (('0'..'9').toList() + ReadingMode.TEN).map { ZuNumerals.glyphFor(it) }
-            val rows = ZuAlphabet.shapes + numbers.chunked(KEYS_PER_ROW)
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                rows.forEachIndexed { r, row ->
-                    // um respiro entre as letras e os números
-                    if (r == ZuAlphabet.shapes.size) Spacer(Modifier.height(6.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        row.forEach { glyph -> GlyphKey(glyph, Modifier.weight(1f)) { text += glyph.primary } }
-                        repeat(KEYS_PER_ROW - row.size) { Spacer(Modifier.weight(1f)) }
+            if (!byLetters) {
+                // Glifos, organizados pelo desenho: uma linha por forma, com as 4 rotações (K/Q e
+                // U/V numa tecla só, letra decidida pelo inglês); embaixo, os números. Um de cada.
+                val rows = ZuAlphabet.shapes + numbers.chunked(GLYPHS_PER_ROW)
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    rows.forEachIndexed { r, row ->
+                        // um respiro entre as letras e os números
+                        if (r == ZuAlphabet.shapes.size) Spacer(Modifier.height(6.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            row.forEach { glyph -> GlyphKey(glyph, Modifier.weight(1f)) { text += SharedLetters.typed(glyph) } }
+                            repeat(GLYPHS_PER_ROW - row.size) { Spacer(Modifier.weight(1f)) }
+                        }
+                    }
+                }
+            } else {
+                // Letras de A a Z (K e Q separados: quem digita escolhe) e, embaixo, os números
+                val letters = ('A'..'Z').toList()
+                val numberSymbols = ('0'..'9').toList() + ReadingMode.TEN
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    (letters.chunked(LETTERS_PER_ROW) + listOf(emptyList()) + numberSymbols.chunked(LETTERS_PER_ROW)).forEach { row ->
+                        if (row.isEmpty()) { Spacer(Modifier.height(6.dp)); return@forEach }
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            row.forEach { symbol -> LetterKey(symbol, Modifier.weight(1f)) { text += symbol } }
+                            repeat(LETTERS_PER_ROW - row.size) { Spacer(Modifier.weight(1f)) }
+                        }
                     }
                 }
             }
@@ -138,7 +179,10 @@ fun WriteScreen(
 }
 
 /** As 4 rotações de cada forma numa linha. */
-private const val KEYS_PER_ROW = 4
+private const val GLYPHS_PER_ROW = 4
+
+/** Teclado de letras: 6 por linha. */
+private const val LETTERS_PER_ROW = 6
 
 /** A mensagem desenhada em Zu, ajustada ao quadro; o último glifo em dourado. */
 @Composable
@@ -205,6 +249,27 @@ private fun GlyphKey(glyph: ZuGlyph, modifier: Modifier, onClick: () -> Unit) {
     ) {
         MiniGlyph(glyph.pattern, MaterialTheme.colorScheme.onSurface, size = 34.dp)
         Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+/** Tecla de letra (ou número): a letra grande e, embaixo, o glifo dela em Zu. */
+@Composable
+private fun LetterKey(symbol: Char, modifier: Modifier, onClick: () -> Unit) {
+    val label = ReadingMode.MIXED.symbolLabel(symbol)
+    Column(
+        modifier
+            .heightIn(min = 64.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
+            .clickable(role = Role.Button, onClickLabel = label, onClick = onClick)
+            .semantics { contentDescription = label }
+            .padding(vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text(label, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
+        MiniGlyph(ZuMixed.glyphFor(symbol).pattern, MaterialTheme.colorScheme.onSurfaceVariant, size = 16.dp)
     }
 }
 

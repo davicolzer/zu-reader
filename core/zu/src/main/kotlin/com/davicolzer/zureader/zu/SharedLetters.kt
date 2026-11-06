@@ -1,18 +1,40 @@
 package com.davicolzer.zureader.zu
 
 /**
- * K/Q e U/V usam o mesmo glifo. Ao escrever à mão, o usuário toca no glifo e a letra é escolhida
- * pelo contexto do inglês, palavra por palavra, como na leitura de uma foto.
+ * K/Q e U/V usam o mesmo glifo. Ao escrever à mão pelos glifos, o usuário toca no glifo e a letra
+ * é escolhida pelo contexto do inglês, palavra por palavra, como na leitura de uma foto.
+ *
+ * No texto, o glifo tocado fica marcado como [K_OR_Q] / [U_OR_V] (minúsculas); letras maiúsculas
+ * foram escolhidas pelo usuário (teclado de letras) e não mudam.
  */
 object SharedLetters {
+    /** Glifo de K/Q tocado, ainda sem letra decidida. */
+    const val K_OR_Q = 'k'
+
+    /** Glifo de U/V tocado, ainda sem letra decidida. */
+    const val U_OR_V = 'u'
+
+    /** O que o teclado de glifos acrescenta ao tocar em [glyph]. */
+    fun typed(glyph: ZuGlyph): Char = when (glyph.letters) {
+        "KQ" -> K_OR_Q
+        "UV" -> U_OR_V
+        else -> glyph.primary
+    }
+
     /** Até tantas letras ambíguas numa palavra testa todas as combinações; acima, uma a uma. */
     private const val MAX_EXACT = 10
 
-    /** [text] com cada K/Q e U/V trocado pela letra mais provável no inglês (espaços mantidos). */
+    /** [text] com cada glifo de K/Q e U/V marcado trocado pela letra mais provável no inglês (espaços mantidos). */
     fun resolve(text: String): String = text.split(' ').joinToString(" ") { resolveWord(it) }
 
     private fun resolveWord(word: String): String {
-        val choices = word.map { c -> ZuAlphabet.glyphs.firstOrNull { c in it.letters }?.letters?.takeIf { it.length > 1 } ?: c.toString() }
+        val choices = word.map { c ->
+            when (c) {
+                K_OR_Q -> "KQ"
+                U_OR_V -> "UV"
+                else -> c.toString()
+            }
+        }
         val ambiguous = choices.indices.filter { choices[it].length > 1 }
         if (ambiguous.isEmpty()) return word
         if (ambiguous.size <= MAX_EXACT) {
