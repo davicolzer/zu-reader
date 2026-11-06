@@ -46,4 +46,16 @@ class ZuAlphabetTest {
         assertEquals('V', ZuAlphabet.twin('U')); assertEquals('U', ZuAlphabet.twin('V'))
         for (c in "ABCDEFGHIJLMNOPRSTWXYZ") assertEquals(null, ZuAlphabet.twin(c), c.toString())
     }
+
+    @Test
+    fun `seis formas em quatro rotacoes`() {
+        val shapes = ZuAlphabet.shapes
+        assertEquals(6, shapes.size)
+        for (family in shapes) {
+            assertEquals(4, family.size, family.joinToString { it.letters })
+            // cada uma é a anterior girada 90°
+            for (q in 1..3) assertEquals(family[0].pattern.rotate(q), family[q].pattern)
+        }
+        assertEquals(ZuAlphabet.glyphs.toSet(), shapes.flatten().toSet())
+    }
 }

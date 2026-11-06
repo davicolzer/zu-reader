@@ -74,7 +74,7 @@ fun WriteScreen(
     onBack: () -> Unit,
 ) {
     var text by rememberSaveable(draft) { mutableStateOf(draft) }
-    var numbers by rememberSaveable { mutableStateOf(false) }
+    var tab by rememberSaveable { mutableStateOf(KeyboardTab.SHAPES) }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -109,11 +109,11 @@ fun WriteScreen(
             )
 
             SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                listOf(false, true).forEachIndexed { i, isNumbers ->
+                KeyboardTab.entries.forEachIndexed { i, option ->
                     SegmentedButton(
-                        selected = numbers == isNumbers,
-                        onClick = { numbers = isNumbers },
-                        shape = SegmentedButtonDefaults.itemShape(index = i, count = 2),
+                        selected = tab == option,
+                        onClick = { tab = option },
+                        shape = SegmentedButtonDefaults.itemShape(index = i, count = KeyboardTab.entries.size),
                         icon = {},
                         colors = SegmentedButtonDefaults.colors(
                             activeContainerColor = MaterialTheme.colorScheme.tertiary,
@@ -122,18 +122,24 @@ fun WriteScreen(
                             inactiveContentColor = MaterialTheme.colorScheme.onSurface,
                         ),
                     ) {
-                        Text(stringResource(if (isNumbers) R.string.write_numbers else R.string.write_letters), style = MaterialTheme.typography.labelLarge)
+                        Text(stringResource(option.label), style = MaterialTheme.typography.labelLarge)
                     }
                 }
             }
 
-            // um glifo de cada: 24 letras (K/Q e U/V numa tecla só) ou os 11 números
-            val keys = if (numbers) (('0'..'9').toList() + ReadingMode.TEN).map { ZuNumerals.glyphFor(it) } else ZuAlphabet.glyphs
+            // um glifo de cada: 24 letras (K/Q e U/V numa tecla só) ou os 11 números.
+            // "Por forma": uma linha por forma, com as 4 rotações, para achar o glifo pelo desenho
+            val rows: List<List<ZuGlyph>> = when (tab) {
+                KeyboardTab.SHAPES -> ZuAlphabet.shapes
+                KeyboardTab.ALPHABET -> ZuAlphabet.glyphs.chunked(KEYS_PER_ROW)
+                KeyboardTab.NUMBERS -> (('0'..'9').toList() + ReadingMode.TEN).map { ZuNumerals.glyphFor(it) }.chunked(KEYS_PER_ROW)
+            }
+            val perRow = rows.maxOf { it.size }
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                keys.chunked(KEYS_PER_ROW).forEach { row ->
+                rows.forEach { row ->
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        row.forEach { glyph -> GlyphKey(glyph, Modifier.weight(1f)) { text += glyph.primary } }
-                        repeat(KEYS_PER_ROW - row.size) { Spacer(Modifier.weight(1f)) }
+                        row.forEach { glyph -> GlyphKey(glyph, Modifier.weight(1f), large = tab == KeyboardTab.SHAPES) { text += glyph.primary } }
+                        repeat(perRow - row.size) { Spacer(Modifier.weight(1f)) }
                     }
                 }
             }
@@ -156,6 +162,13 @@ fun WriteScreen(
 }
 
 private const val KEYS_PER_ROW = 6
+
+/** Abas do teclado: letras por forma (6 formas × 4 rotações), letras de A a Z, ou números. */
+private enum class KeyboardTab(val label: Int) {
+    SHAPES(R.string.write_by_shape),
+    ALPHABET(R.string.write_letters),
+    NUMBERS(R.string.write_numbers),
+}
 
 /** A mensagem desenhada em Zu, ajustada ao quadro; o último glifo em dourado. */
 @Composable
@@ -206,7 +219,7 @@ private fun ZuPreview(message: String, direction: ReadingDirection) {
 
 /** Tecla com o desenho do glifo e a letra (ou as duas letras, como K/Q) embaixo. */
 @Composable
-private fun GlyphKey(glyph: ZuGlyph, modifier: Modifier, onClick: () -> Unit) {
+private fun GlyphKey(glyph: ZuGlyph, modifier: Modifier, large: Boolean = false, onClick: () -> Unit) {
     val label = glyph.letters.map(ReadingMode.MIXED::symbolLabel).joinToString("/")
     Column(
         modifier
@@ -220,7 +233,7 @@ private fun GlyphKey(glyph: ZuGlyph, modifier: Modifier, onClick: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        MiniGlyph(glyph.pattern, MaterialTheme.colorScheme.onSurface, size = 26.dp)
+        MiniGlyph(glyph.pattern, MaterialTheme.colorScheme.onSurface, size = if (large) 34.dp else 26.dp)
         Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
