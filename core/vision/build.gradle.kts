@@ -30,4 +30,6 @@ tasks.test {
     // fotos reais do jogo (testdata/real) usadas como teste de regressão
     systemProperty("zu.testdata", rootProject.file("testdata/real").absolutePath)
     inputs.dir(rootProject.file("testdata/real")).withPropertyName("fotosReais").optional()
+    // gerador de dados da rede de glifos (só roda com ZU_GEN definido)
+    providers.environmentVariable("ZU_GEN").orNull?.let { environment("ZU_GEN", it) }
 }
