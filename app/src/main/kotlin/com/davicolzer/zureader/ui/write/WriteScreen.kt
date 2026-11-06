@@ -77,7 +77,10 @@ fun WriteScreen(
     onDone: (String) -> Unit,
     onBack: () -> Unit,
     startWithLetters: Boolean = false,
+    /** Teclas por linha (4 ou 6; ver [KeyboardLayout]). */
+    columns: Int = 6,
 ) {
+    val layout = KeyboardLayout.of(columns)
     var text by rememberSaveable(draft) { mutableStateOf(draft) }
     var byLetters by rememberSaveable { mutableStateOf(startWithLetters) }
     // K/Q e U/V tocados pelo glifo: a letra vem do contexto do inglês e muda enquanto o usuário digita
@@ -110,7 +113,7 @@ fun WriteScreen(
                 Modifier
                     .fillMaxWidth()
                     .weight(1f)
-                    .heightIn(min = 96.dp)
+                    .heightIn(min = 80.dp)
                     .clip(RoundedCornerShape(16.dp))
                     .background(ZuTheme.colors.ink)
                     .padding(12.dp),
@@ -147,16 +150,14 @@ fun WriteScreen(
             }
 
             if (!byLetters) {
-                // duas formas por linha (4 + 4 rotações) e, embaixo, todos os desenhos de números
-                val letterRows = ZuAlphabet.shapes.chunked(2).map { it.flatten() }
-                val numberRows = ZuNumerals.glyphs.chunked(PER_ROW)
-                KeyGrid(letterRows, numberRows) { glyph, modifier ->
+                // pelo desenho (ver KeyboardLayout) e, embaixo, todos os desenhos de números
+                KeyGrid(layout, layout.letterRows(), ZuNumerals.glyphs.chunked(layout.columns)) { glyph, modifier ->
                     GlyphKey(glyph, modifier) { text += SharedLetters.typed(glyph) }
                 }
             } else {
                 // um de cada, na ordem: A–Z e depois 0–10
                 val symbols = ('A'..'Z').toList() + ('0'..'9').toList() + ReadingMode.TEN
-                KeyGrid(symbols.chunked(PER_ROW), emptyList()) { symbol, modifier ->
+                KeyGrid(layout, symbols.chunked(layout.columns), emptyList()) { symbol, modifier ->
                     LetterKey(symbol, modifier) { text += symbol }
                 }
             }
@@ -183,18 +184,34 @@ fun WriteScreen(
     }
 }
 
-/** Teclas por linha. */
-private const val PER_ROW = 8
+/**
+ * Como as letras ficam no teclado de glifos, sempre agrupadas pelo desenho:
+ * - 4 colunas: uma linha por forma, com as 4 rotações lado a lado;
+ * - 6 colunas: uma coluna por forma, e cada linha é uma rotação.
+ */
+private enum class KeyboardLayout(val columns: Int, val keyHeight: androidx.compose.ui.unit.Dp) {
+    ROWS_BY_SHAPE(4, 40.dp),
+    COLUMNS_BY_SHAPE(6, 46.dp);
+
+    fun letterRows(): List<List<ZuGlyph>> = when (this) {
+        ROWS_BY_SHAPE -> ZuAlphabet.shapes
+        COLUMNS_BY_SHAPE -> (0..3).map { q -> ZuAlphabet.shapes.map { it[q] } }
+    }
+
+    companion object {
+        fun of(columns: Int) = if (columns <= 4) ROWS_BY_SHAPE else COLUMNS_BY_SHAPE
+    }
+}
 
 /** Grade de teclas: [top] e, depois de um respiro, [bottom] (as linhas incompletas são completadas com vazio). */
 @Composable
-private fun <T> KeyGrid(top: List<List<T>>, bottom: List<List<T>>, key: @Composable (T, Modifier) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+private fun <T> KeyGrid(layout: KeyboardLayout, top: List<List<T>>, bottom: List<List<T>>, key: @Composable (T, Modifier) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
         for ((index, row) in (top + bottom).withIndex()) {
-            if (index == top.size && bottom.isNotEmpty()) Spacer(Modifier.height(4.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                row.forEach { key(it, Modifier.weight(1f)) }
-                repeat(PER_ROW - row.size) { Spacer(Modifier.weight(1f)) }
+            if (index == top.size && bottom.isNotEmpty()) Spacer(Modifier.height(3.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                row.forEach { key(it, Modifier.weight(1f).height(layout.keyHeight)) }
+                repeat(layout.columns - row.size) { Spacer(Modifier.weight(1f)) }
             }
         }
     }
@@ -265,7 +282,6 @@ private fun LetterKey(symbol: Char, modifier: Modifier, onClick: () -> Unit) {
 private fun KeyBox(label: String, modifier: Modifier, onClick: () -> Unit, content: @Composable () -> Unit) {
     Column(
         modifier
-            .height(KEY_HEIGHT)
             .clip(KeyShape)
             .background(MaterialTheme.colorScheme.surfaceContainer)
             .border(1.dp, MaterialTheme.colorScheme.outline, KeyShape)
@@ -275,9 +291,6 @@ private fun KeyBox(label: String, modifier: Modifier, onClick: () -> Unit, conte
         verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
     ) { content() }
 }
-
-/** Altura das teclas: alvo de toque ≥ 48 dp. */
-private val KEY_HEIGHT = 50.dp
 
 @Composable
 private fun ActionKey(
