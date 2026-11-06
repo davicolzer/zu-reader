@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Zu Reader — Design</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Figtree:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: folha de apresentação noturna — cabeçalho da marca, tokens, e 4 telas lado a lado em molduras de celular */
+:root{
+  color-scheme: dark;
+  --night:#1E1B3A;      /* fundo do app (céu noturno) */
+  --night-2:#2A2650;    /* superfícies / cards */
+  --night-3:#38336A;    /* bordas, divisores */
+  --fez:#D7263D;        /* ação primária (o chapéu) */
+  --fez-deep:#A3172B;   /* pressionado / faixa do chapéu */
+  --gold:#F5B700;       /* destaque / cubo dourado / borla */
+  --teal:#4FC3C9;       /* detecção, estados de sucesso */
+  --paper:#FFF6E5;      /* texto principal */
+  --muted:#A9A3C9;      /* texto secundário */
+  --sheet:#14122A;      /* fundo da página de apresentação */
+  --f-display:"Silkscreen", "Courier New", monospace;
+  --f-body:"Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono:"JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--sheet);color:var(--paper);font:15px/1.5 var(--f-body);
+  padding-left:max(16px, env(safe-area-inset-left,0px));padding-right:max(16px, env(safe-area-inset-right,0px));padding-block:40px 64px}
+.wrap{max-width:1320px;margin:0 auto;display:grid;gap:40px}
+h1,h2,h3{font-family:var(--f-display);font-weight:600;margin:0;text-wrap:balance;letter-spacing:.01em}
+.label{font:600 11px/1 var(--f-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+
+/* Cabeçalho */
+.brand{display:flex;gap:24px;align-items:center;flex-wrap:wrap}
+.brand img{width:96px;height:96px;image-rendering:pixelated;border-radius:22px}
+.brand h1{font-size:44px;line-height:1}
+.brand p{margin:8px 0 0;color:var(--muted);max-width:60ch}
+
+/* Tokens */
+.tokens{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:24px}
+.panel{background:var(--night);border:1px solid var(--night-3);border-radius:14px;padding:20px;display:grid;gap:14px;min-width:0}
+.swatches{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.sw{display:grid;gap:6px}
+.sw i{display:block;aspect-ratio:1;border-radius:8px;border:1px solid var(--night-3)}
+.sw span{font:500 10px/1.2 var(--f-mono);color:var(--muted)}
+.type-specimen{display:grid;gap:6px}
+.icons{display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap}
+.icons img{image-rendering:pixelated}
+.icons .round{border-radius:50%}
+
+/* Telas */
+.screens{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:28px;justify-items:center}
+.shot{display:grid;gap:12px;justify-items:center}
+.shot figcaption{text-align:center}
+.shot figcaption b{display:block;font:600 16px var(--f-display)}
+.shot figcaption span{color:var(--muted);font-size:13px}
+figure{margin:0}
+.phone{width:300px;max-width:100%;height:620px;background:var(--night);border-radius:38px;border:8px solid #0B0A18;
+  box-shadow:0 30px 60px -20px #000a;position:relative;overflow:hidden;display:flex;flex-direction:column}
+.status{height:30px;display:flex;justify-content:space-between;align-items:center;padding:0 22px;font:600 11px var(--f-mono);color:var(--paper);flex:none}
+.appbar{display:flex;align-items:center;gap:10px;padding:8px 18px 12px}
+.appbar img{width:28px;height:28px;border-radius:7px;image-rendering:pixelated}
+.appbar b{font:600 18px var(--f-display)}
+.appbar .sp{flex:1}
+.icon-btn{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:var(--night-2);color:var(--muted);font:600 15px var(--f-mono)}
+.body{padding:0 18px;display:flex;flex-direction:column;gap:14px;flex:1;min-height:0}
+
+.hero{background:var(--night-2);border-radius:18px;padding:18px;display:grid;gap:12px;position:relative;overflow:hidden}
+.hero h2{font-size:22px;line-height:1.15}
+.hero p{margin:0;color:var(--muted);font-size:13px}
+.hero .glyphs{display:flex;gap:6px}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;height:50px;border-radius:14px;font:700 15px var(--f-body);border:0;color:var(--paper)}
+.btn.primary{background:var(--fez);box-shadow:0 4px 0 var(--fez-deep)}
+.btn.ghost{background:transparent;border:1.5px solid var(--night-3);color:var(--paper)}
+.section-title{display:flex;justify-content:space-between;align-items:baseline}
+.section-title b{font:600 14px var(--f-display)}
+.section-title a{color:var(--gold);font-size:12px;text-decoration:none}
+.recent{display:flex;gap:12px;align-items:center;padding:10px;border-radius:12px;background:var(--night-2)}
+.recent .thumb{width:44px;height:44px;border-radius:9px;background:var(--sheet);display:grid;place-items:center;flex:none}
+.recent div{min-width:0}
+.recent b{display:block;font:600 14px var(--f-display);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.recent span{font-size:12px;color:var(--muted)}
+
+/* Câmera */
+.cam{background:#0B0A18}
+.viewfinder{position:absolute;inset:0;background:
+   linear-gradient(180deg,#2c2a5a 0%,#3d3373 55%,#4a3a63 100%)}
+.vf-scene{position:absolute;inset:0}
+.cam .top{position:absolute;top:30px;left:0;right:0;display:flex;justify-content:space-between;padding:10px 18px;z-index:3}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:#0B0A18cc;font:600 11px var(--f-mono);color:var(--paper)}
+.chip .dot{width:7px;height:7px;border-radius:50%;background:var(--teal)}
+.guide{position:absolute;left:34px;right:34px;top:120px;height:300px;z-index:2}
+.guide i{position:absolute;width:26px;height:26px;border-color:var(--gold);border-style:solid}
+.guide i:nth-child(1){left:0;top:0;border-width:4px 0 0 4px}
+.guide i:nth-child(2){right:0;top:0;border-width:4px 4px 0 0}
+.guide i:nth-child(3){left:0;bottom:0;border-width:0 0 4px 4px}
+.guide i:nth-child(4){right:0;bottom:0;border-width:0 4px 4px 0}
+.detected{position:absolute;inset:34px 0;display:flex;flex-direction:row-reverse;justify-content:center;gap:20px}
+.col{display:flex;flex-direction:column;gap:10px}
+.box{padding:4px;border:2px solid var(--teal);border-radius:4px;background:#4FC3C922}
+.box.low{border-color:var(--gold);background:#F5B70022}
+.cam .bottom{position:absolute;left:0;right:0;bottom:0;padding:16px 28px 28px;display:flex;justify-content:space-between;align-items:center;z-index:3;background:linear-gradient(0deg,#0B0A18 30%,transparent)}
+.shutter{width:72px;height:72px;border-radius:50%;border:4px solid var(--paper);display:grid;place-items:center}
+.shutter i{width:56px;height:56px;border-radius:50%;background:var(--fez);display:block}
+.hint{position:absolute;left:0;right:0;top:440px;text-align:center;z-index:3;font-size:13px;color:var(--paper)}
+.hint small{display:block;color:var(--muted);font-size:11px}
+
+/* Resultado */
+.photo{height:130px;border-radius:14px;background:linear-gradient(160deg,#3d3373,#2c2a5a);position:relative;display:flex;flex-direction:row-reverse;justify-content:center;align-items:center;gap:12px;flex:none}
+.photo .col{gap:5px}
+.photo .box{padding:2px;border-width:1.5px}
+.read{display:grid;gap:4px}
+.read .big{font:700 28px/1.1 var(--f-display);letter-spacing:.06em;color:var(--paper)}
+.read .big em{font-style:normal;color:var(--gold);border-bottom:3px dotted var(--gold)}
+.translation{background:var(--night-2);border-radius:14px;padding:12px 14px;display:grid;gap:4px}
+.translation .t{font:600 18px var(--f-display);color:var(--teal)}
+.strip{display:flex;gap:6px;overflow:hidden}
+.pair{display:grid;justify-items:center;gap:4px;padding:6px 5px;border-radius:9px;background:var(--night-2);min-width:34px}
+.pair b{font:600 13px var(--f-display)}
+.pair.low{outline:1.5px solid var(--gold)}
+.pair.low b{color:var(--gold)}
+.actions{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:auto;padding-bottom:18px}
+.act{display:grid;justify-items:center;gap:4px;padding:10px 0;border-radius:12px;background:var(--night-2);font-size:11px;color:var(--muted)}
+.act b{font:600 16px var(--f-mono);color:var(--paper)}
+.act.main{background:var(--fez)}
+.act.main,.act.main b{color:var(--paper)}
+
+/* Correção (bottom sheet) */
+.dim{position:absolute;inset:0;background:#0B0A18b0;z-index:1}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--night-2);border-radius:24px 24px 0 0;padding:10px 18px 22px;z-index:2;display:grid;gap:14px}
+.grab{width:40px;height:4px;border-radius:2px;background:var(--night-3);justify-self:center}
+.sheet h3{font-size:18px}
+.sheet .glyph-big{display:flex;gap:14px;align-items:center}
+.sheet .glyph-big .g{background:var(--night);border-radius:14px;padding:14px;border:2px solid var(--gold)}
+.sheet .glyph-big p{margin:0;color:var(--muted);font-size:13px}
+.sugs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.sug{border-radius:12px;background:var(--night);padding:10px;display:grid;gap:2px;justify-items:center;border:1.5px solid var(--night-3)}
+.sug b{font:700 22px var(--f-display)}
+.sug span{font:500 11px var(--f-mono);color:var(--muted)}
+.sug.on{border-color:var(--teal);background:#4FC3C918}
+.sug.on b{color:var(--teal)}
+.keys{display:grid;grid-template-columns:repeat(9,1fr);gap:5px}
+.keys span{height:28px;border-radius:7px;background:var(--night);display:grid;place-items:center;font:600 12px var(--f-display);color:var(--paper)}
+.note{color:var(--muted);font-size:12px;text-align:center;margin:0}
+.behind{opacity:.55}
+
+@media (max-width:480px){ .brand h1{font-size:34px} .swatches{grid-template-columns:repeat(4,1fr)} }
+@media (prefers-reduced-motion:no-preference){ .scan{animation:scan 2.4s ease-in-out infinite} }
+@keyframes scan{0%,100%{transform:translateY(0)}50%{transform:translateY(270px)}}
+.scan{position:absolute;left:0;right:0;top:12px;height:2px;background:var(--teal);box-shadow:0 0 12px var(--teal);opacity:.8}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="brand">
+    <img src="icon.svg" alt="Ícone do app: chapéu fez em pixel art">
+    <div>
+      <div class="label">Proposta de design · v0.1</div>
+      <h1>Zu Reader</h1>
+      <p>Aponte a câmera para um texto no alfabeto Zu, veja as letras aparecerem e leia a tradução. Céu noturno de fundo, vermelho do chapéu para a ação principal, dourado do cubo para destaques e turquesa para o que foi detectado.</p>
+    </div>
+  </header>
+
+  <section class="tokens">
+    <div class="panel">
+      <div class="label">Cores</div>
+      <div class="swatches">
+        <div class="sw"><i style="background:var(--night)"></i><span>Night<br>#1E1B3A</span></div>
+        <div class="sw"><i style="background:var(--night-2)"></i><span>Surface<br>#2A2650</span></div>
+        <div class="sw"><i style="background:var(--fez)"></i><span>Fez Red<br>#D7263D</span></div>
+        <div class="sw"><i style="background:var(--fez-deep)"></i><span>Fez Deep<br>#A3172B</span></div>
+        <div class="sw"><i style="background:var(--gold)"></i><span>Cube Gold<br>#F5B700</span></div>
+        <div class="sw"><i style="background:var(--teal)"></i><span>Scan Teal<br>#4FC3C9</span></div>
+        <div class="sw"><i style="background:var(--paper)"></i><span>Paper<br>#FFF6E5</span></div>
+        <div class="sw"><i style="background:var(--muted)"></i><span>Muted<br>#A9A3C9</span></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="label">Tipografia</div>
+      <div class="type-specimen">
+        <div style="font:700 30px/1 var(--f-display)">OPEN THE DOOR</div>
+        <div class="label" style="letter-spacing:.06em;text-transform:none">Silkscreen · títulos e texto lido</div>
+        <div style="font:400 15px var(--f-body);margin-top:6px">Figtree para botões, rótulos e textos de apoio, legível em telas pequenas.</div>
+        <div style="font:500 12px var(--f-mono);color:var(--muted)">JetBrains Mono · confiança 92% · 7 glifos</div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="label">Ícone (adaptive icon)</div>
+      <div class="icons">
+        <img src="icon.svg" width="96" height="96" alt="Ícone 96 px" style="border-radius:22px">
+        <img src="icon.svg" width="64" height="64" alt="Ícone redondo" class="round">
+        <img src="icon.svg" width="48" height="48" alt="Ícone 48 px" style="border-radius:12px">
+        <img src="icon.svg" width="32" height="32" alt="Ícone 32 px" style="border-radius:8px">
+      </div>
+      <div style="font-size:13px;color:var(--muted)">Chapéu fez em pixel art 16×16, borla dourada, sobre o azul noturno. Funciona em máscara quadrada e redonda.</div>
+    </div>
+  </section>
+
+  <section class="screens">
+
+    <!-- 1. Início -->
+    <figure class="shot">
+      <div class="phone">
+        <div class="status"><span>9:41</span><span>●●● ▮</span></div>
+        <div class="appbar"><img src="icon.svg" alt=""><b>Zu Reader</b><span class="sp"></span><span class="icon-btn">⚙</span></div>
+        <div class="body">
+          <div class="hero">
+            <div class="glyphs" data-glyphs="AHTQ" data-size="22"></div>
+            <h2>Fotografe um texto em Zu</h2>
+            <p>Funciona com foto da tela, print do jogo ou imagem da galeria.</p>
+          </div>
+          <div class="btn primary">◉ Fotografar</div>
+          <div class="btn ghost">▦ Escolher da galeria</div>
+          <div class="section-title"><b>Recentes</b><a href="#">Ver tudo</a></div>
+          <div class="recent"><div class="thumb" data-glyphs="OD" data-size="14"></div><div><b>OPEN THE DOOR</b><span>Abra a porta · hoje</span></div></div>
+          <div class="recent"><div class="thumb" data-glyphs="LU" data-size="14"></div><div><b>LOOK UP</b><span>Olhe para cima · ontem</span></div></div>
+        </div>
+      </div>
+      <figcaption><b>1 · Início</b><span>Uma ação principal, histórico logo abaixo</span></figcaption>
+    </figure>
+
+    <!-- 2. Câmera -->
+    <figure class="shot">
+      <div class="phone cam">
+        <div class="viewfinder"><canvas class="vf-scene" width="284" height="604"></canvas></div>
+        <div class="status" style="position:relative;z-index:3"><span>9:41</span><span>●●● ▮</span></div>
+        <div class="top"><span class="icon-btn" style="background:#0B0A18cc">✕</span><span class="chip"><span class="dot"></span>7 glifos</span><span class="icon-btn" style="background:#0B0A18cc">ϟ</span></div>
+        <div class="guide">
+          <i></i><i></i><i></i><i></i>
+          <div class="scan"></div>
+          <div class="detected">
+            <div class="col"><div class="box" data-glyphs="O" data-size="26"></div><div class="box" data-glyphs="P" data-size="26"></div><div class="box" data-glyphs="E" data-size="26"></div><div class="box" data-glyphs="N" data-size="26"></div></div>
+            <div class="col"><div class="box" data-glyphs="T" data-size="26"></div><div class="box low" data-glyphs="H" data-size="26"></div><div class="box" data-glyphs="E" data-size="26"></div></div>
+          </div>
+        </div>
+        <div class="hint">Segure firme…<small>Lendo de cima para baixo, da direita para a esquerda</small></div>
+        <div class="bottom"><span class="icon-btn" style="background:#0B0A18cc">▦</span><div class="shutter"><i></i></div><span class="icon-btn" style="background:#0B0A18cc">⟲</span></div>
+      </div>
+      <figcaption><b>2 · Câmera</b><span>Detecção ao vivo; dourado = letra com dúvida</span></figcaption>
+    </figure>
+
+    <!-- 3. Resultado -->
+    <figure class="shot">
+      <div class="phone">
+        <div class="status"><span>9:41</span><span>●●● ▮</span></div>
+        <div class="appbar"><span class="icon-btn">←</span><b>Resultado</b><span class="sp"></span><span class="icon-btn">⟲</span></div>
+        <div class="body">
+          <div class="photo">
+            <div class="col"><div class="box" data-glyphs="O" data-size="14"></div><div class="box" data-glyphs="P" data-size="14"></div><div class="box" data-glyphs="E" data-size="14"></div><div class="box" data-glyphs="N" data-size="14"></div></div>
+            <div class="col"><div class="box" data-glyphs="T" data-size="14"></div><div class="box low" data-glyphs="H" data-size="14"></div><div class="box" data-glyphs="E" data-size="14"></div></div>
+          </div>
+          <div class="read">
+            <span class="label">Texto lido · inglês</span>
+            <div class="big">OPEN T<em>H</em>E</div>
+          </div>
+          <div class="translation">
+            <span class="label">Tradução · português</span>
+            <div class="t">ABRA O</div>
+          </div>
+          <div class="strip">
+            <div class="pair"><span data-glyphs="O" data-size="14"></span><b>O</b></div>
+            <div class="pair"><span data-glyphs="P" data-size="14"></span><b>P</b></div>
+            <div class="pair"><span data-glyphs="E" data-size="14"></span><b>E</b></div>
+            <div class="pair"><span data-glyphs="N" data-size="14"></span><b>N</b></div>
+            <div class="pair"><span data-glyphs="T" data-size="14"></span><b>T</b></div>
+            <div class="pair low"><span data-glyphs="H" data-size="14"></span><b>H?</b></div>
+          </div>
+          <div class="actions">
+            <div class="act"><b>⧉</b>Copiar</div>
+            <div class="act"><b>⇪</b>Compartilhar</div>
+            <div class="act main"><b>★</b>Salvar</div>
+          </div>
+        </div>
+      </div>
+      <figcaption><b>3 · Resultado</b><span>Texto grande, tradução e letra a letra</span></figcaption>
+    </figure>
+
+    <!-- 4. Corrigir letra -->
+    <figure class="shot">
+      <div class="phone">
+        <div class="status"><span>9:41</span><span>●●● ▮</span></div>
+        <div class="behind">
+          <div class="appbar"><span class="icon-btn">←</span><b>Resultado</b></div>
+          <div class="body"><div class="read"><span class="label">Texto lido · inglês</span><div class="big">OPEN T<em>H</em>E</div></div></div>
+        </div>
+        <div class="dim"></div>
+        <div class="sheet">
+          <div class="grab"></div>
+          <h3>Qual é esta letra?</h3>
+          <div class="glyph-big"><div class="g" data-glyphs="H" data-size="54"></div><p>Confiança baixa. Escolha uma sugestão ou toque na letra certa. Sua correção melhora as próximas leituras.</p></div>
+          <div class="sugs">
+            <div class="sug on"><b>H</b><span>58%</span></div>
+            <div class="sug"><b>K</b><span>31%</span></div>
+            <div class="sug"><b>X</b><span>11%</span></div>
+          </div>
+          <div class="keys" id="keys"></div>
+          <div class="btn primary">Confirmar</div>
+        </div>
+      </div>
+      <figcaption><b>4 · Corrigir letra</b><span>Toque em qualquer letra para ajustar</span></figcaption>
+    </figure>
+
+  </section>
+
+  <p class="note">Glifos ilustrativos: os padrões reais do alfabeto Zu serão cadastrados na Fase 1 do plano.</p>
+</div>
+
+<script>
+// Glifos ILUSTRATIVOS (padrões 5×5 de blocos), só para o mockup.
+const G = {
+  A:"11111 10001 10101 10001 10001", D:"11110 10001 10011 10001 11110", E:"11111 10000 11110 10000 11111",
+  H:"10001 10001 11111 10101 10001", K:"10011 10100 11000 10100 10011", L:"10000 10000 10000 10100 11111",
+  N:"11001 10101 10101 10011 10001", O:"11111 10001 10101 10001 11111", P:"11111 10001 11111 10000 10000",
+  Q:"11111 10001 10101 10011 11111", T:"11111 00100 00100 01110 00100", U:"10001 10001 10101 10001 11111",
+  W:"10001 10101 10101 11011 10001"
+};
+function glyphSVG(ch,size){
+  const rows=(G[ch]||G.O).split(" "), n=5;
+  let r="";
+  rows.forEach((row,y)=>[...row].forEach((b,x)=>{ if(b==="1") r+=`<rect x="${x}" y="${y}" width="1" height="1"/>`; }));
+  return `<svg viewBox="-.5 -.5 ${n+1} ${n+1}" width="${size}" height="${size}" fill="#FFF6E5" shape-rendering="crispEdges" aria-hidden="true">${r}</svg>`;
+}
+document.querySelectorAll("[data-glyphs]").forEach(el=>{
+  const s=+el.dataset.size||16;
+  el.innerHTML=[...el.dataset.glyphs].map(c=>glyphSVG(c,s)).join("");
+  if(el.dataset.glyphs.length>1 && el.classList.contains("thumb")){el.style.display="flex";el.style.gap="2px";el.style.alignItems="center";el.style.justifyContent="center";el.style.flexDirection="column"}
+});
+// Teclado A–Z
+const keys=document.getElementById("keys");
+keys.innerHTML=[..."ABCDEFGHIJKLMNOPQRSTUVWXYZ⌫"].map(k=>`<span>${k}</span>`).join("");
+// Cenário pixelado do visor (blocos e estrelas)
+document.querySelectorAll(".vf-scene").forEach(c=>{
+  const x=c.getContext("2d"); let seed=7; const rnd=()=>((seed=(seed*9301+49297)%233280)/233280);
+  for(let i=0;i<40;i++){x.fillStyle=rnd()>.7?"#F5B70088":"#FFF6E566";x.fillRect(Math.floor(rnd()*284),Math.floor(rnd()*240),2,2);}
+  const cols=["#4a3f7f","#56488f","#3f356e"];
+  for(let gx=0;gx<284;gx+=16){const h=120+Math.floor(rnd()*4)*16;for(let gy=604-h;gy<604;gy+=16){x.fillStyle=cols[Math.floor(rnd()*3)];x.fillRect(gx,gy,16,16);}}
+  x.fillStyle="#2a2448";x.fillRect(40,110,204,330);
+});
+</script>
+</body>
+</html>
