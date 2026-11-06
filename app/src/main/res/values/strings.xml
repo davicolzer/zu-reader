@@ -1,0 +1,14 @@
+<resources>
+    <string name="app_name">Zu Reader</string>
+    <string name="app_title">ZU READER</string>
+    <string name="settings">Configurações</string>
+    <string name="home_hero_title">Fotografe um texto em Zu</string>
+    <string name="home_hero_body">Funciona com foto da tela, print do jogo ou imagem da galeria.</string>
+    <string name="home_take_photo">Fotografar</string>
+    <string name="home_pick_gallery">Escolher da galeria</string>
+    <string name="home_recent">Recentes</string>
+    <string name="home_recent_empty_title">Nenhuma leitura ainda</string>
+    <string name="home_recent_empty_body">Os textos que você ler aparecem aqui.</string>
+    <string name="coming_soon">Disponível em breve</string>
+    <string name="fan_notice">Projeto de fã, sem vínculo com a Polytron.</string>
+</resources>

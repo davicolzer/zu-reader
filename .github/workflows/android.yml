@@ -1,0 +1,53 @@
+name: Android CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build, testes e lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: JDK 25 (LTS)
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 25
+
+      - name: Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: "platforms;android-37.0 build-tools;37.0.0 platform-tools"
+
+      - name: Build (compila, roda testes e lint)
+        run: ./gradlew build --warning-mode all
+
+      - name: Relatórios
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: relatorios
+          path: |
+            **/build/reports/
+            **/build/test-results/
+          if-no-files-found: ignore
+
+      - name: APK de debug
+        uses: actions/upload-artifact@v7
+        with:
+          name: zu-reader-debug
+          path: app/build/outputs/apk/debug/*.apk
