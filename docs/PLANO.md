@@ -23,7 +23,7 @@ Nome sugerido: **Zu Reader**. Evitar "Fez" no nome publicado na Play Store para 
 | Estrutura | **6 formas, cada uma em 4 rotações** (ex.: A, G, M, S são a mesma forma girada) | Nunca girar glifo por glifo: a rotação muda a letra |
 | Rotação da foto | Um texto girado também forma letras válidas | Testar as 4 orientações do texto inteiro e escolher a mais parecida com inglês |
 | Direção | Colunas de cima para baixo, da direita para a esquerda | Padrão; opção horizontal |
-| Números | Sistema separado (0–10, com variantes de 3–7) | Fora do MVP (Fase 6); os desenhos já estão na fonte de referência |
+| Números | Sistema separado (0–10, com variantes de 3–7). Também trocam de valor ao girar (1, 2, 3, 4 são o mesmo desenho) e ficam a 2 blocos de algumas letras | Por enquanto o app lê só a escrita. Depois: **modo separado** "ler números" (Fase 8), para não misturar letras e números na mesma leitura |
 
 Fonte dos desenhos: [FEZ Pixel Font, de TakWolf](https://github.com/TakWolf/fez-pixel-font) (CC0). O alfabeto pertence à Polytron.
 
@@ -144,8 +144,9 @@ Fontes: **Silkscreen** (títulos e texto lido, pixel), **Figtree** (interface), 
 | **3. Câmera** 🟡 | CameraX (preview, análise e captura em 4:3); permissão com explicação e atalho para as configurações; visor ao vivo com caixas, contador e texto lido a cada 300 ms (quadros de 640 px, só o plano Y); flash; captura girada e reduzida fora da thread principal; tela de recorte com 4 cantos arrastáveis (sugestão automática em volta do texto) e correção de perspectiva por homografia | Testes sintéticos: foto de lado em trapézio não é lida sem recorte e é lida 100% depois (também com cantos marcados com erro de alguns pixels); conversão de quadros e mapeamento das caixas testados. **Falta**: ≥ 85% em 30 fotos reais de monitor/TV e teste em aparelho |
 | **4. Correção e histórico** ✅ | Toque numa letra da faixa abre o painel de correção (glifo ampliado, sugestões, teclado A–Z); letras corrigidas ficam em turquesa e deixam de ser dúvida. Salvar guarda imagem (JPEG) e leitura completa (Room 2.8.5 + formato `ReadingCodec`); correções numa leitura salva são gravadas na hora. Recentes na tela inicial, tela de histórico, apagar com confirmação | Testes: troca de letra mantendo espaços e quebras de linha; gravação e leitura da leitura completa (ida e volta, inclusive com letra corrigida, inclinação e dois blocos). Banco verificado em compilação pelo Room. **Falta**: testar o fluxo num aparelho |
 | **5. Polimento** | Acessibilidade (TalkBack, contraste, alvos ≥ 48 dp), tema claro, estados vazios e de erro, ícone final, release assinado | Checklist de acessibilidade ok; APK/AAB gerado no CI |
-| **6. Evolução (opcional)** | Modelo TFLite treinado com dados sintéticos + correções do usuário; números Zu; leitura totalmente ao vivo | Acurácia em fotos ≥ 95% |
+| **6. Evolução (opcional)** | Modelo TFLite treinado com dados sintéticos + correções do usuário; leitura totalmente ao vivo | Acurácia em fotos ≥ 95% |
 | **7. Tradução (opcional)** | ML Kit Translation EN → PT no aparelho, mostrando inglês e português | Só se o projeto decidir retomar a tradução |
+| **8. Números (depois)** | Modo separado na tela inicial e na câmera: **Ler escrita** (atual) ou **Ler números**. O modo números usa só os glifos 0–10 (e variantes), sem o modelo de inglês; a orientação vem da foto ou de outros glifos lidos. Antes, entender com prints reais como os números aparecem no jogo (quantidades ou códigos de comandos) | Testes sintéticos com sequências de números em pé e giradas; validação com prints reais |
 
 ### Dados de teste
 
