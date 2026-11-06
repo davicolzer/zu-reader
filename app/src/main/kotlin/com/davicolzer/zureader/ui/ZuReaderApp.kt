@@ -1,0 +1,61 @@
+package com.davicolzer.zureader.ui
+
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.davicolzer.zureader.R
+import com.davicolzer.zureader.reader.ReaderUiState
+import com.davicolzer.zureader.reader.ReaderViewModel
+import com.davicolzer.zureader.ui.home.HomeScreen
+import com.davicolzer.zureader.ui.result.ResultScreen
+
+@Composable
+fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) viewModel.read(uri)
+    }
+    val pickImage = { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }
+
+    when (val s = state) {
+        ReaderUiState.Home, ReaderUiState.CouldNotOpen -> HomeScreen(
+            onPickFromGallery = pickImage,
+            errorMessage = if (s == ReaderUiState.CouldNotOpen) stringResource(R.string.error_open_image) else null,
+            onErrorShown = viewModel::goHome,
+        )
+        ReaderUiState.Reading -> ReadingProgress()
+        is ReaderUiState.Result -> {
+            BackHandler(onBack = viewModel::goHome)
+            ResultScreen(s.image, s.result, onBack = viewModel::goHome, onPickAnother = pickImage)
+        }
+    }
+}
+
+@Composable
+private fun ReadingProgress() {
+    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
+        ) {
+            CircularProgressIndicator(color = MaterialTheme.colorScheme.tertiary)
+            Text(stringResource(R.string.reading_progress), style = MaterialTheme.typography.titleSmall)
+        }
+    }
+}

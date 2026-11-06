@@ -4,7 +4,8 @@ App Android em Kotlin que lê textos no alfabeto Zu, do jogo Fez, a partir de um
 
 - Plano: [docs/PLANO.md](docs/PLANO.md)
 - Design: [docs/design/mockup.png](docs/design/mockup.png) (fonte em [mockup.html](docs/design/mockup.html)) e ícone [icon.svg](docs/design/icon.svg)
-- Tela inicial no Android: [docs/design/home-android.png](docs/design/home-android.png)
+- Telas no Android: [início](docs/design/home-android.png) e [resultado](docs/design/result-android.png)
+- Imagens de exemplo para testar pela galeria: [docs/samples/](docs/samples/)
 
 ## Versões
 
@@ -25,6 +26,7 @@ O Gradle roda no JDK 25. O bytecode é gerado para Java 21, que é o que o Andro
 ```
 app/        Activity, tema, telas (Compose)
 core/zu/    Kotlin puro: alfabeto Zu, classificador, ordenação e leitura (testável sem emulador)
+core/vision/ Kotlin puro: imagem → glifos (limiar, manchas, caixas, grade 5×5)
 tools/      scripts de apoio (tabela de pares de letras do inglês)
 ```
 

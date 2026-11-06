@@ -11,4 +11,28 @@
     <string name="home_recent_empty_body">Os textos que você ler aparecem aqui.</string>
     <string name="coming_soon">Disponível em breve</string>
     <string name="fan_notice">Projeto de fã, sem vínculo com a Polytron.</string>
+    <string name="back">Voltar</string>
+    <string name="reading_progress">Lendo os glifos…</string>
+    <string name="result_title">RESULTADO</string>
+    <string name="result_text_label">TEXTO LIDO · INGLÊS</string>
+    <string name="result_glyphs_label">LETRA A LETRA</string>
+    <plurals name="result_summary">
+        <item quantity="one">%1$d glifo</item>
+        <item quantity="many">%1$d glifos</item>
+        <item quantity="other">%1$d glifos</item>
+    </plurals>
+    <plurals name="result_summary_rotated">
+        <item quantity="one">%1$d glifo · imagem girada %2$d°</item>
+        <item quantity="many">%1$d glifos · imagem girada %2$d°</item>
+        <item quantity="other">%1$d glifos · imagem girada %2$d°</item>
+    </plurals>
+    <string name="result_low_confidence">Letras em dourado têm dúvida. A correção chega numa próxima versão.</string>
+    <string name="result_empty_title">Nenhum glifo encontrado</string>
+    <string name="result_empty_body">Escolha uma imagem com o texto Zu bem visível. Recortar perto do texto ajuda.</string>
+    <string name="result_copy">Copiar</string>
+    <string name="result_share">Compartilhar</string>
+    <string name="result_other_image">Outra imagem</string>
+    <string name="result_copied">Texto copiado</string>
+    <string name="error_open_image">Não foi possível abrir essa imagem. Tente outra.</string>
+    <string name="photo_description">Imagem escolhida com os glifos encontrados marcados</string>
 </resources>

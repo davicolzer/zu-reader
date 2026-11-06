@@ -28,6 +28,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -46,8 +47,7 @@ import com.davicolzer.zureader.ui.theme.ZuTheme
 import kotlinx.coroutines.launch
 
 /**
- * Tela inicial. Câmera e galeria ainda não existem (Fases 2 e 3):
- * os botões mostram "Disponível em breve".
+ * Tela inicial. A câmera chega na Fase 3; até lá o botão mostra "Disponível em breve".
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -55,11 +55,20 @@ fun HomeScreen(
     onTakePhoto: (() -> Unit)? = null,
     onPickFromGallery: (() -> Unit)? = null,
     onOpenSettings: (() -> Unit)? = null,
+    errorMessage: String? = null,
+    onErrorShown: () -> Unit = {},
 ) {
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val comingSoon = stringResource(R.string.coming_soon)
     val notYet: () -> Unit = { scope.launch { snackbar.showSnackbar(comingSoon) } }
+
+    LaunchedEffect(errorMessage) {
+        if (errorMessage != null) {
+            snackbar.showSnackbar(errorMessage)
+            onErrorShown()
+        }
+    }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
