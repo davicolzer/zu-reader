@@ -95,7 +95,9 @@ class ZuImageReader(
         // unlit: sem as manchas de luz das folhas (lápide na sombra de uma árvore)
         val variants = listOf(luma.stretched(), image.unlit(), image.red(), image.green(), image.blue(), image.saturation())
         // letreiros de neon: só o contorno do glifo é desenhado; preenchido, vira o glifo
-        val outlines = FILL_GAPS.map { g -> candidates(luma, deskew = false, windows = QUICK_WINDOWS, fill = g) }
+        // (em cinza e na intensidade da cor, que tira as linhas apagadas da parede atrás do neon)
+        val chroma = image.chroma()
+        val outlines = FILL_GAPS.flatMap { g -> listOf(luma, chroma).map { candidates(it, deskew = false, windows = QUICK_WINDOWS, fill = g) } }
         return choose(luma, listOf(first) + thinned + outlines + variants.map { candidates(it, deskew = false, windows = QUICK_WINDOWS) })
     }
 
@@ -130,7 +132,7 @@ class ZuImageReader(
         }
         return masks.map { (raw, dark) ->
             // [fill] ≥ 0: fecha falhas do contorno (engrossando [fill] px) e preenche o miolo
-            val mask = if (fill < 0) raw else Binarizer.fillHoles(Binarizer.dilate(raw, image.width, image.height, fill), image.width, image.height)
+            val mask = if (fill < 0) raw else Binarizer.fillOutlines(Binarizer.dilate(raw, image.width, image.height, fill), image.width, image.height)
             readWithMask(image, mask, dark, deskew, erosion)
         }
     }
