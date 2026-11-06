@@ -23,6 +23,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
@@ -50,6 +51,20 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.semantics.heading
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculateCentroid
+import androidx.compose.foundation.gestures.calculatePan
+import androidx.compose.foundation.gestures.calculateZoom
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
+import com.davicolzer.zureader.vision.Point
+import com.davicolzer.zureader.vision.Viewport
 import com.davicolzer.zureader.R
 import com.davicolzer.zureader.ui.components.MiniGlyph
 import com.davicolzer.zureader.ui.theme.ZuTheme
@@ -79,14 +94,20 @@ fun WriteScreen(
     onDone: (String) -> Unit,
     onBack: () -> Unit,
     startWithLetters: Boolean = false,
+    /** Abre já com a mensagem em tela cheia (prévias). */
+    startFullScreen: Boolean = false,
     /** Teclas por linha (4 ou 6; ver [KeyboardLayout]). */
     columns: Int = 6,
 ) {
     val layout = KeyboardLayout.of(columns)
     var text by rememberSaveable(draft) { mutableStateOf(draft) }
     var byLetters by rememberSaveable { mutableStateOf(startWithLetters) }
+    var fullScreen by rememberSaveable { mutableStateOf(startFullScreen) }
     // K/Q e U/V tocados pelo glifo: a letra vem do contexto do inglês e muda enquanto o usuário digita
     val message = ZuWriter.normalize(SharedLetters.resolve(text))
+    if (fullScreen && message.isNotEmpty()) {
+        FullMessage(message, direction, onClose = { fullScreen = false })
+    }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -128,14 +149,25 @@ fun WriteScreen(
                 ZuPreview(message, direction, Modifier.fillMaxWidth().weight(1f))
                 // sem nada escrito, a dica usa a área toda (cabe em tela pequena)
                 if (message.isNotEmpty()) {
-                    Text(
-                        englishLine(message, text.endsWith('\n')),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.fillMaxWidth().semantics { contentDescription = message },
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            englishLine(message, text.endsWith('\n')),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onBackground,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f).semantics { contentDescription = message },
+                        )
+                        // mensagem grande: o teclado tem prioridade; ampliar abre a mensagem inteira
+                        IconButton(onClick = { fullScreen = true }, modifier = Modifier.size(40.dp)) {
+                            Icon(
+                                painterResource(R.drawable.ic_pixel_expand),
+                                contentDescription = stringResource(R.string.write_expand),
+                                tint = MaterialTheme.colorScheme.tertiary,
+                                modifier = Modifier.size(22.dp),
+                            )
+                        }
+                    }
                 }
             }
 
@@ -219,6 +251,9 @@ private val MESSAGE_MIN = 170.dp
 private val PREVIEW_MIN_GLYPH = 26.dp
 private val PREVIEW_MAX_GLYPH = 44.dp
 
+/** Maior glifo na tela cheia. */
+private val FULL_MAX_GLYPH = 72.dp
+
 /** Altura do resto da tela fora as teclas: escolha Glifos/Letras, linha de ações, separação e espaços. */
 private val FIXED_PARTS = 190.dp
 
@@ -269,9 +304,119 @@ private fun <T> KeyGrid(layout: KeyboardLayout, keyHeight: androidx.compose.ui.u
     }
 }
 
-/** A mensagem desenhada em Zu, ajustada ao espaço; o último glifo em dourado. */
+/** A mensagem inteira em tela cheia (modal): todas as colunas e o texto todo; fechar volta a escrever. */
 @Composable
-private fun ZuPreview(message: String, direction: ReadingDirection, modifier: Modifier) {
+private fun FullMessage(message: String, direction: ReadingDirection, onClose: () -> Unit) {
+    Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+      Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background, contentColor = MaterialTheme.colorScheme.onBackground) {
+        Column(
+            Modifier
+                .fillMaxSize()
+                .navigationBarsPadding()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    stringResource(R.string.write_full_title),
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.weight(1f).semantics { heading() },
+                )
+                IconButton(onClick = onClose) {
+                    Icon(painterResource(R.drawable.ic_pixel_close), stringResource(R.string.write_full_close), Modifier.size(22.dp))
+                }
+            }
+            ZoomableZu(
+                message,
+                direction,
+                Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(ZuTheme.colors.ink),
+            )
+            Text(
+                stringResource(R.string.write_full_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                ReadingMode.MIXED.display(message),
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.fillMaxWidth().heightIn(max = 160.dp).verticalScroll(rememberScrollState()),
+            )
+        }
+      }
+    }
+}
+
+/**
+ * A mensagem inteira, que começa mostrando tudo; dois dedos ampliam, e ampliada um dedo arrasta.
+ * (Mesma conta de [Viewport] da foto: a "imagem" é a mensagem em unidades de bloco × 10.)
+ */
+@Composable
+private fun ZoomableZu(message: String, direction: ReadingDirection, modifier: Modifier) {
+    val glyphs = remember(message, direction) { ZuWriter.layout(message, direction) }
+    if (glyphs.isEmpty()) return
+    val ink = MaterialTheme.colorScheme.onBackground
+    val newestColor = ZuTheme.colors.gold
+    val half = glyphs.first().size / 2
+    val margin = half
+    val minX = glyphs.minOf { it.x } - half - margin
+    val minY = glyphs.minOf { it.y } - half - margin
+    val width = ((glyphs.maxOf { it.x } + half + margin - minX) * UNIT).toInt()
+    val height = ((glyphs.maxOf { it.y } + half + margin - minY) * UNIT).toInt()
+    BoxWithConstraints(modifier) {
+        val density = androidx.compose.ui.platform.LocalDensity.current
+        val viewW = with(density) { maxWidth.toPx() }
+        val viewH = with(density) { maxHeight.toPx() }
+        var view by remember(message, viewW, viewH) { mutableStateOf(Viewport.fit(viewW, viewH, width, height)) }
+        Canvas(
+            Modifier
+                .fillMaxSize()
+                .clipToBounds()
+                .pointerInput(message, viewW, viewH) {
+                    awaitEachGesture {
+                        awaitFirstDown(requireUnconsumed = false)
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            val pressed = event.changes.filter { it.pressed }
+                            if (pressed.isEmpty()) break
+                            if (pressed.size >= 2) {
+                                val c = event.calculateCentroid()
+                                val pan = event.calculatePan()
+                                view = view.zoomedAt(c.x, c.y, event.calculateZoom()).panned(pan.x, pan.y)
+                            } else if (view.zoom > 1f) {
+                                val d = pressed.first().positionChange()
+                                view = view.panned(d.x, d.y)
+                            }
+                            event.changes.forEach { it.consume() }
+                        }
+                    }
+                },
+        ) {
+            val cell = 2 * half * UNIT * view.scale / 5
+            glyphs.forEachIndexed { i, g ->
+                val p = view.toView(Point((g.x - half - minX) * UNIT, (g.y - half - minY) * UNIT))
+                val color = if (i == glyphs.lastIndex) newestColor else ink
+                for (r in 0 until 5) for (c in 0 until 5) if (g.bits[r, c]) {
+                    drawRect(color, Offset(p.x + c * cell, p.y + r * cell), Size(cell + 0.5f, cell + 0.5f))
+                }
+            }
+        }
+    }
+}
+
+/** Unidades de bloco → "pixels" da mensagem na tela cheia. */
+private const val UNIT = 10f
+
+/**
+ * A mensagem desenhada em Zu, ajustada ao espaço; o último glifo em dourado.
+ * Com [showAll], tudo cabe (tela cheia); sem, as colunas inteiras ficam legíveis e, se não couberem
+ * todas, aparecem as mais recentes.
+ */
+@Composable
+private fun ZuPreview(message: String, direction: ReadingDirection, modifier: Modifier, showAll: Boolean = false) {
     val glyphs = remember(message, direction) { ZuWriter.layout(message, direction) }
     val ink = MaterialTheme.colorScheme.onBackground
     val last = ZuTheme.colors.gold
@@ -296,7 +441,11 @@ private fun ZuPreview(message: String, direction: ReadingDirection, modifier: Mo
                 // as colunas mais recentes ficam à vista; nunca maior que PREVIEW_MAX_GLYPH
                 val fitAll = minOf(size.width / (maxX - minX), size.height / (maxY - minY))
                 val fitLine = if (direction == ReadingDirection.VERTICAL_RIGHT_TO_LEFT) size.height / (maxY - minY) else size.width / (maxX - minX)
-                val scale = minOf(maxOf(fitAll, minOf(fitLine, PREVIEW_MIN_GLYPH.toPx() / (2 * half))), PREVIEW_MAX_GLYPH.toPx() / (2 * half))
+                val scale = if (showAll) {
+                    minOf(fitAll, FULL_MAX_GLYPH.toPx() / (2 * half))
+                } else {
+                    minOf(maxOf(fitAll, minOf(fitLine, PREVIEW_MIN_GLYPH.toPx() / (2 * half))), PREVIEW_MAX_GLYPH.toPx() / (2 * half))
+                }
                 val contentW = (maxX - minX) * scale
                 val contentH = (maxY - minY) * scale
                 // se não couber, a parte mais recente fica à vista (o último glifo no centro)
@@ -309,6 +458,8 @@ private fun ZuPreview(message: String, direction: ReadingDirection, modifier: Mo
                 glyphs.forEachIndexed { i, g ->
                     val left = offX + (g.x - half - minX) * scale
                     val top = offY + (g.y - half - minY) * scale
+                    // fora o modo "tudo", só glifos inteiros: uma coluna cortada ao meio confunde
+                    if (!showAll && (left < -0.5f || top < -0.5f || left + 2 * half * scale > size.width + 0.5f || top + 2 * half * scale > size.height + 0.5f)) return@forEachIndexed
                     val color = if (i == glyphs.lastIndex) last else ink
                     for (r in 0 until 5) for (c in 0 until 5) if (g.bits[r, c]) {
                         drawRect(color, Offset(left + c * cell, top + r * cell), Size(cell + 0.5f, cell + 0.5f))

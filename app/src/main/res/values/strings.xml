@@ -35,6 +35,10 @@
     <string name="write_new_column">Nova coluna</string>
     <string name="write_new_line">Nova linha</string>
     <string name="write_delete">Apagar</string>
+    <string name="write_expand">Ver a mensagem em tela cheia</string>
+    <string name="write_full_title">Mensagem</string>
+    <string name="write_full_close">Voltar a escrever</string>
+    <string name="write_full_hint">Use dois dedos para ampliar; ampliada, arraste com um dedo.</string>
     <string name="write_clear">Limpar tudo</string>
     <string name="write_done">Pronto</string>
     <string name="result_zoom_hint">Use dois dedos para ampliar a foto; ampliada, arraste com um dedo.</string>
