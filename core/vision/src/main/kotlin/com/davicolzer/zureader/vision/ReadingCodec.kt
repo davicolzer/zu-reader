@@ -5,6 +5,7 @@ import com.davicolzer.zureader.zu.GlyphReading
 import com.davicolzer.zureader.zu.LetterScore
 import com.davicolzer.zureader.zu.PlacedGlyph
 import com.davicolzer.zureader.zu.ReadingDirection
+import com.davicolzer.zureader.zu.ReadingMode
 import com.davicolzer.zureader.zu.ZuReading
 
 /**
@@ -13,7 +14,7 @@ import com.davicolzer.zureader.zu.ZuReading
  * Formato (uma linha por item, campos separados por `;`):
  * ```
  * zu1
- * w;h;rotação;inclinação;tinta escura;direção;pontuação
+ * w;h;rotação;inclinação;tinta escura;direção;pontuação;modo
  * texto (com | no lugar de quebra de linha)
  * x;y;largura;altura;25 blocos (# ou .);letra;confiança;corrigida;alternativas (letra:nota,...)
  * ...
@@ -25,7 +26,7 @@ object ReadingCodec {
     fun encode(reading: ImageReading): String = buildString {
         val r = reading.reading
         appendLine(VERSION)
-        appendLine(listOf(reading.width, reading.height, r.rotation, reading.skewDegrees, if (reading.inkIsDark) 1 else 0, r.direction.name, r.score).joinToString(";"))
+        appendLine(listOf(reading.width, reading.height, r.rotation, reading.skewDegrees, if (reading.inkIsDark) 1 else 0, r.direction.name, r.score, reading.mode.name).joinToString(";"))
         appendLine(r.text.replace('\n', '|'))
         for (g in r.glyphs) {
             val s = g.source
@@ -69,6 +70,8 @@ object ReadingCodec {
             width = head[0].toInt(),
             height = head[1].toInt(),
             skewDegrees = head[3].toFloat(),
+            // leituras salvas antes do modo números não têm este campo
+            mode = head.getOrNull(7)?.let { runCatching { ReadingMode.valueOf(it) }.getOrNull() } ?: ReadingMode.TEXT,
         )
     }
 }

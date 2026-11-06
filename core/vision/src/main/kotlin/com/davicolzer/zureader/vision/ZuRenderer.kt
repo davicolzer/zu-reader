@@ -1,6 +1,8 @@
 package com.davicolzer.zureader.vision
 
+import com.davicolzer.zureader.zu.GlyphSet
 import com.davicolzer.zureader.zu.ReadingDirection
+import com.davicolzer.zureader.zu.ZuAlphabet
 import com.davicolzer.zureader.zu.ZuLayout
 import kotlin.math.roundToInt
 
@@ -14,9 +16,10 @@ object ZuRenderer {
         ink: Int = 40,
         paper: Int = 230,
         marginBlocks: Int = 4,
+        glyphSet: GlyphSet = ZuAlphabet,
     ): GrayImage {
         val size = 5f * blockPx
-        val glyphs = ZuLayout.compose(text, direction, maxPerLine, size)
+        val glyphs = ZuLayout.compose(text, direction, maxPerLine, size, glyphSet)
         require(glyphs.isNotEmpty()) { "Texto sem letras" }
         val margin = marginBlocks * blockPx
         val minX = glyphs.minOf { it.x - size / 2 }

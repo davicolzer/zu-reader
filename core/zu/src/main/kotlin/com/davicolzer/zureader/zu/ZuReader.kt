@@ -37,7 +37,7 @@ data class ZuReading(
      */
     fun withLetter(index: Int, letter: Char): ZuReading {
         require(index in glyphs.indices) { "Glifo $index não existe (há ${glyphs.size})" }
-        require(letter in 'A'..'Z') { "Letra inválida: '$letter'" }
+        require(!letter.isWhitespace()) { "Símbolo inválido: '$letter'" }
         val updated = glyphs.toMutableList()
         updated[index] = glyphs[index].copy(letter = letter, confidence = 1f, corrected = true)
         var g = 0
@@ -66,6 +66,8 @@ data class ZuReading(
 class ZuReader(
     private val classifier: GlyphClassifier = GlyphClassifier(),
     private val direction: ReadingDirection = ReadingDirection.VERTICAL_RIGHT_TO_LEFT,
+    /** Usar o modelo de pares de letras do inglês (desligado para números). */
+    private val languageModel: Boolean = true,
 ) {
     /**
      * @param rotation se informado (0..3), usa só essa orientação.
@@ -148,7 +150,7 @@ class ZuReader(
                 var bestScore = Int.MIN_VALUE
                 var bestPrev = boundary
                 for ((prev, s) in states) {
-                    val candidate = s + EnglishModel.logProb(prev, letter) + emission
+                    val candidate = s + transition(prev, letter) + emission
                     if (candidate > bestScore) { bestScore = candidate; bestPrev = prev }
                 }
                 if (bestScore > (next[letter] ?: Int.MIN_VALUE)) {
@@ -164,7 +166,7 @@ class ZuReader(
         var last = boundary
         var total = Int.MIN_VALUE
         for ((prev, s) in states) {
-            val candidate = s + EnglishModel.logProb(prev, boundary)
+            val candidate = s + transition(prev, boundary)
             if (candidate > total) { total = candidate; last = prev }
         }
 
@@ -175,6 +177,8 @@ class ZuReader(
         }
         return out to total
     }
+
+    private fun transition(prev: Char, next: Char): Int = if (languageModel) EnglishModel.logProb(prev, next) else 0
 
     private fun alternatives(classification: GlyphClassification, chosen: Char): List<LetterScore> =
         classification.matches

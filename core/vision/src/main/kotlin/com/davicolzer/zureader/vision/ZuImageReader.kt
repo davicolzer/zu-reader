@@ -2,6 +2,9 @@ package com.davicolzer.zureader.vision
 
 import com.davicolzer.zureader.zu.GlyphClassifier
 import com.davicolzer.zureader.zu.PlacedGlyph
+import com.davicolzer.zureader.zu.ReadingDirection
+import com.davicolzer.zureader.zu.ReadingMode
+import com.davicolzer.zureader.zu.ZuGlyph
 import com.davicolzer.zureader.zu.ZuLayout
 import com.davicolzer.zureader.zu.ZuReader
 import com.davicolzer.zureader.zu.ZuReading
@@ -25,6 +28,8 @@ data class ImageReading(
     val height: Int,
     /** Inclinação do texto na imagem, em graus (positivo = sentido horário). */
     val skewDegrees: Float = 0f,
+    /** Escrita ou números. */
+    val mode: ReadingMode = ReadingMode.TEXT,
 ) {
     /**
      * Recorte sugerido: a área do texto com [margin] glifo de folga em volta,
@@ -50,6 +55,7 @@ data class ImageReading(
 class ZuImageReader(
     private val reader: ZuReader = ZuReader(),
     private val classifier: GlyphClassifier = GlyphClassifier(),
+    private val mode: ReadingMode = ReadingMode.TEXT,
 ) {
     /**
      * @param deskew corrigir inclinação.
@@ -214,7 +220,7 @@ class ZuImageReader(
         inkIsDark: Boolean,
     ): Pair<ImageReading, Float> {
         val angle = deskewed.angleDegrees
-        if (groups.isEmpty()) return ImageReading(ZuReading.EMPTY, emptyList(), inkIsDark, image.width, image.height) to 0f
+        if (groups.isEmpty()) return ImageReading(ZuReading.EMPTY, emptyList(), inkIsDark, image.width, image.height, mode = mode) to 0f
 
         // A orientação vale para a imagem inteira: soma a pontuação de todos os blocos.
         val (rotation, blocks) = (0..3)
@@ -239,7 +245,7 @@ class ZuImageReader(
         )
         // Glifos confiantes somam, duvidosos subtraem: uma máscara que "acha" lixo não vence.
         val quality = merged.glyphs.sumOf { it.confidence.toDouble() - QUALITY_OFFSET }.toFloat()
-        return ImageReading(merged, ordered, inkIsDark, image.width, image.height, skewDegrees = -angle) to quality
+        return ImageReading(merged, ordered, inkIsDark, image.width, image.height, skewDegrees = -angle, mode = mode) to quality
     }
 
     /**
@@ -281,6 +287,20 @@ class ZuImageReader(
     )
 
     companion object {
+        /**
+         * Leitor para o [mode]: escrita (alfabeto + modelo do inglês) ou números (glifos 0–10, sem modelo).
+         * [learned] são os exemplos ensinados pelo usuário; só os do mesmo modo são usados.
+         */
+        fun forMode(
+            mode: ReadingMode,
+            direction: ReadingDirection = ReadingDirection.VERTICAL_RIGHT_TO_LEFT,
+            learned: List<ZuGlyph> = emptyList(),
+        ): ZuImageReader {
+            val examples = learned.filter { g -> g.letters.all { ReadingMode.of(it) == mode } }
+            val classifier = GlyphClassifier(alphabet = mode.glyphSet.glyphs, learned = examples)
+            return ZuImageReader(ZuReader(classifier, direction, languageModel = mode.usesLanguageModel), classifier, mode)
+        }
+
         /** Confiança média mínima para manter um bloco que não é o principal. */
         const val MIN_EXTRA_BLOCK_CONFIDENCE = 0.5
 

@@ -75,7 +75,7 @@
     <string name="history_title">HISTÓRICO</string>
     <string name="history_see_all">Ver tudo</string>
     <string name="history_empty_title">Nada salvo ainda</string>
-    <string name="history_empty_body">Leia um texto e toque em Salvar para guardar aqui.</string>
+    <string name="history_empty_body">Leia um texto ou números e toque em Salvar para guardar aqui.</string>
     <string name="settings_title">CONFIGURAÇÕES</string>
     <string name="settings_reading">LEITURA</string>
     <string name="settings_direction_vertical">Colunas, da direita para a esquerda</string>
@@ -102,4 +102,14 @@
     <string name="settings_forget_body">O app volta a usar só o alfabeto padrão. Seu histórico não muda.</string>
     <string name="settings_forget_confirm">Esquecer</string>
     <string name="result_adjust_crop">Ajustar recorte</string>
+    <string name="mode_text">Escrita</string>
+    <string name="mode_numbers">Números</string>
+    <string name="home_hero_title_numbers">Fotografe números em Zu</string>
+    <string name="result_numbers_label">NÚMEROS LIDOS</string>
+    <string name="correct_title_numbers">QUAL É ESTE NÚMERO?</string>
+    <string name="result_glyphs_label_numbers">NÚMERO A NÚMERO</string>
+    <string name="result_tap_to_fix_numbers">Toque num número, aqui ou na foto, para corrigir.</string>
+    <string name="result_low_confidence_numbers">Números em dourado têm dúvida. Toque num número, aqui ou na foto, para corrigir.</string>
+    <string name="correct_body_numbers">Lido como %1$s. Se estiver errado, toque no número certo.</string>
+    <string name="correct_body_doubt_numbers">Confiança baixa. Escolha uma sugestão ou toque no número certo.</string>
 </resources>

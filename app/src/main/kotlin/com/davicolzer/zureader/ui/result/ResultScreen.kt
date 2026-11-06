@@ -87,6 +87,7 @@ import com.davicolzer.zureader.ui.components.PixelPrimaryButton
 import com.davicolzer.zureader.ui.theme.ZuTheme
 import com.davicolzer.zureader.vision.ImageReading
 import com.davicolzer.zureader.zu.GlyphReading
+import com.davicolzer.zureader.zu.ReadingMode
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -111,6 +112,7 @@ fun ResultScreen(
     val scope = rememberCoroutineScope()
     val copied = stringResource(R.string.result_copied)
     val reading = result.reading
+    val mode = result.mode
     val bitmap = remember(image) { image.asImageBitmap() }
 
     Scaffold(
@@ -155,12 +157,12 @@ fun ResultScreen(
 
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
-                    stringResource(R.string.result_text_label),
+                    stringResource(if (mode == ReadingMode.TEXT) R.string.result_text_label else R.string.result_numbers_label),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.semantics { heading() },
                 )
-                ReadText(reading.text, reading.glyphs)
+                ReadText(reading.text, reading.glyphs, mode)
                 val count = reading.glyphs.size
                 Text(
                     if (reading.rotation == 0) pluralStringResource(R.plurals.result_summary, count, count)
@@ -172,15 +174,22 @@ fun ResultScreen(
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    stringResource(R.string.result_glyphs_label),
+                    stringResource(if (mode == ReadingMode.TEXT) R.string.result_glyphs_label else R.string.result_glyphs_label_numbers),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.semantics { heading() },
                 )
-                GlyphStrip(reading.glyphs, reading.rotation, onTap = { editing = it })
+                GlyphStrip(reading.glyphs, reading.rotation, mode, onTap = { editing = it })
                 val doubt = reading.glyphs.any { it.isLowConfidence }
                 Text(
-                    stringResource(if (doubt) R.string.result_low_confidence else R.string.result_tap_to_fix),
+                    stringResource(
+                        when {
+                            mode == ReadingMode.NUMBERS && doubt -> R.string.result_low_confidence_numbers
+                            mode == ReadingMode.NUMBERS -> R.string.result_tap_to_fix_numbers
+                            doubt -> R.string.result_low_confidence
+                            else -> R.string.result_tap_to_fix
+                        },
+                    ),
                     style = MaterialTheme.typography.bodySmall,
                     color = if (doubt) ZuTheme.colors.gold else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -189,11 +198,11 @@ fun ResultScreen(
             // alturas iguais mesmo com fonte grande
             Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 ActionTile(R.drawable.ic_pixel_copy, stringResource(R.string.result_copy), Modifier.weight(1f)) {
-                    copyText(context, reading.text)
+                    copyText(context, mode.display(reading.text))
                     scope.launch { snackbar.showSnackbar(copied) }
                 }
                 ActionTile(R.drawable.ic_pixel_share, stringResource(R.string.result_share), Modifier.weight(1f)) {
-                    shareText(context, reading.text)
+                    shareText(context, mode.display(reading.text))
                 }
                 if (savedId == null) {
                     ActionTile(R.drawable.ic_pixel_save, stringResource(R.string.result_save), Modifier.weight(1f), primary = true) {
@@ -212,6 +221,7 @@ fun ResultScreen(
             CorrectionSheet(
                 glyph = glyph,
                 rotation = reading.rotation,
+                mode = mode,
                 onSelect = { letter -> onCorrect(index, letter); editing = null },
                 onDismiss = { editing = null },
             )
@@ -299,7 +309,7 @@ private fun PhotoWithBoxes(bitmap: ImageBitmap, result: ImageReading, selected: 
                         // letra lida: etiqueta dentro da caixa, no canto de cima, proporcional ao glifo
                         val fontPx = (halfH * 0.6f).coerceIn(9.sp.toPx(), 18.sp.toPx())
                         val layout = measurer.measure(
-                            if (g.isLowConfidence) "${g.letter}?" else g.letter.toString(),
+                            result.mode.symbolLabel(g.letter) + if (g.isLowConfidence) "?" else "",
                             labelStyle.copy(fontSize = fontPx.toSp(), color = labelText),
                         )
                         val pad = 2.dp.toPx()
@@ -322,21 +332,35 @@ private fun PhotoWithBoxes(bitmap: ImageBitmap, result: ImageReading, selected: 
 }
 
 @Composable
-private fun ReadText(text: String, glyphs: List<GlyphReading>) {
+private fun ReadText(text: String, glyphs: List<GlyphReading>, mode: ReadingMode) {
     val gold = ZuTheme.colors.gold
+    // mesmo formato de ReadingMode.display, com as dúvidas em dourado
     val styled = buildAnnotatedString {
         var g = 0
+        var afterSymbol = false
+        var pendingSpace = false
         for (ch in text) {
-            if (ch == ' ' || ch == '\n') { append(ch); continue }
-            val low = glyphs.getOrNull(g++)?.isLowConfidence == true
-            if (low) withStyle(SpanStyle(color = gold)) { append(ch) } else append(ch)
+            when (ch) {
+                '\n' -> { append('\n'); afterSymbol = false; pendingSpace = false }
+                ' ' -> if (mode == ReadingMode.TEXT) append(' ') else pendingSpace = afterSymbol
+                else -> {
+                    if (mode == ReadingMode.NUMBERS) {
+                        if (pendingSpace) append(" / ") else if (afterSymbol) append(' ')
+                    }
+                    pendingSpace = false
+                    afterSymbol = true
+                    val low = glyphs.getOrNull(g++)?.isLowConfidence == true
+                    val label = mode.symbolLabel(ch)
+                    if (low) withStyle(SpanStyle(color = gold)) { append(label) } else append(label)
+                }
+            }
         }
     }
     Text(styled, style = MaterialTheme.typography.headlineMedium)
 }
 
 @Composable
-private fun GlyphStrip(glyphs: List<GlyphReading>, rotation: Int, onTap: (Int) -> Unit) {
+private fun GlyphStrip(glyphs: List<GlyphReading>, rotation: Int, mode: ReadingMode, onTap: (Int) -> Unit) {
     Row(
         modifier = Modifier.horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -348,7 +372,7 @@ private fun GlyphStrip(glyphs: List<GlyphReading>, rotation: Int, onTap: (Int) -
                 g.corrected -> ZuTheme.colors.teal
                 else -> MaterialTheme.colorScheme.onSurface
             }
-            val label = stringResource(if (low) R.string.glyph_letter_doubt else R.string.glyph_letter, g.letter.toString())
+            val label = stringResource(if (low) R.string.glyph_letter_doubt else R.string.glyph_letter, mode.symbolLabel(g.letter))
             Column(
                 modifier = Modifier
                     .clip(RoundedCornerShape(10.dp))
@@ -363,7 +387,7 @@ private fun GlyphStrip(glyphs: List<GlyphReading>, rotation: Int, onTap: (Int) -
             ) {
                 // desenho na orientação em que foi lido
                 MiniGlyph(g.source.bits.rotate(rotation), MaterialTheme.colorScheme.onSurface, size = 18.dp)
-                Text(if (low) "${g.letter}?" else g.letter.toString(), style = MaterialTheme.typography.titleSmall, color = color)
+                Text(mode.symbolLabel(g.letter) + if (low) "?" else "", style = MaterialTheme.typography.titleSmall, color = color)
             }
         }
     }

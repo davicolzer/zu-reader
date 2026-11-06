@@ -43,6 +43,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.davicolzer.zureader.R
+import com.davicolzer.zureader.ui.components.ModeSelector
+import com.davicolzer.zureader.zu.ReadingMode
 import com.davicolzer.zureader.data.HistoryItem
 import com.davicolzer.zureader.ui.history.HistoryEmpty
 import com.davicolzer.zureader.ui.history.HistoryRow
@@ -66,6 +68,8 @@ fun HomeScreen(
     recent: List<HistoryItem> = emptyList(),
     onOpenSaved: (Long) -> Unit = {},
     onSeeAll: () -> Unit = {},
+    mode: ReadingMode = ReadingMode.TEXT,
+    onMode: (ReadingMode) -> Unit = {},
 ) {
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -119,7 +123,8 @@ fun HomeScreen(
                 .padding(horizontal = 20.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            HeroCard()
+            HeroCard(mode)
+            ModeSelector(mode, onMode)
             PixelPrimaryButton(
                 text = stringResource(R.string.home_take_photo),
                 icon = R.drawable.ic_pixel_camera,
@@ -157,7 +162,7 @@ fun HomeScreen(
 }
 
 @Composable
-private fun HeroCard() {
+private fun HeroCard(mode: ReadingMode) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -175,7 +180,10 @@ private fun HeroCard() {
         ) {
             Image(painterResource(R.drawable.ic_fez_hat), contentDescription = null, modifier = Modifier.size(56.dp))
         }
-        Text(stringResource(R.string.home_hero_title), style = MaterialTheme.typography.headlineSmall)
+        Text(
+            stringResource(if (mode == ReadingMode.TEXT) R.string.home_hero_title else R.string.home_hero_title_numbers),
+            style = MaterialTheme.typography.headlineSmall,
+        )
         Text(
             stringResource(R.string.home_hero_body),
             style = MaterialTheme.typography.bodyMedium,
