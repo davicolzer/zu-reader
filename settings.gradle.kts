@@ -24,3 +24,4 @@ rootProject.name = "fez-translate"
 
 include(":app")
 include(":core:zu")
+include(":core:vision")

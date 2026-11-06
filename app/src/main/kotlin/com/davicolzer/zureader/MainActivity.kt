@@ -4,7 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import com.davicolzer.zureader.ui.home.HomeScreen
+import com.davicolzer.zureader.ui.ZuReaderApp
 import com.davicolzer.zureader.ui.theme.ZuReaderTheme
 
 class MainActivity : ComponentActivity() {
@@ -13,7 +13,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             ZuReaderTheme {
-                HomeScreen()
+                ZuReaderApp()
             }
         }
     }

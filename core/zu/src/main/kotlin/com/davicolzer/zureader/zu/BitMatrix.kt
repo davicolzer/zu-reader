@@ -50,6 +50,13 @@ class BitMatrix private constructor(
         (0 until size).joinToString("\n") { r -> (0 until size).joinToString("") { c -> if (this[r, c]) "#" else "." } }
 
     companion object {
+        /** Cria uma matriz [size]×[size] perguntando cada bloco a [filled]. */
+        fun of(size: Int, filled: (row: Int, col: Int) -> Boolean): BitMatrix {
+            require(size > 0) { "Matriz vazia" }
+            val bits = BooleanArray(size * size) { filled(it / size, it % size) }
+            return BitMatrix(size, bits)
+        }
+
         /**
          * Lê uma matriz a partir de linhas de texto: `#` ou `1` = bloco, `.` ou `0` = vazio.
          */
