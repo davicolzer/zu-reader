@@ -1,0 +1,92 @@
+name: Release
+
+# Depois do merge na main (ou rodando à mão em Actions → Release → Run workflow):
+# gera os APKs e publica uma release com o APK para instalar no celular.
+# Os testes já rodaram no PR.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  apk:
+    name: 1 · Build dos APKs
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      version: ${{ steps.apks.outputs.version }}
+      signed: ${{ steps.apks.outputs.signed }}
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v7
+
+      - name: Preparar ambiente
+        uses: ./.github/actions/preparar
+
+      - name: Gerar APKs
+        id: apks
+        uses: ./.github/actions/gerar-apks
+        with:
+          keystore-base64: ${{ secrets.ZU_KEYSTORE_BASE64 }}
+          keystore-password: ${{ secrets.ZU_KEYSTORE_PASSWORD }}
+          key-alias: ${{ secrets.ZU_KEY_ALIAS }}
+          key-password: ${{ secrets.ZU_KEY_PASSWORD }}
+
+  release:
+    name: 2 · Publicar release
+    needs: apk
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Baixar os APKs do job anterior
+        uses: actions/download-artifact@v8
+        with:
+          name: zu-reader
+          path: dist
+
+      - name: Escrever notas da release
+        env:
+          VERSION: ${{ needs.apk.outputs.version }}
+          SIGNED: ${{ needs.apk.outputs.signed }}
+        run: |
+          {
+            echo "Build automático do Zu Reader a partir de \`${GITHUB_REF_NAME}\` (${GITHUB_SHA::7})."
+            echo
+            echo "## Instalar no celular"
+            echo
+            echo "1. No celular, abra esta página e baixe **zu-reader-${VERSION}-teste.apk**."
+            echo "2. Abra o arquivo baixado. Se o Android pedir, permita instalar apps dessa fonte."
+            echo "3. Versões novas instalam por cima da anterior; o histórico é mantido."
+            echo
+            echo "## Arquivos"
+            echo
+            echo "- \`zu-reader-${VERSION}-teste.apk\`: para testar (assinado com a chave de teste do projeto)."
+            if [ "$SIGNED" = "true" ]; then
+              echo "- \`zu-reader-${VERSION}.apk\`: release assinado com a chave de publicação."
+            else
+              echo "- \`zu-reader-${VERSION}-sem-assinatura.apk\`: release sem assinatura (não instala; ver docs/RELEASE.md)."
+            fi
+            echo "- \`zu-reader-${VERSION}.aab\`: pacote para a Play Store."
+          } > notas.md
+          cat notas.md
+
+      - name: Criar release no GitHub
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.apk.outputs.version }}
+        run: |
+          gh release create "v${VERSION}" dist/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "Zu Reader ${VERSION}" \
+            --notes-file notas.md \
+            --prerelease

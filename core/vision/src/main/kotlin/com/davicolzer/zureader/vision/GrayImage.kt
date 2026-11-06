@@ -33,6 +33,25 @@ class GrayImage(val width: Int, val height: Int, val pixels: IntArray) {
         })
     }
 
+    /**
+     * Estica o contraste: o tom no percentil [low] vira 0 e o do percentil [high] vira 255.
+     * Ajuda em fotos lavadas (pouco contraste) ou escuras demais.
+     */
+    fun stretched(low: Float = 0.01f, high: Float = 0.99f): GrayImage {
+        val histogram = IntArray(256)
+        for (p in pixels) histogram[p.coerceIn(0, 255)]++
+        fun percentile(f: Float): Int {
+            val target = (pixels.size * f).toLong()
+            var acc = 0L
+            for (v in 0..255) { acc += histogram[v]; if (acc > target) return v }
+            return 255
+        }
+        val lo = percentile(low)
+        val hi = percentile(high)
+        if (hi <= lo) return this
+        return GrayImage(width, height, IntArray(pixels.size) { ((pixels[it] - lo) * 255 / (hi - lo)).coerceIn(0, 255) })
+    }
+
     fun inverted(): GrayImage = GrayImage(width, height, IntArray(pixels.size) { 255 - pixels[it] })
 
     companion object {

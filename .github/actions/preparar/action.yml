@@ -1,0 +1,18 @@
+name: Preparar ambiente Android
+description: JDK 25 (LTS), Gradle com cache e Android SDK 37.
+runs:
+  using: composite
+  steps:
+    - name: Instalar JDK 25 (LTS)
+      uses: actions/setup-java@v6
+      with:
+        distribution: temurin
+        java-version: 25
+
+    - name: Preparar Gradle (com cache)
+      uses: gradle/actions/setup-gradle@v6
+
+    - name: Instalar Android SDK 37
+      uses: android-actions/setup-android@v4
+      with:
+        packages: "platforms;android-37.0 build-tools;37.0.0 platform-tools"

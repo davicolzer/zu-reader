@@ -70,6 +70,36 @@ object Binarizer {
         }
     }
 
+    /**
+     * Afina a tinta: um pixel continua tinta só se todo o quadrado de raio [radius] em volta for tinta.
+     * Quebra pontes finas entre glifos que a foto borrou (o espaço entre eles some no desfoque).
+     */
+    fun erode(mask: BooleanArray, width: Int, height: Int, radius: Int): BooleanArray {
+        if (radius <= 0) return mask
+        // conta pixels SEM tinta em cada janela, primeiro na horizontal e depois na vertical
+        val rows = BooleanArray(mask.size)
+        for (y in 0 until height) {
+            val prefix = IntArray(width + 1)
+            for (x in 0 until width) prefix[x + 1] = prefix[x] + if (mask[y * width + x]) 0 else 1
+            for (x in 0 until width) {
+                val a = (x - radius).coerceAtLeast(0)
+                val b = (x + radius).coerceAtMost(width - 1)
+                rows[y * width + x] = x - radius >= 0 && x + radius < width && prefix[b + 1] - prefix[a] == 0
+            }
+        }
+        val out = BooleanArray(mask.size)
+        for (x in 0 until width) {
+            val prefix = IntArray(height + 1)
+            for (y in 0 until height) prefix[y + 1] = prefix[y] + if (rows[y * width + x]) 0 else 1
+            for (y in 0 until height) {
+                val a = (y - radius).coerceAtLeast(0)
+                val b = (y + radius).coerceAtMost(height - 1)
+                out[y * width + x] = y - radius >= 0 && y + radius < height && prefix[b + 1] - prefix[a] == 0
+            }
+        }
+        return out
+    }
+
     /** Máscara de tinta: `true` onde há tinta. */
     fun mask(image: GrayImage, threshold: Int, inkIsDark: Boolean): BooleanArray =
         BooleanArray(image.pixels.size) { if (inkIsDark) image.pixels[it] <= threshold else image.pixels[it] > threshold }

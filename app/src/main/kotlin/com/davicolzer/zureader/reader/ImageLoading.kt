@@ -7,7 +7,7 @@ import android.graphics.ImageDecoder
 import android.graphics.Matrix
 import android.net.Uri
 import android.os.Build
-import com.davicolzer.zureader.vision.GrayImage
+import com.davicolzer.zureader.vision.RgbImage
 import kotlin.math.max
 import kotlin.math.roundToInt
 
@@ -51,18 +51,11 @@ object ImageLoading {
         return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
     }
 
-    /** Imagem em tons de cinza como Bitmap (para mostrar o recorte endireitado). */
-    fun toBitmap(gray: GrayImage): Bitmap {
-        val argb = IntArray(gray.pixels.size) { i ->
-            val v = gray.pixels[i]
-            (0xFF shl 24) or (v shl 16) or (v shl 8) or v
-        }
-        return Bitmap.createBitmap(argb, gray.width, gray.height, Bitmap.Config.ARGB_8888)
-    }
-
-    fun toGray(bitmap: Bitmap): GrayImage {
+    fun toRgb(bitmap: Bitmap): RgbImage {
         val argb = IntArray(bitmap.width * bitmap.height)
         bitmap.getPixels(argb, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
-        return GrayImage.fromArgb(bitmap.width, bitmap.height, argb)
+        return RgbImage(bitmap.width, bitmap.height, argb)
     }
+
+    fun toBitmap(rgb: RgbImage): Bitmap = Bitmap.createBitmap(rgb.argb, rgb.width, rgb.height, Bitmap.Config.ARGB_8888)
 }

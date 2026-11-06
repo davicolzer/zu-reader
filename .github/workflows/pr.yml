@@ -1,0 +1,63 @@
+name: PR
+
+# Em cada PR: confere o código e gera os APKs (o APK de teste fica nos artefatos da execução).
+on:
+  pull_request:
+
+concurrency:
+  group: pr-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  testes:
+    name: 1 · Testes e lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v7
+
+      - name: Preparar ambiente
+        uses: ./.github/actions/preparar
+
+      - name: Testes do leitor Zu (alfabeto e classificador)
+        run: ./gradlew :core:zu:test --warning-mode all
+
+      - name: Testes de visão (imagens, fotos reais, câmera, recorte, histórico)
+        run: ./gradlew :core:vision:test --warning-mode all
+
+      - name: Lint do app
+        run: ./gradlew :app:lintDebug --warning-mode all
+
+      - name: Guardar relatórios
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: relatorios
+          path: |
+            **/build/reports/
+            **/build/test-results/
+          if-no-files-found: ignore
+
+  apk:
+    name: 2 · Build dos APKs
+    needs: testes
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v7
+
+      - name: Preparar ambiente
+        uses: ./.github/actions/preparar
+
+      - name: Gerar APKs
+        uses: ./.github/actions/gerar-apks
+        with:
+          keystore-base64: ${{ secrets.ZU_KEYSTORE_BASE64 }}
+          keystore-password: ${{ secrets.ZU_KEYSTORE_PASSWORD }}
+          key-alias: ${{ secrets.ZU_KEY_ALIAS }}
+          key-password: ${{ secrets.ZU_KEY_PASSWORD }}
