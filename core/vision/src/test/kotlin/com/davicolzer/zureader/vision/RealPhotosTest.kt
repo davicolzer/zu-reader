@@ -28,25 +28,27 @@ class RealPhotosTest {
     }
 
     private val photos = listOf(
-        Photo("parede-escura.jpg", "THE POINTS CONSTELLATE CONSPIRE TO CREATE SHAPES SHAPES TO TESSELLATE", 0, 0.97),
-        Photo("parede-clara.jpg", "THE POINTS CONSTELLATE CONSPIRE TO CREATE SHAPES SHAPES TO TESSELLATE", 1, 0.95),
-        Photo("lapide-2.jpg", "JUMPS OVER THE LAZY DOG", 1, 0.65),
+        Photo("parede-escura.jpg", "THE POINTS CONSTELLATE CONSPIRE TO CREATE SHAPES SHAPES TO TESSELLATE", 0, 0.99),
+        Photo("parede-clara.jpg", "THE POINTS CONSTELLATE CONSPIRE TO CREATE SHAPES SHAPES TO TESSELLATE", 1, 0.97),
+        Photo("lapide-2.jpg", "JUMPS OVER THE LAZY DOG", 1, 0.77),
         Photo("lapide-1.jpg", "THE QUICK BROWN FOX", 1, 0.6),
         // recortadas no app em volta da pedra
-        Photo("lapide-2.jpg", "JUMPS OVER THE LAZY DOG", 1, 0.9, crop = listOf(0.435f, 0.27f, 0.73f, 0.585f)),
-        Photo("lapide-1.jpg", "THE QUICK BROWN FOX", 1, 0.78, crop = listOf(0.33f, 0.28f, 0.67f, 0.65f)),
+        Photo("lapide-2.jpg", "JUMPS OVER THE LAZY DOG", 1, 0.93, crop = listOf(0.435f, 0.27f, 0.73f, 0.585f)),
+        Photo("lapide-1.jpg", "THE QUICK BROWN FOX", 1, 0.8, crop = listOf(0.33f, 0.28f, 0.67f, 0.65f)),
         // balão de fala (branco sobre preto) e parede de ladrilhos em relevo
         Photo("balao-fala.jpg", "NICE TO MEET YOU", 1, 0.99),
         // prints das lápides (melhores que as fotos da tela)
-        Photo("lapide-print-1.png", "JUMPS OVER THE LAZY DOG", 0, 0.7),
+        Photo("lapide-print-1.png", "JUMPS OVER THE LAZY DOG", 0, 0.77),
         Photo("lapide-print-1.png", "JUMPS OVER THE LAZY DOG", 0, 0.99, crop = listOf(0.6f, 0.12f, 0.93f, 0.85f)),
         // inteira: as folhas do cenário viram letras soltas (a variante de neon troca F por M)
         Photo("lapide-print-2.png", "THE QUICK BROWN FOX", 0, 0.65),
-        Photo("lapide-print-2.png", "THE QUICK BROWN FOX", 0, 0.85, crop = listOf(0.6f, 0.12f, 0.93f, 0.85f)),
+        Photo("lapide-print-2.png", "THE QUICK BROWN FOX", 0, 0.99, crop = listOf(0.6f, 0.12f, 0.93f, 0.85f)),
+        // recorte como o do usuário no app (pedra inteira, até a grama)
+        Photo("lapide-print-2.png", "THE QUICK BROWN FOX", 0, 0.99, crop = listOf(0.57f, 0.1f, 0.93f, 0.92f)),
         // letreiros de neon (só o contorno do glifo), recortados em volta de cada placa
-        Photo("neon-cidade.png", "WORK", 0, 0.7, crop = listOf(0.725f, 0.285f, 0.770f, 0.565f)),
-        Photo("neon-cidade.png", "EAT MEAT", 0, 0.8, crop = listOf(0.221f, 0.457f, 0.244f, 0.611f)),
-        Photo("parede-ladrilhos.jpg", "THE POINTS CONSTELLATE CONSPIRE TO CREATE SHAPES SHAPES TO TESSELLATE", 1, 0.9),
+        Photo("neon-cidade.png", "WORK", 0, 0.99, crop = listOf(0.725f, 0.285f, 0.770f, 0.565f)),
+        Photo("neon-cidade.png", "EAT MEAT", 0, 0.99, crop = listOf(0.221f, 0.457f, 0.244f, 0.611f)),
+        Photo("parede-ladrilhos.jpg", "THE POINTS CONSTELLATE CONSPIRE TO CREATE SHAPES SHAPES TO TESSELLATE", 1, 0.92),
     )
 
     private val dir = System.getProperty("zu.testdata")?.let(::File)

@@ -28,6 +28,21 @@ class RgbImage(val width: Int, val height: Int, val argb: IntArray) {
         if (max == 0) 0 else (max - min) * 255 / max
     })
 
+    /**
+     * Brilho sem a luz que passa pelas folhas: nas fotos do jogo, a luz puxa a cor para o magenta
+     * (vermelho sobe em relação ao verde). Quanto mais vermelho − verde acima do normal da imagem,
+     * mais luz caiu ali; o brilho é dividido por essa luz, e tinta iluminada volta a ser escura.
+     */
+    fun unlit(): GrayImage {
+        val rg = IntArray(argb.size) { i -> ((argb[i] shr 16) and 0xFF) - ((argb[i] shr 8) and 0xFF) }
+        val base = rg.sorted()[rg.size / 2]
+        val luma = luma()
+        return GrayImage(width, height, IntArray(argb.size) { i ->
+            val light = (rg[i] - base).coerceAtLeast(0)
+            (luma.pixels[i] * 1000 / (1000 + LIGHT_PER_RED * light)).coerceIn(0, 255)
+        }).stretched()
+    }
+
     /** Recorta e endireita [quad], mantendo as cores (canal por canal). */
     fun rectify(quad: Quad, maxSide: Int = 1600): RgbImage {
         val r = Perspective.rectify(red(), quad, maxSide)
@@ -46,6 +61,9 @@ class RgbImage(val width: Int, val height: Int, val argb: IntArray) {
     })
 
     companion object {
+        /** Quanto o brilho sobe (em milésimos) por unidade de vermelho − verde acima do normal (medido nas lápides). */
+        const val LIGHT_PER_RED = 35
+
         fun fromGray(gray: GrayImage) = RgbImage(gray.width, gray.height, IntArray(gray.pixels.size) {
             val v = gray.pixels[it]
             (0xFF shl 24) or (v shl 16) or (v shl 8) or v
