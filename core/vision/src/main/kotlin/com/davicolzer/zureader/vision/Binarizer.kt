@@ -30,6 +30,46 @@ object Binarizer {
         return bestThreshold
     }
 
+    /**
+     * Limiar local (média da vizinhança, por imagem integral): um pixel é tinta se for mais escuro
+     * (ou mais claro, se [inkIsDark] for falso) que a média de um quadrado de lado [window] em volta,
+     * por pelo menos [contrast] da média e [minDelta] níveis de cinza.
+     * Separa glifo de parede mesmo quando o resto da foto (céu, cenário, sombra) é bem diferente.
+     */
+    fun adaptiveMask(
+        image: GrayImage,
+        window: Int,
+        inkIsDark: Boolean,
+        contrast: Float = 0.10f,
+        minDelta: Int = 8,
+    ): BooleanArray {
+        val w = image.width
+        val h = image.height
+        val integral = LongArray((w + 1) * (h + 1))
+        for (y in 0 until h) {
+            var row = 0L
+            for (x in 0 until w) {
+                row += image.pixels[y * w + x]
+                integral[(y + 1) * (w + 1) + x + 1] = integral[y * (w + 1) + x + 1] + row
+            }
+        }
+        val r = (window / 2).coerceAtLeast(1)
+        return BooleanArray(w * h) { i ->
+            val x = i % w
+            val y = i / w
+            val x0 = (x - r).coerceAtLeast(0)
+            val x1 = (x + r).coerceAtMost(w - 1)
+            val y0 = (y - r).coerceAtLeast(0)
+            val y1 = (y + r).coerceAtMost(h - 1)
+            val sum = integral[(y1 + 1) * (w + 1) + x1 + 1] - integral[y0 * (w + 1) + x1 + 1] -
+                integral[(y1 + 1) * (w + 1) + x0] + integral[y0 * (w + 1) + x0]
+            val mean = sum.toFloat() / ((x1 - x0 + 1) * (y1 - y0 + 1))
+            val p = image.pixels[i]
+            val delta = maxOf(minDelta.toFloat(), contrast * mean)
+            if (inkIsDark) p < mean - delta else p > mean + delta
+        }
+    }
+
     /** Máscara de tinta: `true` onde há tinta. */
     fun mask(image: GrayImage, threshold: Int, inkIsDark: Boolean): BooleanArray =
         BooleanArray(image.pixels.size) { if (inkIsDark) image.pixels[it] <= threshold else image.pixels[it] > threshold }

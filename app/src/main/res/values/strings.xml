@@ -27,7 +27,7 @@
     <string name="result_low_confidence">Letras em dourado têm dúvida. Toque numa letra para corrigir.</string>
     <string name="result_tap_to_fix">Toque numa letra para corrigir.</string>
     <string name="result_empty_title">Nenhum glifo encontrado</string>
-    <string name="result_empty_body">Escolha uma imagem com o texto Zu bem visível. Recortar perto do texto ajuda.</string>
+    <string name="result_empty_body">Ajuste o recorte para ficar só em volta do texto Zu, ou escolha outra imagem.</string>
     <string name="result_copy">Copiar</string>
     <string name="result_share">Compartilhar</string>
     <string name="result_other_image">Outra imagem</string>
@@ -56,8 +56,8 @@
     <string name="crop_title">AJUSTAR RECORTE</string>
     <string name="crop_hint">Arraste os cantos até as bordas do texto. Se a foto foi tirada de lado, isso endireita o texto.</string>
     <string name="crop_confirm">Ler texto</string>
-    <string name="crop_whole">Usar a foto inteira</string>
-    <string name="crop_description">Foto capturada com o recorte marcado</string>
+    <string name="crop_whole">Usar a imagem inteira</string>
+    <string name="crop_description">Imagem com o recorte marcado</string>
     <string name="result_save">Salvar</string>
     <string name="result_saved">Salvo</string>
     <string name="result_saved_message">Salvo no histórico</string>
@@ -101,4 +101,5 @@
     <string name="settings_forget_title">Esquecer as correções?</string>
     <string name="settings_forget_body">O app volta a usar só o alfabeto padrão. Seu histórico não muda.</string>
     <string name="settings_forget_confirm">Esquecer</string>
+    <string name="result_adjust_crop">Ajustar recorte</string>
 </resources>

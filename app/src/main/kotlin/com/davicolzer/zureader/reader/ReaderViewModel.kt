@@ -31,11 +31,20 @@ import kotlinx.coroutines.withContext
 sealed interface ReaderUiState {
     data object Home : ReaderUiState
     data object Camera : ReaderUiState
-    data class Crop(val image: Bitmap, val gray: GrayImage, val suggestion: Quad) : ReaderUiState
+    /** Recorte de uma foto ([fromCamera]) ou de uma imagem da galeria, com os cantos sugeridos. */
+    data class Crop(val image: Bitmap, val gray: GrayImage, val suggestion: Quad, val fromCamera: Boolean) : ReaderUiState
     data object Reading : ReaderUiState
 
-    /** [savedId] não nulo = leitura que está no histórico; correções são gravadas nela. */
-    data class Result(val image: Bitmap, val result: ImageReading, val savedId: Long? = null) : ReaderUiState
+    /**
+     * [savedId] não nulo = leitura que está no histórico; correções são gravadas nela.
+     * [crop] guarda a imagem original e o recorte usado, para o usuário poder ajustar e ler de novo.
+     */
+    data class Result(
+        val image: Bitmap,
+        val result: ImageReading,
+        val savedId: Long? = null,
+        val crop: Crop? = null,
+    ) : ReaderUiState
     data object History : ReaderUiState
     data object Settings : ReaderUiState
     data object CouldNotOpen : ReaderUiState
@@ -73,25 +82,26 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         history.recent().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** Imagem da galeria: lê direto. */
+    /** Imagem da galeria: abre o recorte, com os cantos sugeridos em volta do texto. */
     fun read(uri: Uri) = work {
         val bitmap = withContext(Dispatchers.IO) { ImageLoading.decode(getApplication(), uri) }
-        val result = withContext(Dispatchers.Default) { imageReader.read(ImageLoading.toGray(bitmap)) }
-        ReaderUiState.Result(bitmap, result)
+        prepareCrop(bitmap, fromCamera = false)
     }
 
     fun openCamera() {
         _state.value = ReaderUiState.Camera
     }
 
-    /** Foto da câmera: sugere o recorte em volta do texto encontrado. */
-    fun onCaptured(photo: Bitmap) = work {
+    /** Foto da câmera: abre o recorte, com os cantos sugeridos em volta do texto. */
+    fun onCaptured(photo: Bitmap) = work { prepareCrop(photo, fromCamera = true) }
+
+    private suspend fun prepareCrop(image: Bitmap, fromCamera: Boolean): ReaderUiState.Crop =
         withContext(Dispatchers.Default) {
-            val gray = ImageLoading.toGray(photo)
+            val gray = ImageLoading.toGray(image)
             val quick = imageReader.read(gray, deskew = false)
             val suggestion = quick.suggestedCrop() ?: Quad.inset(gray.width, gray.height, 0.08f)
-            ReaderUiState.Crop(photo, gray, suggestion)
+            ReaderUiState.Crop(image, gray, suggestion, fromCamera)
         }
-    }
 
     /** Endireita o quadrilátero escolhido e lê. */
     fun confirmCrop(quad: Quad) {
@@ -99,14 +109,31 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         work {
             withContext(Dispatchers.Default) {
                 val rectified = Perspective.rectify(crop.gray, quad)
-                ReaderUiState.Result(ImageLoading.toBitmap(rectified), imageReader.read(rectified))
+                ReaderUiState.Result(ImageLoading.toBitmap(rectified), imageReader.read(rectified), crop = crop.copy(suggestion = quad))
             }
         }
     }
 
     fun useWholePhoto() {
         val crop = _state.value as? ReaderUiState.Crop ?: return
-        work { withContext(Dispatchers.Default) { ReaderUiState.Result(crop.image, imageReader.read(crop.gray)) } }
+        work {
+            withContext(Dispatchers.Default) {
+                val whole = Quad.inset(crop.gray.width, crop.gray.height, 0f)
+                ReaderUiState.Result(crop.image, imageReader.read(crop.gray), crop = crop.copy(suggestion = whole))
+            }
+        }
+    }
+
+    /** Volta da leitura para o recorte, com os cantos que foram usados. */
+    fun adjustCrop() {
+        val crop = (_state.value as? ReaderUiState.Result)?.crop ?: return
+        _state.value = crop
+    }
+
+    /** Sai do recorte: volta para a câmera se a imagem veio dela, senão para o início. */
+    fun leaveCrop() {
+        val crop = _state.value as? ReaderUiState.Crop ?: return
+        _state.value = if (crop.fromCamera) ReaderUiState.Camera else ReaderUiState.Home
     }
 
     /**

@@ -84,13 +84,13 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
             )
         }
         is ReaderUiState.Crop -> {
-            BackHandler(onBack = viewModel::openCamera)
+            BackHandler(onBack = viewModel::leaveCrop)
             CropScreen(
                 image = s.image,
                 suggestion = s.suggestion,
                 onConfirm = viewModel::confirmCrop,
                 onUseWhole = viewModel::useWholePhoto,
-                onRetake = viewModel::openCamera,
+                onRetake = viewModel::leaveCrop,
             )
         }
         ReaderUiState.Reading -> ReadingProgress()
@@ -106,6 +106,7 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
                 onCorrect = viewModel::correct,
                 onSave = viewModel::save,
                 onDelete = viewModel::deleteCurrent,
+                onAdjustCrop = if (s.crop != null) viewModel::adjustCrop else null,
             )
         }
     }

@@ -27,4 +27,7 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+    // fotos reais do jogo (testdata/real) usadas como teste de regressão
+    systemProperty("zu.testdata", rootProject.file("testdata/real").absolutePath)
+    inputs.dir(rootProject.file("testdata/real")).withPropertyName("fotosReais").optional()
 }

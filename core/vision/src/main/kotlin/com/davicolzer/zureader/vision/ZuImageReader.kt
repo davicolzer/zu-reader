@@ -52,31 +52,98 @@ class ZuImageReader(
     private val classifier: GlyphClassifier = GlyphClassifier(),
 ) {
     /**
-     * @param deskew corrigir inclinação. Desligar deixa a leitura ~2× mais rápida
-     * (útil no visor ao vivo da câmera).
+     * @param deskew corrigir inclinação.
+     * @param thorough testar todas as máscaras. Desligar (com [deskew] desligado) deixa a leitura
+     * bem mais rápida, para o visor ao vivo da câmera.
      */
-    fun read(image: GrayImage, deskew: Boolean = true): ImageReading {
+    fun read(image: GrayImage, deskew: Boolean = true, thorough: Boolean = true): ImageReading {
         val threshold = Binarizer.otsu(image)
-        return listOf(true, false)
-            .map { dark -> readWithPolarity(image, threshold, dark, deskew) }
-            .maxBy { it.second }
-            .first
+        val windows = if (thorough) ADAPTIVE_WINDOWS else QUICK_WINDOWS
+        val masks = buildList {
+            // limiar único: bom para prints limpos e recortes só com a parede
+            for (dark in listOf(true, false)) add(Binarizer.mask(image, threshold, dark) to dark)
+            // limiar local, em algumas escalas: bom para fotos com cenário em volta.
+            // Antes, um desfoque leve tira o chiado de foto de tela (moiré) e de JPEG.
+            // A janela ideal tem uns 3–4 glifos; como o tamanho do glifo não é conhecido, testa várias
+            // (num recorte o texto ocupa a imagem quase toda; numa foto inteira, uma parte pequena).
+            val side = maxOf(image.width, image.height)
+            val blurred = HashMap<Int, GrayImage>()
+            for (fraction in windows) {
+                val window = (side * fraction).toInt()
+                if (window < 9) continue
+                val radius = (window / BLUR_PER_WINDOW).coerceAtLeast(1)
+                val smooth = blurred.getOrPut(radius) { image.boxBlur(radius) }
+                for (dark in listOf(true, false)) add(Binarizer.adaptiveMask(smooth, window, dark) to dark)
+            }
+        }
+        val singles = masks.map { (mask, dark) -> readWithMask(image, mask, dark, deskew) }
+        val best = singles.maxBy { it.quality }
+
+        // Cada máscara acerta glifos diferentes: combina, glifo a glifo, as da mesma polaridade.
+        val sameInk = singles.filter { it.reading.inkIsDark == best.reading.inkIsDark }.map { it.straightGlyphs }
+        val fused = fuse(sameInk)
+        val fusedReading = if (fused.isEmpty()) null else readGroups(image, groupBySize(fused), identity(image), best.reading.inkIsDark)
+
+        val candidates = singles.map { it.reading to it.quality } + listOfNotNull(fusedReading)
+        return candidates.maxBy { it.second }.first
     }
 
-    private fun readWithPolarity(image: GrayImage, threshold: Int, inkIsDark: Boolean, deskew: Boolean): Pair<ImageReading, Float> {
-        val raw = Binarizer.mask(image, threshold, inkIsDark)
+    private class Candidate(val reading: ImageReading, val quality: Float, val straightGlyphs: List<PlacedGlyph>)
+
+    private fun identity(image: GrayImage) = DeskewedMask(BooleanArray(0), image.width, image.height, 0f, image.width, image.height)
+
+    /**
+     * Junta os glifos de várias máscaras: em cada posição fica o mais confiante. Um glifo só entra
+     * se apareceu em pelo menos [MIN_VOTES] máscaras ou se for bem confiante, porque sujeira do
+     * cenário costuma aparecer numa máscara só.
+     */
+    private fun fuse(sets: List<List<PlacedGlyph>>): List<PlacedGlyph> {
+        class Cell(val glyph: PlacedGlyph, val confidence: Float) { val votes = mutableSetOf<Int>() }
+        val all = sets.flatMapIndexed { i, set -> set.map { Triple(i, it, classifier.classify(it.bits).confidence) } }
+            .sortedByDescending { it.third }
+        val cells = mutableListOf<Cell>()
+        for ((set, glyph, confidence) in all) {
+            val same = cells.firstOrNull { c ->
+                val near = minOf(c.glyph.size, glyph.size) / 2
+                kotlin.math.abs(c.glyph.x - glyph.x) < near && kotlin.math.abs(c.glyph.y - glyph.y) < near
+            }
+            (same ?: Cell(glyph, confidence).also { cells += it }).votes += set
+        }
+        return cells.filter { it.votes.size >= MIN_VOTES || it.confidence >= SURE_CONFIDENCE }.map { it.glyph }
+    }
+
+    /** Agrupa glifos de tamanho parecido que se encostam (um grupo = um bloco de texto). */
+    private fun groupBySize(glyphs: List<PlacedGlyph>): List<List<PlacedGlyph>> {
+        val parent = IntArray(glyphs.size) { it }
+        fun find(i: Int): Int { var x = i; while (parent[x] != x) { parent[x] = parent[parent[x]]; x = parent[x] }; return x }
+        for (i in glyphs.indices) for (j in i + 1 until glyphs.size) {
+            val a = glyphs[i]
+            val b = glyphs[j]
+            if (maxOf(a.size, b.size) / minOf(a.size, b.size) > MERGE_SIZE_RATIO) continue
+            val pad = maxOf(a.size, b.size)
+            if (bounds(listOf(a), pad / 2).intersects(bounds(listOf(b), pad / 2))) parent[find(i)] = find(j)
+        }
+        return glyphs.indices.groupBy(::find).values.map { idx -> idx.map { glyphs[it] } }
+    }
+
+    private fun readWithMask(image: GrayImage, raw: BooleanArray, inkIsDark: Boolean, deskew: Boolean): Candidate {
         // Endireitar só pode ajudar: lê como veio e endireitado, e fica com o melhor.
         val angle = if (deskew) Deskew.estimate(raw, image.width, image.height) else 0f
-        val straight = readMask(image, Deskew.apply(raw, image.width, image.height, 0f), inkIsDark)
-        if (angle == 0f) return straight
-        val tilted = readMask(image, Deskew.apply(raw, image.width, image.height, angle), inkIsDark)
-        return if (tilted.second > straight.second) tilted else straight
+        val straightMask = Deskew.apply(raw, image.width, image.height, 0f)
+        val straightGroups = extractGroups(straightMask)
+        val straight = readGroups(image, straightGroups, straightMask, inkIsDark)
+        val glyphs = straightGroups.flatten()
+        if (angle == 0f) return Candidate(straight.first, straight.second, glyphs)
+        val tiltedMask = Deskew.apply(raw, image.width, image.height, angle)
+        val tilted = readGroups(image, extractGroups(tiltedMask), tiltedMask, inkIsDark)
+        val chosen = if (tilted.second > straight.second) tilted else straight
+        return Candidate(chosen.first, chosen.second, glyphs)
     }
 
-    private fun readMask(image: GrayImage, deskewed: DeskewedMask, inkIsDark: Boolean): Pair<ImageReading, Float> {
-        val angle = deskewed.angleDegrees
+    /** Glifos de uma máscara, agrupados por tamanho (coordenadas da máscara endireitada). */
+    private fun extractGroups(deskewed: DeskewedMask): List<List<PlacedGlyph>> {
         val components = Components.find(deskewed.mask, deskewed.width, deskewed.height)
-        val groups = GlyphSegmenter.segmentGroups(components)
+        return GlyphSegmenter.segmentGroups(components)
             .map { boxes ->
                 boxes.mapNotNull { box ->
                     val sampled = GlyphSampler.sampleWithQuality(deskewed.mask, deskewed.width, box)
@@ -85,12 +152,30 @@ class ZuImageReader(
                 }.filter { !it.isSolid() && classifier.classify(it.bits).isGlyph }
             }
             .filter { it.isNotEmpty() }
+            .let(::mergeNearbyGroups)
+    }
+
+    /** Lê os grupos e devolve a leitura (posições na imagem original) com a nota usada na escolha. */
+    private fun readGroups(
+        image: GrayImage,
+        groups: List<List<PlacedGlyph>>,
+        deskewed: DeskewedMask,
+        inkIsDark: Boolean,
+    ): Pair<ImageReading, Float> {
+        val angle = deskewed.angleDegrees
+        if (groups.isEmpty()) return ImageReading(ZuReading.EMPTY, emptyList(), inkIsDark, image.width, image.height) to 0f
 
         // A orientação vale para a imagem inteira: soma a pontuação de todos os blocos.
         val (rotation, blocks) = (0..3)
             .map { q -> q to groups.map { reader.read(it, rotation = q) } }
             .maxBy { (q, readings) -> readings.sumOf { it.score } - if (q == 0) 0 else ZuReader.ROTATION_COST }
+        // Blocos extras quase sem confiança são cenário, não texto (o melhor bloco sempre fica).
+        val best = blocks.maxOfOrNull { b -> b.glyphs.sumOf { it.confidence.toDouble() } }
         val ordered = blocks.zip(groups)
+            .filter { (reading, _) ->
+                reading.glyphs.sumOf { it.confidence.toDouble() } == best ||
+                    reading.glyphs.map { it.confidence }.average() >= MIN_EXTRA_BLOCK_CONFIDENCE
+            }
             .sortedBy { (_, glyphs) -> ZuLayout.rotate(glyphs, rotation).minOf { it.y - it.height / 2 } }
             .map { (reading, _) -> reading.toSource(deskewed) }
 
@@ -101,8 +186,71 @@ class ZuImageReader(
             direction = ordered.firstOrNull()?.direction ?: ZuReading.EMPTY.direction,
             score = ordered.sumOf { it.score },
         )
-        val quality = merged.glyphs.sumOf { it.confidence.toDouble() }.toFloat()
+        // Glifos confiantes somam, duvidosos subtraem: uma máscara que "acha" lixo não vence.
+        val quality = merged.glyphs.sumOf { it.confidence.toDouble() - QUALITY_OFFSET }.toFloat()
         return ImageReading(merged, ordered, inkIsDark, image.width, image.height, skewDegrees = -angle) to quality
+    }
+
+    /**
+     * Junta grupos de tamanho parecido (até [MERGE_SIZE_RATIO]×) que se encostam: numa foto
+     * tirada de lado, os glifos de cima e de baixo do mesmo texto ficam com tamanhos diferentes.
+     */
+    private fun mergeNearbyGroups(groups: List<List<PlacedGlyph>>): List<List<PlacedGlyph>> {
+        val merged = groups.map { it.toMutableList() }.toMutableList()
+        var changed = true
+        while (changed) {
+            changed = false
+            loop@ for (i in merged.indices) for (j in i + 1 until merged.size) {
+                val a = merged[i]
+                val b = merged[j]
+                val sa = a.map { it.size }.sorted()[a.size / 2]
+                val sb = b.map { it.size }.sorted()[b.size / 2]
+                if (maxOf(sa, sb) / minOf(sa, sb) > MERGE_SIZE_RATIO) continue
+                val pad = maxOf(sa, sb)
+                if (bounds(a, pad).intersects(bounds(b, pad))) {
+                    a += b
+                    merged.removeAt(j)
+                    changed = true
+                    break@loop
+                }
+            }
+        }
+        return merged
+    }
+
+    private data class Box(val left: Float, val top: Float, val right: Float, val bottom: Float) {
+        fun intersects(o: Box) = left <= o.right && o.left <= right && top <= o.bottom && o.top <= bottom
+    }
+
+    private fun bounds(glyphs: List<PlacedGlyph>, pad: Float) = Box(
+        glyphs.minOf { it.x - it.width / 2 } - pad,
+        glyphs.minOf { it.y - it.height / 2 } - pad,
+        glyphs.maxOf { it.x + it.width / 2 } + pad,
+        glyphs.maxOf { it.y + it.height / 2 } + pad,
+    )
+
+    companion object {
+        /** Confiança média mínima para manter um bloco que não é o principal. */
+        const val MIN_EXTRA_BLOCK_CONFIDENCE = 0.5
+
+        /** Cada glifo vale (confiança − isto) na escolha da melhor máscara. */
+        const val QUALITY_OFFSET = 0.4
+
+        /** Na combinação de máscaras: votos mínimos, ou confiança mínima, para um glifo entrar. */
+        const val MIN_VOTES = 2
+        const val SURE_CONFIDENCE = 0.8f
+
+        /** Grupos com tamanhos até esta proporção, e encostados, são o mesmo texto. */
+        const val MERGE_SIZE_RATIO = 1.5f
+
+        /** Lados da janela do limiar local, como fração do maior lado da imagem. */
+        val ADAPTIVE_WINDOWS = listOf(0.06f, 0.12f, 0.18f, 0.27f, 0.4f, 0.6f)
+
+        /** Janelas da leitura rápida (visor ao vivo). */
+        val QUICK_WINDOWS = listOf(0.12f, 0.27f)
+
+        /** Raio do desfoque antes do limiar local = janela / este valor (~2 px para uma janela de 4 glifos de 25 px). */
+        const val BLUR_PER_WINDOW = 48
     }
 
     /** Leva as posições dos glifos de volta para a imagem original (antes de endireitar). */
