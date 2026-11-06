@@ -2,9 +2,16 @@
 
 O CI (`.github/workflows/android.yml`) tem três etapas:
 
-1. **Testes e lint**: testes do leitor e da visão, lint do app.
-2. **Build dos APKs**: APK de teste, APK e AAB de release.
-3. **Publicar release**: só na `main` (ou rodando a action à mão em **Actions → Android CI → Run workflow**). Cria uma release em **Releases** com os arquivos.
+| Etapa | No PR | Depois do merge na `main` |
+|---|---|---|
+| 1 · Testes e lint | roda | pulada (o código já passou no PR) |
+| 2 · Build dos APKs | roda, depois dos testes | roda |
+| 3 · Publicar release | não roda | roda: cria uma release em **Releases** com os arquivos |
+
+Também dá para rodar à mão em **Actions → Android CI → Run workflow** (faz o build e publica a release).
+
+Como a `main` não roda testes, vale proteger a branch no GitHub (**Settings → Branches**) exigindo PR com o
+job "1 · Testes e lint" aprovado antes do merge.
 
 ## Instalar para testar
 

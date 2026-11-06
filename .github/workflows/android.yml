@@ -1,8 +1,8 @@
 name: Android CI
 
-# Em PRs: testes, lint e build dos APKs.
-# Na main (e quando rodada à mão em qualquer branch): também publica uma release
-# com o APK para instalar no celular.
+# No PR: testes e lint, depois o build dos APKs (para conferir que tudo compila).
+# Depois do merge na main (ou rodando à mão): só o build e a publicação da release,
+# porque o código já passou pelos testes no PR.
 on:
   push:
     branches: [main]
@@ -20,6 +20,7 @@ permissions:
 jobs:
   testes:
     name: 1 · Testes e lint
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -62,6 +63,8 @@ jobs:
   apk:
     name: 2 · Build dos APKs
     needs: testes
+    # No PR, só depois dos testes passarem; na main, os testes são pulados e o build roda direto.
+    if: always() && (needs.testes.result == 'success' || needs.testes.result == 'skipped')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     outputs:
@@ -130,7 +133,7 @@ jobs:
   release:
     name: 3 · Publicar release
     needs: apk
-    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
+    if: always() && needs.apk.result == 'success' && ((github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
