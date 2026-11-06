@@ -56,9 +56,31 @@ class ZuImageReader(
      * @param thorough testar todas as máscaras. Desligar (com [deskew] desligado) deixa a leitura
      * bem mais rápida, para o visor ao vivo da câmera.
      */
-    fun read(image: GrayImage, deskew: Boolean = true, thorough: Boolean = true): ImageReading {
-        val threshold = Binarizer.otsu(image)
+    fun read(image: GrayImage, deskew: Boolean = true, thorough: Boolean = true): ImageReading =
+        choose(image, listOf(candidates(image, deskew, if (thorough) ADAPTIVE_WINDOWS else QUICK_WINDOWS)))
+
+    /**
+     * Lê uma imagem colorida. Primeiro em cinza (luminância); se a leitura sair fraca, testa também
+     * contraste esticado, cada canal de cor e saturação, e combina os glifos de todas as versões.
+     */
+    fun read(image: RgbImage, deskew: Boolean = true, thorough: Boolean = true): ImageReading {
+        val luma = image.luma()
         val windows = if (thorough) ADAPTIVE_WINDOWS else QUICK_WINDOWS
+        val first = candidates(luma, deskew, windows)
+        if (!thorough || !isWeak(first)) return choose(luma, listOf(first))
+        val variants = listOf(luma.stretched(), image.red(), image.green(), image.blue(), image.saturation())
+        return choose(luma, listOf(first) + variants.map { candidates(it, deskew = false, windows = QUICK_WINDOWS) })
+    }
+
+    /** Leitura fraca: poucos glifos ou confiança média baixa no melhor candidato. */
+    private fun isWeak(candidates: List<Candidate>): Boolean {
+        val glyphs = candidates.maxBy { it.quality }.reading.reading.glyphs
+        return glyphs.size < WEAK_GLYPHS || glyphs.map { it.confidence }.average() < WEAK_CONFIDENCE
+    }
+
+    /** Uma leitura candidata por máscara: limiar único e limiar local em várias escalas, nas duas polaridades. */
+    private fun candidates(image: GrayImage, deskew: Boolean, windows: List<Float>): List<Candidate> {
+        val threshold = Binarizer.otsu(image)
         val masks = buildList {
             // limiar único: bom para prints limpos e recortes só com a parede
             for (dark in listOf(true, false)) add(Binarizer.mask(image, threshold, dark) to dark)
@@ -76,16 +98,28 @@ class ZuImageReader(
                 for (dark in listOf(true, false)) add(Binarizer.adaptiveMask(smooth, window, dark) to dark)
             }
         }
-        val singles = masks.map { (mask, dark) -> readWithMask(image, mask, dark, deskew) }
-        val best = singles.maxBy { it.quality }
+        return masks.map { (mask, dark) -> readWithMask(image, mask, dark, deskew) }
+    }
 
-        // Cada máscara acerta glifos diferentes: combina, glifo a glifo, as da mesma polaridade.
-        val sameInk = singles.filter { it.reading.inkIsDark == best.reading.inkIsDark }.map { it.straightGlyphs }
-        val fused = fuse(sameInk)
+    /**
+     * Escolhe entre os candidatos e a combinação deles. Cada máscara (e cada versão da imagem)
+     * acerta glifos diferentes: a combinação junta, glifo a glifo, o melhor de cada posição.
+     * Em cada versão ([perVariant]) só entram as máscaras da polaridade do seu melhor candidato:
+     * a polaridade invertida enxerga o fundo como tinta e traz lixo. Entre versões a polaridade
+     * pode mudar (na saturação, o glifo pode ser o mais claro).
+     */
+    private fun choose(image: GrayImage, perVariant: List<List<Candidate>>): ImageReading {
+        val candidates = perVariant.flatten()
+        val best = candidates.maxBy { it.quality }
+        val fused = fuse(
+            perVariant.flatMap { variant ->
+                val ink = variant.maxBy { it.quality }.reading.inkIsDark
+                variant.filter { it.reading.inkIsDark == ink }.map { it.straightGlyphs }
+            },
+        )
         val fusedReading = if (fused.isEmpty()) null else readGroups(image, groupBySize(fused), identity(image), best.reading.inkIsDark)
-
-        val candidates = singles.map { it.reading to it.quality } + listOfNotNull(fusedReading)
-        return candidates.maxBy { it.second }.first
+        val all = candidates.map { it.reading to it.quality } + listOfNotNull(fusedReading)
+        return all.maxBy { it.second }.first
     }
 
     private class Candidate(val reading: ImageReading, val quality: Float, val straightGlyphs: List<PlacedGlyph>)
@@ -235,6 +269,10 @@ class ZuImageReader(
 
         /** Cada glifo vale (confiança − isto) na escolha da melhor máscara. */
         const val QUALITY_OFFSET = 0.4
+
+        /** Leitura fraca (abaixo disto) faz o leitor testar também as versões de cor. */
+        const val WEAK_GLYPHS = 4
+        const val WEAK_CONFIDENCE = 0.85
 
         /** Na combinação de máscaras: votos mínimos, ou confiança mínima, para um glifo entrar. */
         const val MIN_VOTES = 2

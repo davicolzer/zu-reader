@@ -9,10 +9,9 @@ import com.davicolzer.zureader.ZuReaderApplication
 import com.davicolzer.zureader.data.HistoryItem
 import com.davicolzer.zureader.data.Settings
 import com.davicolzer.zureader.data.ThemeMode
-import com.davicolzer.zureader.vision.GrayImage
 import com.davicolzer.zureader.vision.ImageReading
-import com.davicolzer.zureader.vision.Perspective
 import com.davicolzer.zureader.vision.Quad
+import com.davicolzer.zureader.vision.RgbImage
 import com.davicolzer.zureader.vision.ZuImageReader
 import com.davicolzer.zureader.zu.GlyphClassifier
 import com.davicolzer.zureader.zu.ReadingDirection
@@ -32,7 +31,7 @@ sealed interface ReaderUiState {
     data object Home : ReaderUiState
     data object Camera : ReaderUiState
     /** Recorte de uma foto ([fromCamera]) ou de uma imagem da galeria, com os cantos sugeridos. */
-    data class Crop(val image: Bitmap, val gray: GrayImage, val suggestion: Quad, val fromCamera: Boolean) : ReaderUiState
+    data class Crop(val image: Bitmap, val rgb: RgbImage, val suggestion: Quad, val fromCamera: Boolean) : ReaderUiState
     data object Reading : ReaderUiState
 
     /**
@@ -97,10 +96,11 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
 
     private suspend fun prepareCrop(image: Bitmap, fromCamera: Boolean): ReaderUiState.Crop =
         withContext(Dispatchers.Default) {
-            val gray = ImageLoading.toGray(image)
-            val quick = imageReader.read(gray, deskew = false)
-            val suggestion = quick.suggestedCrop() ?: Quad.inset(gray.width, gray.height, 0.08f)
-            ReaderUiState.Crop(image, gray, suggestion, fromCamera)
+            val rgb = ImageLoading.toRgb(image)
+            // leitura rápida só para sugerir os cantos
+            val quick = imageReader.read(rgb, deskew = false, thorough = false)
+            val suggestion = quick.suggestedCrop() ?: Quad.inset(rgb.width, rgb.height, 0.08f)
+            ReaderUiState.Crop(image, rgb, suggestion, fromCamera)
         }
 
     /** Endireita o quadrilátero escolhido e lê. */
@@ -108,7 +108,7 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         val crop = _state.value as? ReaderUiState.Crop ?: return
         work {
             withContext(Dispatchers.Default) {
-                val rectified = Perspective.rectify(crop.gray, quad)
+                val rectified = crop.rgb.rectify(quad)
                 ReaderUiState.Result(ImageLoading.toBitmap(rectified), imageReader.read(rectified), crop = crop.copy(suggestion = quad))
             }
         }
@@ -118,8 +118,8 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         val crop = _state.value as? ReaderUiState.Crop ?: return
         work {
             withContext(Dispatchers.Default) {
-                val whole = Quad.inset(crop.gray.width, crop.gray.height, 0f)
-                ReaderUiState.Result(crop.image, imageReader.read(crop.gray), crop = crop.copy(suggestion = whole))
+                val whole = Quad.inset(crop.rgb.width, crop.rgb.height, 0f)
+                ReaderUiState.Result(crop.image, imageReader.read(crop.rgb), crop = crop.copy(suggestion = whole))
             }
         }
     }

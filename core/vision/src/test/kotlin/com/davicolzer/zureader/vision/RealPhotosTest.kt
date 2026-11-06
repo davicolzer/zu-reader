@@ -25,15 +25,15 @@ class RealPhotosTest {
 
     private val photos = listOf(
         Photo("parede-escura.jpg", "THE POINTS CONSTELLATE CONSPIRE TO CREATE SHAPES SHAPES TO TESSELLATE", 0, 0.97),
-        Photo("parede-clara.jpg", "THE POINTS CONSTELLATE CONSPIRE TO CREATE SHAPES SHAPES TO TESSELLATE", 1, 0.80),
+        Photo("parede-clara.jpg", "THE POINTS CONSTELLATE CONSPIRE TO CREATE SHAPES SHAPES TO TESSELLATE", 1, 0.97),
         Photo("lapide-2.jpg", "JUMPS OVER THE LAZY DOG", 1, 0.65),
         Photo("lapide-1.jpg", "THE QUICK BROWN FOX", 1, 0.45),
     )
 
     private val dir = System.getProperty("zu.testdata")?.let(::File)
 
-    /** Abre como o app: em pé e com no máximo 1600 px no maior lado. */
-    private fun load(photo: Photo): GrayImage {
+    /** Abre como o app: em pé, colorida e com no máximo 1600 px no maior lado. */
+    private fun load(photo: Photo): RgbImage {
         val src = ImageIO.read(File(dir, photo.file))
         val scale = minOf(1.0, 1600.0 / maxOf(src.width, src.height))
         val w = (src.width * scale).toInt()
@@ -44,9 +44,17 @@ class RealPhotosTest {
             drawImage(src, 0, 0, w, h, null)
             dispose()
         }
-        var gray = GrayImage.fromArgb(w, h, small.getRGB(0, 0, w, h, null, 0, w))
-        repeat(photo.exifTurns) { gray = ImageEffects.rotate90(gray) }
-        return gray
+        var argb = small.getRGB(0, 0, w, h, null, 0, w)
+        var iw = w
+        var ih = h
+        repeat(photo.exifTurns) {
+            // gira 90° no sentido horário
+            val out = IntArray(argb.size)
+            for (y in 0 until ih) for (x in 0 until iw) out[x * ih + (ih - 1 - y)] = argb[y * iw + x]
+            argb = out
+            iw = ih.also { ih = iw }
+        }
+        return RgbImage(iw, ih, argb)
     }
 
     /** 1 − distância de edição / letras esperadas, ignorando espaços e quebras de linha. */
