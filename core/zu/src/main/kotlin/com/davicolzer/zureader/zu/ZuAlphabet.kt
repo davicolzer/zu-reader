@@ -56,6 +56,12 @@ object ZuAlphabet : GlyphSet {
         glyphs.flatMap { g -> g.letters.map { it to g } }.toMap()
 
     /** Glifo que representa [letter] (A–Z, maiúscula ou minúscula). */
+    /**
+     * A letra que divide o glifo com [letter] (K↔Q, U↔V), ou `null`. Para essas, a letra
+     * mostrada vem do contexto do inglês e quem lê pode preferir a outra.
+     */
+    fun twin(letter: Char): Char? = glyphs.firstOrNull { letter in it.letters }?.letters?.firstOrNull { it != letter }
+
     override fun glyphFor(symbol: Char): ZuGlyph =
         byLetter[symbol.uppercaseChar()] ?: throw IllegalArgumentException("Letra sem glifo Zu: '$symbol'")
 

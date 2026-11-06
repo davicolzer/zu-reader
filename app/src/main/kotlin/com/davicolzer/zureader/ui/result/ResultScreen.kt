@@ -88,6 +88,7 @@ import com.davicolzer.zureader.ui.theme.ZuTheme
 import com.davicolzer.zureader.vision.ImageReading
 import com.davicolzer.zureader.zu.GlyphReading
 import com.davicolzer.zureader.zu.ReadingMode
+import com.davicolzer.zureader.zu.ZuAlphabet
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -193,6 +194,17 @@ fun ResultScreen(
                     style = MaterialTheme.typography.bodySmall,
                     color = if (doubt) ZuTheme.colors.gold else MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                // K/Q e U/V são o mesmo glifo: avisa quando aparecem
+                val pairs = if (mode != ReadingMode.TEXT) emptyList() else reading.glyphs
+                    .mapNotNull { g -> ZuAlphabet.twin(g.letter)?.let { listOf(g.letter, it).sorted().joinToString(" e ") } }
+                    .distinct().sorted()
+                if (pairs.isNotEmpty()) {
+                    Text(
+                        stringResource(R.string.result_twin_letters, pairs.joinToString(", ")),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
 
             // alturas iguais mesmo com fonte grande

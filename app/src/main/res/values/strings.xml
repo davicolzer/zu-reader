@@ -25,6 +25,7 @@
         <item quantity="other">%1$d glifos · imagem girada %2$d°</item>
     </plurals>
     <string name="result_low_confidence">Letras em dourado têm dúvida. Toque numa letra, aqui ou na foto, para corrigir.</string>
+    <string name="result_twin_letters">%1$s usam o mesmo glifo no Zu. A letra foi escolhida pelo contexto do inglês; toque no glifo para trocar.</string>
     <string name="result_tap_to_fix">Toque numa letra, aqui ou na foto, para corrigir.</string>
     <string name="result_empty_title">Nenhum glifo encontrado</string>
     <string name="result_empty_body">Ajuste o recorte para ficar só em volta do texto Zu, ou escolha outra imagem.</string>
@@ -69,6 +70,7 @@
     <string name="glyph_letter_doubt">Letra %1$s, com dúvida</string>
     <string name="correct_title">QUAL É ESTA LETRA?</string>
     <string name="correct_body_doubt">Confiança baixa. Escolha uma sugestão ou toque na letra certa.</string>
+    <string name="correct_body_twin">Lida como %1$s. No Zu, %1$s e %2$s usam o mesmo glifo: a letra vem do contexto do inglês. Toque em %2$s para trocar.</string>
     <string name="correct_body">Lida como %1$s. Se estiver errada, toque na letra certa.</string>
     <string name="correct_suggestions">SUGESTÕES</string>
     <string name="correct_current">atual</string>
