@@ -71,6 +71,7 @@ fun HomeScreen(
     onSeeAll: () -> Unit = {},
     mode: ModeChoice = ModeChoice.AUTO,
     onMode: (ModeChoice) -> Unit = {},
+    onWrite: () -> Unit = {},
 ) {
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -135,6 +136,11 @@ fun HomeScreen(
                 text = stringResource(R.string.home_pick_gallery),
                 icon = R.drawable.ic_pixel_gallery,
                 onClick = onPickFromGallery ?: notYet,
+            )
+            PixelOutlinedButton(
+                text = stringResource(R.string.home_write),
+                icon = R.drawable.ic_pixel_keyboard,
+                onClick = onWrite,
             )
             Spacer(Modifier.height(6.dp))
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {

@@ -89,14 +89,28 @@ object ZuLayout {
         size: Float = 10f,
         glyphs: GlyphSet = ZuAlphabet,
     ): List<PlacedGlyph> {
-        val words = text.uppercase().split(Regex("\\s+"))
-            .map { word -> word.filter(glyphs::contains) }
-            .filter { it.isNotEmpty() }
+        // "\n" força uma coluna (ou linha) nova; dentro de cada trecho, as palavras vão
+        // enchendo a coluna até [maxPerLine] glifos, sem cortar palavras
         val lines = mutableListOf<MutableList<String>>()
-        for (word in words) {
-            val line = lines.lastOrNull()
-            val used = line?.sumOf { it.length + 1 }?.minus(1) ?: 0
-            if (line != null && used + 1 + word.length <= maxPerLine) line += word else lines += mutableListOf(word)
+        for (paragraph in text.uppercase().split('\n')) {
+            val words = paragraph.split(Regex("\\s+"))
+                .map { word -> word.filter(glyphs::contains) }
+                .filter { it.isNotEmpty() }
+            if (words.isEmpty()) {
+                // quebra seguida de quebra: deixa uma coluna vazia
+                if (lines.isNotEmpty()) lines += mutableListOf<String>()
+                continue
+            }
+            var line: MutableList<String>? = null
+            for (word in words) {
+                val used = line?.sumOf { it.length + 1 }?.minus(1) ?: 0
+                if (line != null && used + 1 + word.length <= maxPerLine) {
+                    line += word
+                } else {
+                    line = mutableListOf(word)
+                    lines += line
+                }
+            }
         }
 
         val pitch = PITCH * size

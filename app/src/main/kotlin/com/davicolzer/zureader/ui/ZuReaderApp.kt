@@ -30,6 +30,7 @@ import com.davicolzer.zureader.ui.home.HomeScreen
 import com.davicolzer.zureader.ui.settings.SettingsScreen
 import com.davicolzer.zureader.ui.theme.ZuReaderTheme
 import com.davicolzer.zureader.ui.result.ResultScreen
+import com.davicolzer.zureader.ui.write.WriteScreen
 
 @Composable
 fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
@@ -54,7 +55,12 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
             onSeeAll = viewModel::openHistory,
             mode = settings.mode,
             onMode = viewModel::setMode,
+            onWrite = { viewModel.openWriter() },
         )
+        is ReaderUiState.Write -> {
+            BackHandler(onBack = viewModel::goHome)
+            WriteScreen(draft = s.draft, direction = settings.direction, onDone = viewModel::finishWriting, onBack = viewModel::goHome)
+        }
         ReaderUiState.History -> {
             val all by viewModel.allHistory.collectAsStateWithLifecycle()
             BackHandler(onBack = viewModel::goHome)
@@ -99,7 +105,11 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
         }
         ReaderUiState.Reading -> ReadingProgress()
         is ReaderUiState.Result -> {
-            val back = if (s.savedId != null) viewModel::openHistory else viewModel::goHome
+            val back: () -> Unit = when {
+                s.savedId != null -> viewModel::openHistory
+                s.written != null -> { { viewModel.openWriter(s.written) } }
+                else -> viewModel::goHome
+            }
             BackHandler(onBack = back)
             ResultScreen(
                 image = s.image,

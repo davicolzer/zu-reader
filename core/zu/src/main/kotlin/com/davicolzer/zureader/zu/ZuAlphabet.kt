@@ -62,6 +62,22 @@ object ZuAlphabet : GlyphSet {
      */
     fun twin(letter: Char): Char? = glyphs.firstOrNull { letter in it.letters }?.letters?.firstOrNull { it != letter }
 
+    /**
+     * As 6 formas do alfabeto, cada uma com as suas 4 rotações (girando 90° no sentido horário a
+     * partir da primeira letra da forma). Ajuda a achar um glifo pelo desenho, sem saber a letra.
+     */
+    val shapes: List<List<ZuGlyph>> by lazy {
+        val left = glyphs.toMutableList()
+        buildList {
+            while (left.isNotEmpty()) {
+                val first = left.first()
+                val family = (0..3).mapNotNull { q -> left.firstOrNull { it.pattern == first.pattern.rotate(q) } }.distinct()
+                left -= family.toSet()
+                add(family)
+            }
+        }
+    }
+
     override fun glyphFor(symbol: Char): ZuGlyph =
         byLetter[symbol.uppercaseChar()] ?: throw IllegalArgumentException("Letra sem glifo Zu: '$symbol'")
 
