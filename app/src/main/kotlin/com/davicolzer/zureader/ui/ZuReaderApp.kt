@@ -75,7 +75,7 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
             BackHandler(onBack = viewModel::goHome)
             SettingsScreen(
                 settings = settings,
-                versionName = BuildConfig.VERSION_NAME,
+                versionName = "${BuildConfig.VERSION_NAME} (build ${BuildConfig.VERSION_CODE})",
                 onDirection = viewModel::setDirection,
                 onTheme = viewModel::setTheme,
                 learnedCount = learned.size,
