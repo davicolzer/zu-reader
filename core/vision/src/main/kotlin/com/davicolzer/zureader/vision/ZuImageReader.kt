@@ -327,7 +327,10 @@ class ZuImageReader(
         if (group.size < 3) return group
         val w = group.map { it.width }.sorted()[group.size / 2]
         val h = group.map { it.height }.sorted()[group.size / 2]
-        return group.filterNot { it.width < w * PIECE_RATIO || it.height < h * PIECE_RATIO }
+        // e bem maiores também: vários glifos colados numa caixa só (que esconderia os de baixo)
+        return group.filterNot {
+            it.width < w * PIECE_RATIO || it.height < h * PIECE_RATIO || it.width > w * MERGED_RATIO || it.height > h * MERGED_RATIO
+        }
     }
 
     /** Melhor leitura de um glifo em volta de ([cx], [cy]), ou `null` se ali não há um glifo. */
@@ -494,6 +497,9 @@ class ZuImageReader(
 
         /** Caixa com largura ou altura abaixo disto × a do bloco é pedaço de glifo. */
         const val PIECE_RATIO = 0.65f
+
+        /** Caixa com largura ou altura acima disto × a do bloco é vários glifos colados. */
+        const val MERGED_RATIO = 1.6f
         const val SURE_CONFIDENCE = 0.8f
 
         /** Grupos com tamanhos até esta proporção, e a até [MERGE_GAP] glifos um do outro, são o mesmo texto. */
