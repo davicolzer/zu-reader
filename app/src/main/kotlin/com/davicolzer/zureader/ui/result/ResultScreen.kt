@@ -43,6 +43,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -130,6 +131,35 @@ fun ResultScreen(
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(snackbar) },
+        // ações fixas no rodapé, sempre inteiras e acima da barra de gestos (o resto rola)
+        bottomBar = {
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.background)
+                    .navigationBarsPadding()
+                    .padding(horizontal = 20.dp, vertical = 10.dp),
+            ) {
+                // alturas iguais mesmo com fonte grande
+                Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ActionTile(R.drawable.ic_pixel_copy, stringResource(R.string.result_copy), Modifier.weight(1f)) {
+                        copyText(context, mode.display(reading.text))
+                        scope.launch { snackbar.showSnackbar(copied) }
+                    }
+                    ActionTile(R.drawable.ic_pixel_share, stringResource(R.string.result_share), Modifier.weight(1f)) {
+                        shareText(context, mode.display(reading.text))
+                    }
+                    if (savedId == null) {
+                        ActionTile(R.drawable.ic_pixel_save, stringResource(R.string.result_save), Modifier.weight(1f), primary = true) {
+                            onSave()
+                            scope.launch { snackbar.showSnackbar(savedMessage) }
+                        }
+                    } else {
+                        ActionTile(R.drawable.ic_pixel_check, stringResource(R.string.result_saved), Modifier.weight(1f), enabled = false) {}
+                    }
+                }
+            }
+        },
         topBar = {
             TopAppBar(
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
@@ -225,24 +255,6 @@ fun ResultScreen(
                 }
             }
 
-            // alturas iguais mesmo com fonte grande
-            Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ActionTile(R.drawable.ic_pixel_copy, stringResource(R.string.result_copy), Modifier.weight(1f)) {
-                    copyText(context, mode.display(reading.text))
-                    scope.launch { snackbar.showSnackbar(copied) }
-                }
-                ActionTile(R.drawable.ic_pixel_share, stringResource(R.string.result_share), Modifier.weight(1f)) {
-                    shareText(context, mode.display(reading.text))
-                }
-                if (savedId == null) {
-                    ActionTile(R.drawable.ic_pixel_save, stringResource(R.string.result_save), Modifier.weight(1f), primary = true) {
-                        onSave()
-                        scope.launch { snackbar.showSnackbar(savedMessage) }
-                    }
-                } else {
-                    ActionTile(R.drawable.ic_pixel_check, stringResource(R.string.result_saved), Modifier.weight(1f), enabled = false) {}
-                }
-            }
         }
     }
 
