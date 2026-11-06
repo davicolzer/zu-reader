@@ -12,6 +12,8 @@ import com.davicolzer.zureader.data.ThemeMode
 import com.davicolzer.zureader.vision.ImageReading
 import com.davicolzer.zureader.vision.Quad
 import com.davicolzer.zureader.vision.RgbImage
+import com.davicolzer.zureader.vision.ImageTextReader
+import com.davicolzer.zureader.vision.ModeChoice
 import com.davicolzer.zureader.vision.ZuImageReader
 import com.davicolzer.zureader.zu.ReadingDirection
 import com.davicolzer.zureader.zu.ReadingMode
@@ -60,17 +62,17 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         app.learned.learned.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     /** Leitor com o modo e a direção escolhidos e os glifos aprendidos; refeito quando algo muda. */
-    private val imageReader: ZuImageReader
+    private val imageReader: ImageTextReader
         get() {
             val key = ReaderKey(settings.value.mode, settings.value.direction, learned.value)
             readerCache?.let { (k, reader) -> if (k == key) return reader }
-            return ZuImageReader.forMode(key.mode, key.direction, key.learned).also { readerCache = key to it }
+            return ZuImageReader.forChoice(key.mode, key.direction, key.learned).also { readerCache = key to it }
         }
 
-    private data class ReaderKey(val mode: ReadingMode, val direction: ReadingDirection, val learned: List<ZuGlyph>)
+    private data class ReaderKey(val mode: ModeChoice, val direction: ReadingDirection, val learned: List<ZuGlyph>)
 
     @Volatile
-    private var readerCache: Pair<ReaderKey, ZuImageReader>? = null
+    private var readerCache: Pair<ReaderKey, ImageTextReader>? = null
     private val _state = MutableStateFlow<ReaderUiState>(ReaderUiState.Home)
     val state: StateFlow<ReaderUiState> = _state.asStateFlow()
 
@@ -193,7 +195,7 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch { app.settings.setDirection(direction) }
     }
 
-    fun setMode(mode: ReadingMode) {
+    fun setMode(mode: ModeChoice) {
         viewModelScope.launch { app.settings.setMode(mode) }
     }
 

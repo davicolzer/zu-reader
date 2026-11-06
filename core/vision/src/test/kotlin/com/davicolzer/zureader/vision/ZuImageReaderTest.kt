@@ -52,6 +52,27 @@ class ZuImageReaderTest {
     }
 
     @Test
+    fun `glifos encostados viram vaga da grade e sao lidos`() {
+        val text = "THE QUICK BROWN FOX"
+        val clean = ZuRenderer.render(text, maxPerLine = 6, blockPx = 8)
+        val glyphs = reader.read(clean).reading.glyphs.map { it.source }
+        val p = clean.pixels.copyOf()
+        // liga U–I (QUICK) e R–O (BROWN) com uma barra de tinta no vão, como dois glifos que a
+        // foto juntou: a mancha dupla é descartada e sobra uma vaga de 2 glifos no meio da coluna
+        var bridges = 0
+        for (i in listOf(4, 10)) {
+            val a = glyphs[i]
+            val b = glyphs[i + 1]
+            val top = (a.y + a.height / 2).toInt() - 1
+            val bottom = (b.y - b.height / 2).toInt() + 1
+            for (y in top..bottom) for (x in (a.x - a.width / 2).toInt() until (a.x + a.width / 2).toInt()) p[y * clean.width + x] = 40
+            bridges++
+        }
+        assertEquals(2, bridges)
+        assertEquals(text, reader.read(GrayImage(clean.width, clean.height, p)).reading.text)
+    }
+
+    @Test
     fun `glifos pequenos e escala quebrada`() {
         assertAccuracy("bloco 4 px", accuracy({ it }) { ZuRenderer.render(it, blockPx = 4) })
         assertAccuracy("escala 0,66", accuracy({ ImageEffects.scale(it, 0.66) }, { ZuRenderer.render(it, blockPx = 10) }))

@@ -102,6 +102,7 @@
     <string name="settings_forget_body">O app volta a usar só o alfabeto padrão. Seu histórico não muda.</string>
     <string name="settings_forget_confirm">Esquecer</string>
     <string name="result_adjust_crop">Ajustar recorte</string>
+    <string name="mode_auto">Auto</string>
     <string name="mode_text">Escrita</string>
     <string name="mode_numbers">Números</string>
     <string name="home_hero_title_numbers">Fotografe números em Zu</string>

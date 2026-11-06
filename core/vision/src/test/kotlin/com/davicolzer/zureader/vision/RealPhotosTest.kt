@@ -31,10 +31,10 @@ class RealPhotosTest {
         Photo("parede-escura.jpg", "THE POINTS CONSTELLATE CONSPIRE TO CREATE SHAPES SHAPES TO TESSELLATE", 0, 0.97),
         Photo("parede-clara.jpg", "THE POINTS CONSTELLATE CONSPIRE TO CREATE SHAPES SHAPES TO TESSELLATE", 1, 0.95),
         Photo("lapide-2.jpg", "JUMPS OVER THE LAZY DOG", 1, 0.65),
-        Photo("lapide-1.jpg", "THE QUICK BROWN FOX", 1, 0.45),
+        Photo("lapide-1.jpg", "THE QUICK BROWN FOX", 1, 0.6),
         // recortadas no app em volta da pedra
         Photo("lapide-2.jpg", "JUMPS OVER THE LAZY DOG", 1, 0.9, crop = listOf(0.435f, 0.27f, 0.73f, 0.585f)),
-        Photo("lapide-1.jpg", "THE QUICK BROWN FOX", 1, 0.62, crop = listOf(0.33f, 0.28f, 0.67f, 0.65f)),
+        Photo("lapide-1.jpg", "THE QUICK BROWN FOX", 1, 0.78, crop = listOf(0.33f, 0.28f, 0.67f, 0.65f)),
     )
 
     private val dir = System.getProperty("zu.testdata")?.let(::File)
@@ -80,7 +80,8 @@ class RealPhotosTest {
     @Test
     fun `fotos reais do jogo`() {
         assumeTrue(dir != null && dir.isDirectory, "sem testdata/real")
-        val reader = ZuImageReader()
+        // como o app no modo padrão: escrita e números ao mesmo tempo
+        val reader = ZuImageReader.forChoice(ModeChoice.AUTO)
         val failures = mutableListOf<String>()
         for (photo in photos) {
             val started = System.nanoTime()
@@ -93,7 +94,9 @@ class RealPhotosTest {
                 )
                 img.rectify(quad)
             }
-            val text = reader.read(image).reading.text.replace('\n', ' ')
+            val result = reader.read(image)
+            if (result.mode != com.davicolzer.zureader.zu.ReadingMode.TEXT) failures += "${photo.label}: lida como ${result.mode}"
+            val text = result.reading.text.replace('\n', ' ')
             val ms = (System.nanoTime() - started) / 1_000_000
             val acc = accuracy(photo.expected, text)
             println("${photo.label}: ${"%.0f".format(acc * 100)}% em $ms ms → '$text'")

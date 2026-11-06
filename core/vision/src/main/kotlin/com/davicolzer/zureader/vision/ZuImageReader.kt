@@ -10,6 +10,12 @@ import com.davicolzer.zureader.zu.ZuReader
 import com.davicolzer.zureader.zu.ZuReading
 
 /** Nenhum glifo Zu é todo preenchido; um quadrado sólido é parede, objeto ou sujeira. */
+private fun PlacedGlyph.inkCells(): Int {
+    var filled = 0
+    for (r in 0 until bits.size) for (c in 0 until bits.size) if (bits[r, c]) filled++
+    return filled
+}
+
 private fun PlacedGlyph.isSolid(): Boolean {
     var filled = 0
     for (r in 0 until bits.size) for (c in 0 until bits.size) if (bits[r, c]) filled++
@@ -31,6 +37,9 @@ data class ImageReading(
     /** Escrita ou números. */
     val mode: ReadingMode = ReadingMode.TEXT,
 ) {
+    /** Nota da leitura: glifos confiantes somam, duvidosos subtraem (compara leituras da mesma imagem). */
+    val quality: Float get() = reading.glyphs.sumOf { it.confidence.toDouble() - ZuImageReader.QUALITY_OFFSET }.toFloat()
+
     /**
      * Recorte sugerido: a área do texto com [margin] glifo de folga em volta,
      * limitada à imagem. `null` se nada foi lido.
@@ -56,20 +65,20 @@ class ZuImageReader(
     private val reader: ZuReader = ZuReader(),
     private val classifier: GlyphClassifier = GlyphClassifier(),
     private val mode: ReadingMode = ReadingMode.TEXT,
-) {
+) : ImageTextReader {
     /**
      * @param deskew corrigir inclinação.
      * @param thorough testar todas as máscaras. Desligar (com [deskew] desligado) deixa a leitura
      * bem mais rápida, para o visor ao vivo da câmera.
      */
-    fun read(image: GrayImage, deskew: Boolean = true, thorough: Boolean = true): ImageReading =
+    override fun read(image: GrayImage, deskew: Boolean, thorough: Boolean): ImageReading =
         choose(image, listOf(candidates(image, deskew, if (thorough) ADAPTIVE_WINDOWS else QUICK_WINDOWS)))
 
     /**
      * Lê uma imagem colorida. Primeiro em cinza (luminância); se a leitura sair fraca, testa também
      * contraste esticado, cada canal de cor e saturação, e combina os glifos de todas as versões.
      */
-    fun read(image: RgbImage, deskew: Boolean = true, thorough: Boolean = true): ImageReading {
+    override fun read(image: RgbImage, deskew: Boolean, thorough: Boolean): ImageReading {
         val luma = image.luma()
         val windows = if (thorough) ADAPTIVE_WINDOWS else QUICK_WINDOWS
         val first = candidates(luma, deskew, windows)
@@ -128,7 +137,7 @@ class ZuImageReader(
                 variant.filter { it.reading.inkIsDark == ink }.map { it.straightGlyphs }
             },
         )
-        val fusedReading = if (fused.isEmpty()) null else readGroups(image, groupBySize(fused), identity(image), best.reading.inkIsDark)
+        val fusedReading = if (fused.isEmpty()) null else readGroups(image, groupBySize(fused), identity(image), best.reading.inkIsDark).let { it.first to it.second }
         val all = candidates.map { it.reading to it.quality } + listOfNotNull(fusedReading)
         return all.maxBy { it.second }.first
     }
@@ -177,7 +186,8 @@ class ZuImageReader(
         val straightMask = Deskew.apply(raw, image.width, image.height, 0f)
         val straightGroups = extractGroups(straightMask, erosion)
         val straight = readGroups(image, straightGroups, straightMask, inkIsDark)
-        val glyphs = straightGroups.flatten()
+        // glifos (com as vagas completadas) para a combinação entre máscaras
+        val glyphs = straight.third.flatten()
         if (angle == 0f) return Candidate(straight.first, straight.second, glyphs)
         val tiltedMask = Deskew.apply(raw, image.width, image.height, angle)
         val tilted = readGroups(image, extractGroups(tiltedMask, erosion), tiltedMask, inkIsDark)
@@ -212,20 +222,88 @@ class ZuImageReader(
             .let(::mergeNearbyGroups)
     }
 
+    /**
+     * Completa vagas da grade: o texto Zu é uma grade regular, então dois glifos alinhados a 2 ou 3
+     * passos de distância deixam 1 ou 2 vagas no meio. Uma vaga vazia é espaço entre palavras; uma
+     * vaga com tinta é um glifo que a segmentação perdeu (encostado no vizinho ou borrado). Lê a
+     * grade 5×5 ali, ajustando a posição um pouco, e fica com ela se for um glifo do alfabeto.
+     */
+    private fun fillGaps(group: List<PlacedGlyph>, deskewed: DeskewedMask, vertical: Boolean): List<PlacedGlyph> {
+        if (group.size < 3) return group
+        val w = group.map { it.width }.sorted()[group.size / 2]
+        val h = group.map { it.height }.sorted()[group.size / 2]
+        val found = group.toMutableList()
+        run {
+            // passo da grade nesse eixo: mediana da distância ao vizinho alinhado mais próximo
+            fun along(g: PlacedGlyph) = if (vertical) g.y else g.x
+            fun across(g: PlacedGlyph) = if (vertical) g.x else g.y
+            val tolerance = (if (vertical) w else h) * 0.35f
+            val steps = group.mapNotNull { a ->
+                group.filter { b -> b !== a && kotlin.math.abs(across(a) - across(b)) < tolerance && along(b) > along(a) }
+                    .minOfOrNull { along(it) - along(a) }
+            }.sorted()
+            if (steps.size < 2) return group
+            val pitch = steps[steps.size / 2]
+            if (pitch < (if (vertical) h else w) * 0.9f) return group
+            for (a in group) {
+                val b = group.filter { b -> b !== a && kotlin.math.abs(across(a) - across(b)) < tolerance && along(b) > along(a) }
+                    .minByOrNull { along(it) - along(a) } ?: continue
+                val slots = ((along(b) - along(a)) / pitch).let { r -> kotlin.math.round(r).toInt().takeIf { kotlin.math.abs(r - it) < 0.3f } } ?: continue
+                if (slots !in 2..3) continue
+                for (k in 1 until slots) {
+                    val t = k / slots.toFloat()
+                    val cx = a.x + (b.x - a.x) * t
+                    val cy = a.y + (b.y - a.y) * t
+                    if (found.any { kotlin.math.abs(it.x - cx) < w / 2 && kotlin.math.abs(it.y - cy) < h / 2 }) continue
+                    sampleSlot(deskewed, cx, cy, w, h)?.let { found += it }
+                }
+            }
+        }
+        return found
+    }
+
+    /** Melhor leitura de um glifo em volta de ([cx], [cy]), ou `null` se ali não há um glifo. */
+    private fun sampleSlot(deskewed: DeskewedMask, cx: Float, cy: Float, w: Float, h: Float): PlacedGlyph? {
+        var best: PlacedGlyph? = null
+        var bestCrisp = GlyphSampler.MIN_CRISPNESS
+        for (dy in -2..2) for (dx in -2..2) {
+            val x = cx + dx * w * SLOT_SHIFT
+            val y = cy + dy * h * SLOT_SHIFT
+            val box = PixelBox(
+                (x - w / 2).toInt(), (y - h / 2).toInt(), (x + w / 2).toInt(), (y + h / 2).toInt(),
+            )
+            if (box.left < 0 || box.top < 0 || box.right > deskewed.width || box.bottom > deskewed.height || box.width < 5 || box.height < 5) continue
+            val sampled = GlyphSampler.sampleWithQuality(deskewed.mask, deskewed.width, box)
+            if (sampled.crispness <= bestCrisp) continue
+            val glyph = PlacedGlyph(box.centerX, box.centerY, box.width.toFloat(), box.height.toFloat(), sampled.bits)
+            if (glyph.isSolid() || glyph.inkCells() < 5 || !classifier.classify(glyph.bits).isGlyph) continue
+            best = glyph
+            bestCrisp = sampled.crispness
+        }
+        return best
+    }
+
     /** Lê os grupos e devolve a leitura (posições na imagem original) com a nota usada na escolha. */
     private fun readGroups(
         image: GrayImage,
-        groups: List<List<PlacedGlyph>>,
+        found: List<List<PlacedGlyph>>,
         deskewed: DeskewedMask,
         inkIsDark: Boolean,
-    ): Pair<ImageReading, Float> {
+    ): Triple<ImageReading, Float, List<List<PlacedGlyph>>> {
         val angle = deskewed.angleDegrees
-        if (groups.isEmpty()) return ImageReading(ZuReading.EMPTY, emptyList(), inkIsDark, image.width, image.height, mode = mode) to 0f
+        if (found.isEmpty()) return ImageReading(ZuReading.EMPTY, emptyList(), inkIsDark, image.width, image.height, mode = mode).let { Triple(it, 0f, found) }
 
         // A orientação vale para a imagem inteira: soma a pontuação de todos os blocos.
-        val (rotation, blocks) = (0..3)
-            .map { q -> q to groups.map { reader.read(it, rotation = q) } }
+        val (rotation, firstBlocks) = (0..3)
+            .map { q -> q to found.map { reader.read(it, rotation = q) } }
             .maxBy { (q, readings) -> readings.sumOf { it.score } - if (q == 0) 0 else ZuReader.ROTATION_COST }
+        // Com a orientação escolhida, as colunas de leitura são conhecidas: completa as vagas
+        // ao longo delas e relê (só se achou algum glifo novo).
+        val columnsVertical = (firstBlocks.first().direction == ReadingDirection.VERTICAL_RIGHT_TO_LEFT) == (rotation % 2 == 0)
+        // (a leitura combinada não tem máscara: seus glifos já vêm completados de cada máscara)
+        val filled = if (deskewed.mask.isEmpty()) found else found.map { fillGaps(it, deskewed, columnsVertical) }
+        val groups = if (filled.sumOf { it.size } > found.sumOf { it.size }) filled else found
+        val blocks = if (groups === filled) groups.map { reader.read(it, rotation = rotation) } else firstBlocks
         // Blocos extras quase sem confiança são cenário, não texto (o melhor bloco sempre fica).
         val best = blocks.maxOfOrNull { b -> b.glyphs.sumOf { it.confidence.toDouble() } }
         val ordered = blocks.zip(groups)
@@ -245,7 +323,7 @@ class ZuImageReader(
         )
         // Glifos confiantes somam, duvidosos subtraem: uma máscara que "acha" lixo não vence.
         val quality = merged.glyphs.sumOf { it.confidence.toDouble() - QUALITY_OFFSET }.toFloat()
-        return ImageReading(merged, ordered, inkIsDark, image.width, image.height, skewDegrees = -angle, mode = mode) to quality
+        return ImageReading(merged, ordered, inkIsDark, image.width, image.height, skewDegrees = -angle, mode = mode).let { Triple(it, quality, groups) }
     }
 
     /**
@@ -301,6 +379,17 @@ class ZuImageReader(
             return ZuImageReader(ZuReader(classifier, direction, languageModel = mode.usesLanguageModel), classifier, mode)
         }
 
+        /**
+         * Leitor para a escolha do usuário: um modo só, ou [ModeChoice.AUTO] (escrita e números
+         * lidos em paralelo, fica a leitura de nota maior).
+         */
+        fun forChoice(
+            choice: ModeChoice,
+            direction: ReadingDirection = ReadingDirection.VERTICAL_RIGHT_TO_LEFT,
+            learned: List<ZuGlyph> = emptyList(),
+        ): ImageTextReader = choice.mode?.let { forMode(it, direction, learned) }
+            ?: AutoModeReader(ReadingMode.entries.map { forMode(it, direction, learned) })
+
         /** Confiança média mínima para manter um bloco que não é o principal. */
         const val MIN_EXTRA_BLOCK_CONFIDENCE = 0.5
 
@@ -317,6 +406,9 @@ class ZuImageReader(
 
         /** Na combinação de máscaras: votos mínimos, ou confiança mínima, para um glifo entrar. */
         const val MIN_VOTES = 2
+
+        /** Passo do ajuste de posição ao ler uma vaga da grade (fração do glifo). */
+        const val SLOT_SHIFT = 0.06f
         const val SURE_CONFIDENCE = 0.8f
 
         /** Grupos com tamanhos até esta proporção, e a até [MERGE_GAP] glifos um do outro, são o mesmo texto. */
