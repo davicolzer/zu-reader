@@ -24,10 +24,11 @@ object GlyphSegmenter {
 
     /** Lista de grupos; cada grupo tem glifos do mesmo tamanho. */
     fun segmentGroups(components: List<PixelBox>): List<List<PixelBox>> {
-        var remaining = removeOutliers(components.filter { it.area >= MIN_AREA })
+        // Mede o tamanho sem molduras e manchas enormes.
+        var remaining = components.filter { it.area >= MIN_AREA }
         val groups = mutableListOf<List<PixelBox>>()
         while (remaining.isNotEmpty() && groups.size < MAX_GROUPS) {
-            val (w, h) = dominantSize(bestCut(remaining, 1, 1, null)) ?: break
+            val (w, h) = dominantSize(bestCut(removeOutliers(remaining), 1, 1, null)) ?: break
             val boxes = segmentWithSize(remaining, w, h)
             // um grupo extra de 1 glifo costuma ser sujeira do cenário
             if (boxes.isEmpty() || (groups.isNotEmpty() && boxes.size < 2)) break
@@ -53,7 +54,7 @@ object GlyphSegmenter {
         }
     }
 
-    /** Descarta molduras e manchas enormes antes de medir. */
+    /** Descarta molduras e manchas enormes antes de medir o tamanho do glifo. */
     private fun removeOutliers(pieces: List<PixelBox>): List<PixelBox> {
         if (pieces.isEmpty()) return pieces
         val rough = pieces.map { it.size }.sorted()[pieces.size / 2]

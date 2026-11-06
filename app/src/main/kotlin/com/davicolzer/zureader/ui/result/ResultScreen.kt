@@ -77,6 +77,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.davicolzer.zureader.R
 import com.davicolzer.zureader.ui.components.MiniGlyph
+import com.davicolzer.zureader.ui.components.PixelOutlinedButton
 import com.davicolzer.zureader.ui.components.PixelPrimaryButton
 import com.davicolzer.zureader.ui.theme.ZuTheme
 import com.davicolzer.zureader.vision.ImageReading
@@ -94,6 +95,8 @@ fun ResultScreen(
     onCorrect: (index: Int, letter: Char) -> Unit = { _, _ -> },
     onSave: () -> Unit = {},
     onDelete: () -> Unit = {},
+    /** Volta para o recorte com os cantos usados; `null` se a leitura não veio de um recorte. */
+    onAdjustCrop: (() -> Unit)? = null,
 ) {
     var editing by remember { mutableStateOf<Int?>(null) }
     var confirmDelete by remember { mutableStateOf(false) }
@@ -136,9 +139,12 @@ fun ResultScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             PhotoWithBoxes(bitmap, result)
+            if (onAdjustCrop != null && reading.glyphs.isNotEmpty()) {
+                PixelOutlinedButton(stringResource(R.string.result_adjust_crop), R.drawable.ic_pixel_crop, onAdjustCrop)
+            }
 
             if (reading.glyphs.isEmpty()) {
-                EmptyResult(onPickAnother)
+                EmptyResult(onPickAnother, onAdjustCrop)
                 return@Column
             }
 
@@ -351,7 +357,7 @@ private fun ActionTile(
 }
 
 @Composable
-private fun EmptyResult(onPickAnother: () -> Unit) {
+private fun EmptyResult(onPickAnother: () -> Unit, onAdjustCrop: (() -> Unit)?) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -363,7 +369,12 @@ private fun EmptyResult(onPickAnother: () -> Unit) {
         Text(stringResource(R.string.result_empty_title), style = MaterialTheme.typography.titleSmall, color = ZuTheme.colors.gold)
         Text(stringResource(R.string.result_empty_body), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
-    PixelPrimaryButton(stringResource(R.string.result_other_image), R.drawable.ic_pixel_gallery, onPickAnother)
+    if (onAdjustCrop != null) {
+        PixelPrimaryButton(stringResource(R.string.result_adjust_crop), R.drawable.ic_pixel_crop, onAdjustCrop)
+        PixelOutlinedButton(stringResource(R.string.result_other_image), R.drawable.ic_pixel_gallery, onPickAnother)
+    } else {
+        PixelPrimaryButton(stringResource(R.string.result_other_image), R.drawable.ic_pixel_gallery, onPickAnother)
+    }
     Box(Modifier.height(8.dp))
 }
 

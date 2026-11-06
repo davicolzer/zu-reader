@@ -9,6 +9,30 @@ class GrayImage(val width: Int, val height: Int, val pixels: IntArray) {
 
     operator fun get(x: Int, y: Int): Int = pixels[y * width + x]
 
+    /** Desfoque de caixa de raio [radius] (rápido, por imagem integral). */
+    fun boxBlur(radius: Int): GrayImage {
+        if (radius <= 0) return this
+        val integral = LongArray((width + 1) * (height + 1))
+        for (y in 0 until height) {
+            var row = 0L
+            for (x in 0 until width) {
+                row += pixels[y * width + x]
+                integral[(y + 1) * (width + 1) + x + 1] = integral[y * (width + 1) + x + 1] + row
+            }
+        }
+        return GrayImage(width, height, IntArray(pixels.size) { i ->
+            val x = i % width
+            val y = i / width
+            val x0 = (x - radius).coerceAtLeast(0)
+            val x1 = (x + radius).coerceAtMost(width - 1)
+            val y0 = (y - radius).coerceAtLeast(0)
+            val y1 = (y + radius).coerceAtMost(height - 1)
+            val sum = integral[(y1 + 1) * (width + 1) + x1 + 1] - integral[y0 * (width + 1) + x1 + 1] -
+                integral[(y1 + 1) * (width + 1) + x0] + integral[y0 * (width + 1) + x0]
+            (sum / ((x1 - x0 + 1) * (y1 - y0 + 1))).toInt()
+        })
+    }
+
     fun inverted(): GrayImage = GrayImage(width, height, IntArray(pixels.size) { 255 - pixels[it] })
 
     companion object {

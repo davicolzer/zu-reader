@@ -43,7 +43,7 @@ class LiveAnalyzer(
                 bytes, image.width, image.height, plane.rowStride, plane.pixelStride,
                 image.imageInfo.rotationDegrees, maxSide = 640,
             )
-            val result = reader.read(gray, deskew = false)
+            val result = reader.read(gray, deskew = false, thorough = false)
             onFrame(
                 LiveFrame(
                     gray.width, gray.height,

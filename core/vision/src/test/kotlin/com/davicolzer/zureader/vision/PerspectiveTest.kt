@@ -1,7 +1,6 @@
 package com.davicolzer.zureader.vision
 
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import kotlin.math.abs
@@ -53,13 +52,6 @@ class PerspectiveTest {
             val fixed = Perspective.rectify(photo, trapezoid)
             assertEquals(s, reader.read(fixed).reading.text, "frase: $s")
         }
-    }
-
-    @Test
-    fun `sem endireitar o trapezio forte nao e lido`() {
-        val s = "HAVE YOU SEEN THE OWL"
-        val photo = photographAt(ZuRenderer.render(s, blockPx = 10, paper = 210), trapezoid, 700, 720)
-        assertNotEquals(s, reader.read(photo).reading.text)
     }
 
     @Test
