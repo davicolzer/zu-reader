@@ -158,4 +158,86 @@ object Binarizer {
         }
         return out
     }
+
+    /**
+     * Letreiros de neon: cada glifo é o contorno da sua área de tinta, e glifos com buraco têm um
+     * contorno por fora e outro por dentro. Pinta pela profundidade: o fundo de fora tem
+     * profundidade 0; cruzar um contorno soma 1. Profundidade ímpar = dentro da tinta (pinta);
+     * par = fundo ou buraco do glifo. Antes, tira as manchas bem maiores que um glifo (a moldura
+     * da placa), que deixariam a placa inteira "dentro".
+     */
+    fun fillOutlines(mask: BooleanArray, width: Int, height: Int): BooleanArray {
+        val n = mask.size
+        val stack = IntArray(n)
+        // 1. manchas de tinta (vizinhança de 8) e o tamanho de cada uma
+        val ink = IntArray(n) { -1 }
+        val sides = ArrayList<Int>()
+        for (start in 0 until n) {
+            if (!mask[start] || ink[start] >= 0) continue
+            val label = sides.size
+            var top = 0; stack[top++] = start; ink[start] = label
+            var minX = width; var minY = height; var maxX = -1; var maxY = -1
+            while (top > 0) {
+                val i = stack[--top]; val x = i % width; val y = i / width
+                if (x < minX) minX = x; if (x > maxX) maxX = x; if (y < minY) minY = y; if (y > maxY) maxY = y
+                for (dy in -1..1) for (dx in -1..1) {
+                    val nx = x + dx; val ny = y + dy
+                    if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue
+                    val j = ny * width + nx
+                    if (mask[j] && ink[j] < 0) { ink[j] = label; stack[top++] = j }
+                }
+            }
+            sides += maxOf(maxX - minX, maxY - minY) + 1
+        }
+        if (sides.isEmpty()) return mask
+        val glyphLike = sides.filter { it >= MIN_OUTLINE_SIDE }.sorted()
+        val typical = if (glyphLike.isEmpty()) Int.MAX_VALUE else glyphLike[glyphLike.size / 2]
+        val frame = BooleanArray(sides.size) { sides[it] > typical * FRAME_RATIO }
+        val work = BooleanArray(n) { mask[it] && !frame[ink[it]] }
+
+        // 2. regiões de fundo (vizinhança de 4) e as manchas que cada uma toca
+        val region = IntArray(n) { -1 }
+        val touches = ArrayList<MutableSet<Int>>()
+        val outer = ArrayList<Boolean>()
+        for (start in 0 until n) {
+            if (work[start] || region[start] >= 0) continue
+            val label = touches.size
+            val adjacent = HashSet<Int>()
+            var border = false
+            var top = 0; stack[top++] = start; region[start] = label
+            while (top > 0) {
+                val i = stack[--top]; val x = i % width; val y = i / width
+                if (x == 0 || y == 0 || x == width - 1 || y == height - 1) border = true
+                fun visit(j: Int) {
+                    if (work[j]) adjacent += ink[j] else if (region[j] < 0) { region[j] = label; stack[top++] = j }
+                }
+                if (x > 0) visit(i - 1)
+                if (x < width - 1) visit(i + 1)
+                if (y > 0) visit(i - width)
+                if (y < height - 1) visit(i + width)
+            }
+            touches += adjacent; outer += border
+        }
+        // 3. profundidade: das regiões da borda, atravessando uma mancha por vez
+        val regionsOf = HashMap<Int, MutableList<Int>>()
+        touches.forEachIndexed { r, comps -> for (c in comps) regionsOf.getOrPut(c) { ArrayList() } += r }
+        val depth = IntArray(touches.size) { -1 }
+        val queue = ArrayDeque<Int>()
+        for (r in touches.indices) if (outer[r]) { depth[r] = 0; queue += r }
+        val crossed = HashSet<Int>()
+        while (queue.isNotEmpty()) {
+            val r = queue.removeFirst()
+            for (c in touches[r]) {
+                if (!crossed.add(c)) continue
+                for (r2 in regionsOf[c].orEmpty()) if (depth[r2] < 0) { depth[r2] = depth[r] + 1; queue += r2 }
+            }
+        }
+        return BooleanArray(n) { i -> work[i] || (region[i] >= 0 && depth[region[i]] % 2 == 1) }
+    }
+
+    /** Menor lado (px) de uma mancha para contar como contorno de glifo ao medir o tamanho típico. */
+    private const val MIN_OUTLINE_SIDE = 8
+
+    /** Mancha com lado acima disto × o típico é moldura de placa, não glifo. */
+    private const val FRAME_RATIO = 2.5f
 }

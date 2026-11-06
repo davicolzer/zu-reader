@@ -48,6 +48,11 @@ class RealPhotosTest {
         // letreiros de neon (só o contorno do glifo), recortados em volta de cada placa
         Photo("neon-cidade.png", "WORK", 0, 0.99, crop = listOf(0.725f, 0.285f, 0.770f, 0.565f)),
         Photo("neon-cidade.png", "EAT MEAT", 0, 0.99, crop = listOf(0.221f, 0.457f, 0.244f, 0.611f)),
+        // com folga em volta da placa (antes o "GOOD" dependia de um recorte justo)
+        Photo("neon-cidade.png", "GOOD", 0, 0.99, crop = listOf(0.251f, 0.45f, 0.304f, 0.7435f)),
+        Photo("neon-cidade.png", "WORK", 0, 0.99, crop = listOf(0.7146f, 0.2667f, 0.7802f, 0.5833f)),
+        // a cidade inteira, sem recorte: placas "ZU" (rosa), "GOOD" (laranja) e "WORK" (direita)
+        Photo("neon-cidade.png", "ZU GOOD WORK", 0, 0.99),
         Photo("parede-ladrilhos.jpg", "THE POINTS CONSTELLATE CONSPIRE TO CREATE SHAPES SHAPES TO TESSELLATE", 1, 0.92),
     )
 

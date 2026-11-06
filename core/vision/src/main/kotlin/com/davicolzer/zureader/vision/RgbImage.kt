@@ -43,6 +43,18 @@ class RgbImage(val width: Int, val height: Int, val argb: IntArray) {
         }).stretched()
     }
 
+    /**
+     * Intensidade da cor (canal mais forte − mais fraco): neon laranja ou rosa fica alto; a moldura
+     * verde-azulada apagada, as linhas da parede e o fundo escuro ficam baixos.
+     */
+    fun chroma(): GrayImage = GrayImage(width, height, IntArray(argb.size) { i ->
+        val p = argb[i]
+        val r = (p shr 16) and 0xFF
+        val g = (p shr 8) and 0xFF
+        val b = p and 0xFF
+        maxOf(r, g, b) - minOf(r, g, b)
+    })
+
     /** Recorta e endireita [quad], mantendo as cores (canal por canal). */
     fun rectify(quad: Quad, maxSide: Int = 1600): RgbImage {
         val r = Perspective.rectify(red(), quad, maxSide)
