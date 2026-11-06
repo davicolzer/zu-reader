@@ -1,10 +1,10 @@
 # fez-translate (Zu Reader)
 
-App Android em Kotlin que lê textos no alfabeto Zu, do jogo Fez, a partir de uma foto e traduz o resultado.
+App Android em Kotlin que lê textos no alfabeto Zu, do jogo Fez, a partir de uma foto e mostra o texto em inglês (o Zu é uma cifra do alfabeto latino).
 
 - Plano: [docs/PLANO.md](docs/PLANO.md)
 - Design: [docs/design/mockup.png](docs/design/mockup.png) (fonte em [mockup.html](docs/design/mockup.html)) e ícone [icon.svg](docs/design/icon.svg)
-- Telas no Android: [início](docs/design/home-android.png), [resultado](docs/design/result-android.png) e [resultado com título e texto inclinados](docs/design/result-inclinado-android.png)
+- Telas no Android: [início](docs/design/home-android.png), [câmera](docs/design/camera-android.png), [recorte](docs/design/crop-android.png), [resultado do recorte](docs/design/crop-result-android.png), [resultado](docs/design/result-android.png) e [título e texto inclinados](docs/design/result-inclinado-android.png)
 - Imagens de exemplo para testar pela galeria: [docs/samples/](docs/samples/)
 
 ## Versões
