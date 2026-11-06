@@ -24,7 +24,8 @@ O Gradle roda no JDK 25. O bytecode é gerado para Java 21, que é o que o Andro
 
 ```
 app/        Activity, tema, telas (Compose)
-core/zu/    Kotlin puro: glifos, matriz de bits e leitura (testável sem emulador)
+core/zu/    Kotlin puro: alfabeto Zu, classificador, ordenação e leitura (testável sem emulador)
+tools/      scripts de apoio (tabela de pares de letras do inglês)
 ```
 
 ## Como rodar
@@ -40,6 +41,10 @@ Requisitos: JDK 25 e Android SDK com a plataforma 37 (o Android Studio instala).
 O CI (`.github/workflows/android.yml`) roda `./gradlew build` em cada push na `main` e em cada PR, e publica o APK de debug como artefato.
 
 ## Licenças
+
+Desenhos dos glifos Zu extraídos da [FEZ Pixel Font](https://github.com/TakWolf/fez-pixel-font), de TakWolf (CC0). O alfabeto Zu pertence à Polytron.
+
+Tabela de pares de letras do inglês gerada a partir do corpus Gutenberg do NLTK (livros em domínio público), com `tools/gen_english_bigrams.py`.
 
 Fontes Silkscreen, Figtree e JetBrains Mono sob a SIL Open Font License (ver `third_party/fonts/`).
 
