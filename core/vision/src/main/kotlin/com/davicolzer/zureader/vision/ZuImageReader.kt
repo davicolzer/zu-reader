@@ -246,21 +246,26 @@ class ZuImageReader(
         if (group.size < 3) return group
         val w = group.map { it.width }.sorted()[group.size / 2]
         val h = group.map { it.height }.sorted()[group.size / 2]
-        val found = group.toMutableList()
+        // uma caixa bem menor que as outras é um pedaço de glifo (ex.: metade cortada por uma
+        // mancha de luz): sai, e a vaga dela é relida inteira
+        val pieces = group.filter { it.width < w * PIECE_RATIO || it.height < h * PIECE_RATIO }
+        val cells = group - pieces.toSet()
+        if (cells.size < 3) return group
+        val found = cells.toMutableList()
         run {
             // passo da grade nesse eixo: mediana da distância ao vizinho alinhado mais próximo
             fun along(g: PlacedGlyph) = if (vertical) g.y else g.x
             fun across(g: PlacedGlyph) = if (vertical) g.x else g.y
             val tolerance = (if (vertical) w else h) * 0.35f
-            val steps = group.mapNotNull { a ->
-                group.filter { b -> b !== a && kotlin.math.abs(across(a) - across(b)) < tolerance && along(b) > along(a) }
+            val steps = cells.mapNotNull { a ->
+                cells.filter { b -> b !== a && kotlin.math.abs(across(a) - across(b)) < tolerance && along(b) > along(a) }
                     .minOfOrNull { along(it) - along(a) }
             }.sorted()
             if (steps.size < 2) return group
             val pitch = steps[steps.size / 2]
             if (pitch < (if (vertical) h else w) * 0.9f) return group
-            for (a in group) {
-                val b = group.filter { b -> b !== a && kotlin.math.abs(across(a) - across(b)) < tolerance && along(b) > along(a) }
+            for (a in cells) {
+                val b = cells.filter { b -> b !== a && kotlin.math.abs(across(a) - across(b)) < tolerance && along(b) > along(a) }
                     .minByOrNull { along(it) - along(a) } ?: continue
                 val slots = ((along(b) - along(a)) / pitch).let { r -> kotlin.math.round(r).toInt().takeIf { kotlin.math.abs(r - it) < 0.3f } } ?: continue
                 if (slots !in 2..3) continue
@@ -271,6 +276,18 @@ class ZuImageReader(
                     if (found.any { kotlin.math.abs(it.x - cx) < w / 2 && kotlin.math.abs(it.y - cy) < h / 2 }) continue
                     sampleSlot(deskewed, cx, cy, w, h)?.let { found += it }
                 }
+            }
+            // pontas das colunas: uma vaga logo antes do primeiro ou depois do último glifo, só se
+            // uma coluna vizinha tem glifo nessa mesma altura (a grade continua ali) e o desenho
+            // bate quase exato com uma letra
+            for (a in cells) for (sign in listOf(-1f, 1f)) {
+                val target = along(a) + sign * pitch
+                val cx = if (vertical) a.x else target
+                val cy = if (vertical) target else a.y
+                if (found.any { kotlin.math.abs(it.x - cx) < w / 2 && kotlin.math.abs(it.y - cy) < h / 2 }) continue
+                val neighborRow = cells.any { g -> g !== a && kotlin.math.abs(along(g) - target) < pitch * 0.3f && kotlin.math.abs(across(g) - across(a)) < pitch * 1.6f }
+                if (!neighborRow) continue
+                sampleSlot(deskewed, cx, cy, w, h, maxDistance = END_MAX_DISTANCE)?.let { found += it }
             }
         }
         return found
@@ -302,10 +319,23 @@ class ZuImageReader(
             slices.takeIf { it.size >= 2 }
         }
 
+    /**
+     * Tira caixas bem menores que as outras do bloco: são pedaços de glifo (ex.: a metade de cima,
+     * separada da de baixo por uma mancha de luz), que ocupariam a vaga do glifo inteiro.
+     */
+    private fun withoutPieces(group: List<PlacedGlyph>): List<PlacedGlyph> {
+        if (group.size < 3) return group
+        val w = group.map { it.width }.sorted()[group.size / 2]
+        val h = group.map { it.height }.sorted()[group.size / 2]
+        return group.filterNot { it.width < w * PIECE_RATIO || it.height < h * PIECE_RATIO }
+    }
+
     /** Melhor leitura de um glifo em volta de ([cx], [cy]), ou `null` se ali não há um glifo. */
-    private fun sampleSlot(deskewed: DeskewedMask, cx: Float, cy: Float, w: Float, h: Float): PlacedGlyph? {
+    private fun sampleSlot(deskewed: DeskewedMask, cx: Float, cy: Float, w: Float, h: Float, maxDistance: Int = Int.MAX_VALUE): PlacedGlyph? {
+        // entre as posições testadas, fica com a que bate melhor com um glifo (desempate: nitidez)
         var best: PlacedGlyph? = null
-        var bestCrisp = GlyphSampler.MIN_CRISPNESS
+        var bestDistance = Int.MAX_VALUE
+        var bestCrisp = 0f
         for (dy in -2..2) for (dx in -2..2) {
             val x = cx + dx * w * SLOT_SHIFT
             val y = cy + dy * h * SLOT_SHIFT
@@ -314,10 +344,14 @@ class ZuImageReader(
             )
             if (box.left < 0 || box.top < 0 || box.right > deskewed.width || box.bottom > deskewed.height || box.width < 5 || box.height < 5) continue
             val sampled = GlyphSampler.sampleWithQuality(deskewed.mask, deskewed.width, box)
-            if (sampled.crispness <= bestCrisp) continue
+            if (sampled.crispness < GlyphSampler.MIN_CRISPNESS) continue
             val glyph = PlacedGlyph(box.centerX, box.centerY, box.width.toFloat(), box.height.toFloat(), sampled.bits)
-            if (glyph.isSolid() || glyph.inkCells() < 5 || !classifier.classify(glyph.bits).isGlyph) continue
+            if (glyph.isSolid() || glyph.inkCells() < 5) continue
+            val match = classifier.classify(glyph.bits).best ?: continue
+            if (match.distance > minOf(maxDistance, GlyphClassifier.MAX_DISTANCE)) continue
+            if (match.distance > bestDistance || (match.distance == bestDistance && sampled.crispness <= bestCrisp)) continue
             best = glyph
+            bestDistance = match.distance
             bestCrisp = sampled.crispness
         }
         return best
@@ -326,11 +360,12 @@ class ZuImageReader(
     /** Lê os grupos e devolve a leitura (posições na imagem original) com a nota usada na escolha. */
     private fun readGroups(
         image: GrayImage,
-        found: List<List<PlacedGlyph>>,
+        raw: List<List<PlacedGlyph>>,
         deskewed: DeskewedMask,
         inkIsDark: Boolean,
     ): Triple<ImageReading, Float, List<List<PlacedGlyph>>> {
         val angle = deskewed.angleDegrees
+        val found = raw.map(::withoutPieces).filter { it.isNotEmpty() }
         if (found.isEmpty()) return ImageReading(ZuReading.EMPTY, emptyList(), inkIsDark, image.width, image.height, mode = mode).let { Triple(it, 0f, found) }
 
         // A orientação vale para a imagem inteira: soma a pontuação de todos os blocos.
@@ -453,6 +488,12 @@ class ZuImageReader(
 
         /** Passo do ajuste de posição ao ler uma vaga da grade (fração do glifo). */
         const val SLOT_SHIFT = 0.06f
+
+        /** Na ponta de uma coluna, o glifo achado precisa bater com uma letra a até tantos blocos. */
+        const val END_MAX_DISTANCE = 3
+
+        /** Caixa com largura ou altura abaixo disto × a do bloco é pedaço de glifo. */
+        const val PIECE_RATIO = 0.65f
         const val SURE_CONFIDENCE = 0.8f
 
         /** Grupos com tamanhos até esta proporção, e a até [MERGE_GAP] glifos um do outro, são o mesmo texto. */
