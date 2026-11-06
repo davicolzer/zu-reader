@@ -6,6 +6,8 @@ App Android em Kotlin que lê textos no alfabeto Zu, do jogo Fez, a partir de um
 - Design: [docs/design/mockup.png](docs/design/mockup.png) (fonte em [mockup.html](docs/design/mockup.html)) e ícone [icon.svg](docs/design/icon.svg)
 - Telas no Android: [início](docs/design/home-android.png), [câmera](docs/design/camera-android.png), [recorte](docs/design/crop-android.png), [resultado do recorte](docs/design/crop-result-android.png), [resultado](docs/design/result-android.png) e [título e texto inclinados](docs/design/result-inclinado-android.png), [correção](docs/design/correction-android.png), [leitura salva](docs/design/result-saved-android.png) e [recentes](docs/design/home-recent-android.png)
 - Imagens de exemplo para testar pela galeria: [docs/samples/](docs/samples/)
+- Release e assinatura: [docs/RELEASE.md](docs/RELEASE.md)
+- Tema claro: [início](docs/design/home-light-android.png) e [resultado](docs/design/result-light-android.png); [configurações](docs/design/settings-android.png)
 
 ## Versões
 
@@ -40,7 +42,7 @@ Requisitos: JDK 25 e Android SDK com a plataforma 37 (o Android Studio instala).
 ./gradlew :core:zu:test         # só os testes do leitor
 ```
 
-O CI (`.github/workflows/android.yml`) roda `./gradlew build` em cada push na `main` e em cada PR, e publica o APK de debug como artefato.
+O CI (`.github/workflows/android.yml`) roda `./gradlew build bundleRelease` em cada push na `main` e em cada PR e publica o APK de debug e o APK/AAB de release como artefatos (assinados se os secrets estiverem configurados; ver `docs/RELEASE.md`).
 
 ## Licenças
 
