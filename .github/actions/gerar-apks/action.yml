@@ -1,0 +1,70 @@
+name: Gerar APKs
+description: APK de teste, APK e AAB de release (assinado se a chave for informada), com nomes da versão.
+inputs:
+  keystore-base64:
+    description: Keystore de release em base64 (opcional).
+    required: false
+    default: ""
+  keystore-password:
+    required: false
+    default: ""
+  key-alias:
+    required: false
+    default: ""
+  key-password:
+    required: false
+    default: ""
+outputs:
+  version:
+    description: Versão com o número do build (ex.: 0.5.0-build.21).
+    value: ${{ steps.nomes.outputs.version }}
+  signed:
+    description: "true se o APK de release saiu assinado."
+    value: ${{ steps.nomes.outputs.signed }}
+runs:
+  using: composite
+  steps:
+    - name: Preparar chave de release (se configurada)
+      if: inputs.keystore-base64 != ''
+      shell: bash
+      env:
+        ZU_KEYSTORE_BASE64: ${{ inputs.keystore-base64 }}
+      run: |
+        echo "$ZU_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/zu-release.jks"
+        echo "ZU_KEYSTORE_PATH=$RUNNER_TEMP/zu-release.jks" >> "$GITHUB_ENV"
+
+    - name: Gerar APK de teste (debug)
+      shell: bash
+      run: ./gradlew :app:assembleDebug --warning-mode all
+
+    - name: Gerar APK e AAB de release
+      shell: bash
+      env:
+        ZU_KEYSTORE_PASSWORD: ${{ inputs.keystore-password }}
+        ZU_KEY_ALIAS: ${{ inputs.key-alias }}
+        ZU_KEY_PASSWORD: ${{ inputs.key-password }}
+      run: ./gradlew :app:assembleRelease :app:bundleRelease --warning-mode all
+
+    - name: Dar nome aos arquivos
+      id: nomes
+      shell: bash
+      run: |
+        VERSION="$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)-build.${GITHUB_RUN_NUMBER}"
+        mkdir -p dist
+        cp app/build/outputs/apk/debug/app-debug.apk "dist/zu-reader-${VERSION}-teste.apk"
+        if [ -f app/build/outputs/apk/release/app-release.apk ]; then
+          cp app/build/outputs/apk/release/app-release.apk "dist/zu-reader-${VERSION}.apk"
+          echo "signed=true" >> "$GITHUB_OUTPUT"
+        else
+          cp app/build/outputs/apk/release/app-release-unsigned.apk "dist/zu-reader-${VERSION}-sem-assinatura.apk"
+          echo "signed=false" >> "$GITHUB_OUTPUT"
+        fi
+        cp app/build/outputs/bundle/release/app-release.aab "dist/zu-reader-${VERSION}.aab"
+        echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+        ls -la dist
+
+    - name: Guardar APKs
+      uses: actions/upload-artifact@v7
+      with:
+        name: zu-reader
+        path: dist/
