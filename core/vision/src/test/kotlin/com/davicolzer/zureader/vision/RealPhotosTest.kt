@@ -64,10 +64,14 @@ class RealPhotosTest {
         return RgbImage(iw, ih, argb)
     }
 
-    /** 1 − distância de edição / letras esperadas, ignorando espaços e quebras de linha. */
+    /**
+     * 1 − distância de edição / letras esperadas, ignorando espaços e quebras de linha.
+     * K/Q e U/V são o mesmo glifo no Zu: qualquer uma das duas vale.
+     */
     private fun accuracy(expected: String, read: String): Double {
-        val a = expected.filter(Char::isLetter)
-        val b = read.filter(Char::isLetter)
+        fun same(s: String) = s.filter(Char::isLetter).replace('Q', 'K').replace('V', 'U')
+        val a = same(expected)
+        val b = same(read)
         val d = Array(a.length + 1) { IntArray(b.length + 1) }
         for (i in 0..a.length) d[i][0] = i
         for (j in 0..b.length) d[0][j] = j
