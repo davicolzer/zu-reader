@@ -26,6 +26,15 @@
     </plurals>
     <string name="result_low_confidence">Letras em dourado têm dúvida. Toque numa letra, aqui ou na foto, para corrigir.</string>
     <string name="result_twin_letters">%1$s usam o mesmo glifo no Zu. A letra foi escolhida pelo contexto do inglês; toque no glifo para trocar.</string>
+    <string name="home_write">Escrever à mão</string>
+    <string name="write_title">Escrever em Zu</string>
+    <string name="write_empty">Toque nos glifos abaixo para escrever. A mensagem aparece aqui em Zu, em colunas, como no jogo.</string>
+    <string name="write_letters">Letras</string>
+    <string name="write_numbers">Números</string>
+    <string name="write_space">Espaço</string>
+    <string name="write_delete">Apagar</string>
+    <string name="write_clear">Limpar tudo</string>
+    <string name="write_done">Ver resultado</string>
     <string name="result_zoom_hint">Use dois dedos para ampliar a foto; ampliada, arraste com um dedo.</string>
     <string name="result_tap_to_fix">Toque numa letra, aqui ou na foto, para corrigir.</string>
     <string name="result_empty_title">Nenhum glifo encontrado</string>

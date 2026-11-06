@@ -15,6 +15,7 @@ import com.davicolzer.zureader.vision.RgbImage
 import com.davicolzer.zureader.vision.ImageTextReader
 import com.davicolzer.zureader.vision.ModeChoice
 import com.davicolzer.zureader.vision.ZuImageReader
+import com.davicolzer.zureader.vision.ZuWriter
 import com.davicolzer.zureader.zu.ReadingDirection
 import com.davicolzer.zureader.zu.ReadingMode
 import com.davicolzer.zureader.zu.ZuGlyph
@@ -35,6 +36,9 @@ sealed interface ReaderUiState {
     data class Crop(val image: Bitmap, val rgb: RgbImage, val suggestion: Quad, val fromCamera: Boolean) : ReaderUiState
     data object Reading : ReaderUiState
 
+    /** Escrevendo à mão (teclado de glifos); [draft] é o texto já escrito. */
+    data class Write(val draft: String = "") : ReaderUiState
+
     /**
      * [savedId] não nulo = leitura que está no histórico; correções são gravadas nela.
      * [crop] guarda a imagem original e o recorte usado, para o usuário poder ajustar e ler de novo.
@@ -44,6 +48,8 @@ sealed interface ReaderUiState {
         val result: ImageReading,
         val savedId: Long? = null,
         val crop: Crop? = null,
+        /** Texto escrito à mão que gerou este resultado (voltar reabre o teclado com ele). */
+        val written: String? = null,
     ) : ReaderUiState
     data object History : ReaderUiState
     data object Settings : ReaderUiState
@@ -167,6 +173,17 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
                 if (now.result != current.result) history.update(id, now.result)
             }
         }
+    }
+
+    /** Abre "Escrever à mão" com [draft] já escrito. */
+    fun openWriter(draft: String = "") {
+        _state.value = ReaderUiState.Write(draft)
+    }
+
+    /** Termina de escrever: a mensagem vira imagem em Zu e abre na tela de resultado. */
+    fun finishWriting(text: String) = work {
+        val (gray, reading) = ZuWriter.write(text, settings.value.direction) ?: return@work ReaderUiState.Write(text)
+        ReaderUiState.Result(ImageLoading.toBitmap(RgbImage.fromGray(gray)), reading, written = text)
     }
 
     fun openHistory() {
