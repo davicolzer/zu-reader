@@ -31,10 +31,22 @@ class RealPhotosTest {
         Photo("parede-escura.jpg", "THE POINTS CONSTELLATE CONSPIRE TO CREATE SHAPES SHAPES TO TESSELLATE", 0, 0.97),
         Photo("parede-clara.jpg", "THE POINTS CONSTELLATE CONSPIRE TO CREATE SHAPES SHAPES TO TESSELLATE", 1, 0.95),
         Photo("lapide-2.jpg", "JUMPS OVER THE LAZY DOG", 1, 0.65),
-        Photo("lapide-1.jpg", "THE QUICK BROWN FOX", 1, 0.45),
+        Photo("lapide-1.jpg", "THE QUICK BROWN FOX", 1, 0.6),
         // recortadas no app em volta da pedra
         Photo("lapide-2.jpg", "JUMPS OVER THE LAZY DOG", 1, 0.9, crop = listOf(0.435f, 0.27f, 0.73f, 0.585f)),
-        Photo("lapide-1.jpg", "THE QUICK BROWN FOX", 1, 0.62, crop = listOf(0.33f, 0.28f, 0.67f, 0.65f)),
+        Photo("lapide-1.jpg", "THE QUICK BROWN FOX", 1, 0.78, crop = listOf(0.33f, 0.28f, 0.67f, 0.65f)),
+        // balão de fala (branco sobre preto) e parede de ladrilhos em relevo
+        Photo("balao-fala.jpg", "NICE TO MEET YOU", 1, 0.99),
+        // prints das lápides (melhores que as fotos da tela)
+        Photo("lapide-print-1.png", "JUMPS OVER THE LAZY DOG", 0, 0.7),
+        Photo("lapide-print-1.png", "JUMPS OVER THE LAZY DOG", 0, 0.99, crop = listOf(0.6f, 0.12f, 0.93f, 0.85f)),
+        // inteira: as folhas do cenário viram letras soltas (a variante de neon troca F por M)
+        Photo("lapide-print-2.png", "THE QUICK BROWN FOX", 0, 0.65),
+        Photo("lapide-print-2.png", "THE QUICK BROWN FOX", 0, 0.85, crop = listOf(0.6f, 0.12f, 0.93f, 0.85f)),
+        // letreiros de neon (só o contorno do glifo), recortados em volta de cada placa
+        Photo("neon-cidade.png", "WORK", 0, 0.7, crop = listOf(0.725f, 0.285f, 0.770f, 0.565f)),
+        Photo("neon-cidade.png", "EAT MEAT", 0, 0.8, crop = listOf(0.221f, 0.457f, 0.244f, 0.611f)),
+        Photo("parede-ladrilhos.jpg", "THE POINTS CONSTELLATE CONSPIRE TO CREATE SHAPES SHAPES TO TESSELLATE", 1, 0.9),
     )
 
     private val dir = System.getProperty("zu.testdata")?.let(::File)
@@ -64,10 +76,14 @@ class RealPhotosTest {
         return RgbImage(iw, ih, argb)
     }
 
-    /** 1 − distância de edição / letras esperadas, ignorando espaços e quebras de linha. */
+    /**
+     * 1 − distância de edição / letras esperadas, ignorando espaços e quebras de linha.
+     * K/Q e U/V são o mesmo glifo no Zu: qualquer uma das duas vale.
+     */
     private fun accuracy(expected: String, read: String): Double {
-        val a = expected.filter(Char::isLetter)
-        val b = read.filter(Char::isLetter)
+        fun same(s: String) = s.filter(Char::isLetter).replace('Q', 'K').replace('V', 'U')
+        val a = same(expected)
+        val b = same(read)
         val d = Array(a.length + 1) { IntArray(b.length + 1) }
         for (i in 0..a.length) d[i][0] = i
         for (j in 0..b.length) d[0][j] = j
@@ -80,7 +96,8 @@ class RealPhotosTest {
     @Test
     fun `fotos reais do jogo`() {
         assumeTrue(dir != null && dir.isDirectory, "sem testdata/real")
-        val reader = ZuImageReader()
+        // como o app no modo padrão: escrita e números ao mesmo tempo
+        val reader = ZuImageReader.forChoice(ModeChoice.AUTO)
         val failures = mutableListOf<String>()
         for (photo in photos) {
             val started = System.nanoTime()
@@ -93,7 +110,9 @@ class RealPhotosTest {
                 )
                 img.rectify(quad)
             }
-            val text = reader.read(image).reading.text.replace('\n', ' ')
+            val result = reader.read(image)
+            if (result.mode != com.davicolzer.zureader.zu.ReadingMode.TEXT) failures += "${photo.label}: lida como ${result.mode}"
+            val text = result.reading.text.replace('\n', ' ')
             val ms = (System.nanoTime() - started) / 1_000_000
             val acc = accuracy(photo.expected, text)
             println("${photo.label}: ${"%.0f".format(acc * 100)}% em $ms ms → '$text'")

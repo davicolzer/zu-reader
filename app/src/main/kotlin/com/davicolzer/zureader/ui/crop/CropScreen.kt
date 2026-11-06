@@ -2,9 +2,17 @@ package com.davicolzer.zureader.ui.crop
 
 import android.graphics.Bitmap
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculateCentroid
+import androidx.compose.foundation.gestures.calculatePan
+import androidx.compose.foundation.gestures.calculateZoom
+import androidx.compose.ui.input.pointer.positionChange
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
+import com.davicolzer.zureader.vision.Viewport
+import kotlin.math.roundToInt
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -39,7 +47,6 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -56,7 +63,8 @@ import com.davicolzer.zureader.vision.Quad
 
 /**
  * Ajuste do recorte, sempre retangular (quinas a 90°): o usuário puxa os cantos ou as bordas,
- * arrasta o retângulo por dentro ou, tocando fora dele, desenha um retângulo novo.
+ * arrasta o retângulo por dentro ou, tocando fora dele, desenha um retângulo novo. Com dois
+ * dedos (pinça), amplia a foto e arrasta a parte ampliada, para recortar textos pequenos.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -100,44 +108,59 @@ fun CropScreen(
                 val density = LocalDensity.current
                 val viewW = with(density) { maxWidth.toPx() }
                 val viewH = with(density) { maxHeight.toPx() }
-                // ContentScale.Fit: imagem inteira visível, centralizada
-                val scale = minOf(viewW / image.width, viewH / image.height)
-                val offX = (viewW - image.width * scale) / 2
-                val offY = (viewH - image.height * scale) / 2
-                fun toView(p: Point) = Offset(p.x * scale + offX, p.y * scale + offY)
-                fun toImage(o: Offset) = Point((o.x - offX) / scale, (o.y - offY) / scale)
+                // zoom: 1 = foto inteira visível; a pinça amplia, dois dedos arrastam a foto ampliada
+                var view by remember(image, viewW, viewH) { mutableStateOf(Viewport.fit(viewW, viewH, image.width, image.height)) }
+                fun toView(p: Point) = view.toView(p).let { Offset(it.x, it.y) }
                 val gold = ZuTheme.colors.gold
                 val ink = MaterialTheme.colorScheme.background
                 val touch = with(density) { 28.dp.toPx() }
                 val minSide = with(density) { 40.dp.toPx() }
 
-                Image(bitmap, contentDescription = null, modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
                 Canvas(
                     Modifier
                         .fillMaxSize()
                         .semantics { contentDescription = description }
-                        .pointerInput(scale, offX, offY) {
-                            var handle = CropBox.Handle.MOVE
-                            var anchor = Point(0f, 0f)
-                            var finger = Point(0f, 0f)
-                            detectDragGestures(
-                                onDragStart = { start ->
-                                    anchor = toImage(start)
-                                    finger = anchor
-                                    handle = box.hit(anchor.x, anchor.y, touch / scale)
-                                },
-                                onDrag = { change, drag ->
-                                    change.consume()
-                                    finger = Point(finger.x + drag.x / scale, finger.y + drag.y / scale)
-                                    box = if (handle == CropBox.Handle.NEW) {
-                                        CropBox.spanning(anchor, finger, image.width, image.height, minSide / scale)
-                                    } else {
-                                        box.drag(handle, drag.x / scale, drag.y / scale, image.width, image.height, minSide / scale)
+                        .pointerInput(image, viewW, viewH) {
+                            awaitEachGesture {
+                                val down = awaitFirstDown()
+                                val start = view.toImage(down.position.x, down.position.y)
+                                val handle = box.hit(start.x, start.y, touch / view.scale)
+                                var finger = start
+                                var pinching = false
+                                while (true) {
+                                    val event = awaitPointerEvent()
+                                    val pressed = event.changes.filter { it.pressed }
+                                    if (pressed.isEmpty()) break
+                                    if (pressed.size >= 2) {
+                                        // pinça: zoom em volta dos dedos e arrasto da foto; o recorte fica onde está
+                                        pinching = true
+                                        val centroid = event.calculateCentroid()
+                                        val pan = event.calculatePan()
+                                        view = view.zoomedAt(centroid.x, centroid.y, event.calculateZoom()).panned(pan.x, pan.y)
+                                        event.changes.forEach { it.consume() }
+                                    } else if (!pinching) {
+                                        val change = pressed.first()
+                                        val drag = change.positionChange()
+                                        if (drag == Offset.Zero) continue
+                                        change.consume()
+                                        val dx = drag.x / view.scale
+                                        val dy = drag.y / view.scale
+                                        finger = Point(finger.x + dx, finger.y + dy)
+                                        box = if (handle == CropBox.Handle.NEW) {
+                                            CropBox.spanning(start, finger, image.width, image.height, minSide / view.scale)
+                                        } else {
+                                            box.drag(handle, dx, dy, image.width, image.height, minSide / view.scale)
+                                        }
                                     }
-                                },
-                            )
+                                }
+                            }
                         },
                 ) {
+                    drawImage(
+                        bitmap,
+                        dstOffset = IntOffset(view.left.roundToInt(), view.top.roundToInt()),
+                        dstSize = IntSize((image.width * view.scale).roundToInt(), (image.height * view.scale).roundToInt()),
+                    )
                     val tl = toView(Point(box.left, box.top))
                     val br = toView(Point(box.right, box.bottom))
                     val rect = Rect(tl, br)

@@ -48,6 +48,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.davicolzer.zureader.vision.ModeChoice
 import com.davicolzer.zureader.R
 import com.davicolzer.zureader.reader.ImageLoading
 import com.davicolzer.zureader.reader.LiveAnalyzer
@@ -68,8 +69,8 @@ fun CameraScreen(
     onClose: () -> Unit,
     direction: ReadingDirection = ReadingDirection.VERTICAL_RIGHT_TO_LEFT,
     learned: List<ZuGlyph> = emptyList(),
-    mode: ReadingMode = ReadingMode.TEXT,
-    onMode: (ReadingMode) -> Unit = {},
+    mode: ModeChoice = ModeChoice.AUTO,
+    onMode: (ModeChoice) -> Unit = {},
 ) {
     val context = LocalContext.current
     var granted by remember { mutableStateOf(hasCameraPermission(context)) }
@@ -101,8 +102,8 @@ private fun CameraContent(
     onClose: () -> Unit,
     direction: ReadingDirection,
     learned: List<ZuGlyph>,
-    mode: ReadingMode,
-    onMode: (ReadingMode) -> Unit,
+    mode: ModeChoice,
+    onMode: (ModeChoice) -> Unit,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current

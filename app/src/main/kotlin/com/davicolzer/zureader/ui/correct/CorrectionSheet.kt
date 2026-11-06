@@ -37,6 +37,7 @@ import com.davicolzer.zureader.ui.components.MiniGlyph
 import com.davicolzer.zureader.ui.theme.ZuTheme
 import com.davicolzer.zureader.zu.GlyphReading
 import com.davicolzer.zureader.zu.ReadingMode
+import com.davicolzer.zureader.zu.ZuAlphabet
 
 /** Painel para corrigir a letra de um glifo. Tocar numa letra aplica e fecha. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -71,7 +72,7 @@ private fun CorrectionBody(glyph: GlyphReading, rotation: Int, onSelect: (Char) 
         Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 20.dp).navigationBarsPadding(),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text(stringResource(if (mode == ReadingMode.TEXT) R.string.correct_title else R.string.correct_title_numbers), style = MaterialTheme.typography.titleLarge, modifier = Modifier.semantics { heading() })
+        Text(stringResource(if (mode != ReadingMode.NUMBERS) R.string.correct_title else R.string.correct_title_numbers), style = MaterialTheme.typography.titleLarge, modifier = Modifier.semantics { heading() })
         Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(
                 Modifier
@@ -87,6 +88,8 @@ private fun CorrectionBody(glyph: GlyphReading, rotation: Int, onSelect: (Char) 
                     mode == ReadingMode.NUMBERS && glyph.isLowConfidence -> stringResource(R.string.correct_body_doubt_numbers)
                     mode == ReadingMode.NUMBERS -> stringResource(R.string.correct_body_numbers, mode.symbolLabel(glyph.letter))
                     glyph.isLowConfidence -> stringResource(R.string.correct_body_doubt)
+                    ZuAlphabet.twin(glyph.letter) != null ->
+                        stringResource(R.string.correct_body_twin, glyph.letter.toString(), ZuAlphabet.twin(glyph.letter).toString())
                     else -> stringResource(R.string.correct_body, mode.symbolLabel(glyph.letter))
                 },
                 style = MaterialTheme.typography.bodyMedium,
@@ -94,7 +97,8 @@ private fun CorrectionBody(glyph: GlyphReading, rotation: Int, onSelect: (Char) 
             )
         }
 
-        val suggestions = (listOf(glyph.letter) + glyph.alternatives.map { it.letter })
+        val twin = if (mode != ReadingMode.NUMBERS) ZuAlphabet.twin(glyph.letter) else null
+        val suggestions = (listOfNotNull(glyph.letter, twin) + glyph.alternatives.map { it.letter })
             .filter { it in mode.keyboard }.distinct().take(3)
         if (suggestions.isNotEmpty()) {
             Text(stringResource(R.string.correct_suggestions), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

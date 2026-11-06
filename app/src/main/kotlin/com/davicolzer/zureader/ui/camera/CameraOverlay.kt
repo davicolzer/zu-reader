@@ -42,6 +42,7 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.davicolzer.zureader.vision.ModeChoice
 import com.davicolzer.zureader.R
 import com.davicolzer.zureader.reader.LiveFrame
 import com.davicolzer.zureader.ui.components.ModeSelector
@@ -65,8 +66,8 @@ fun CameraOverlay(
     onGallery: () -> Unit,
     onShutter: () -> Unit,
     horizontal: Boolean = false,
-    mode: ReadingMode = ReadingMode.TEXT,
-    onMode: (ReadingMode) -> Unit = {},
+    mode: ModeChoice = ModeChoice.AUTO,
+    onMode: (ModeChoice) -> Unit = {},
 ) {
     val teal = ZuTheme.colors.teal
     val gold = ZuTheme.colors.gold
@@ -141,7 +142,7 @@ fun CameraOverlay(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-                val text = mode.display(frame?.text.orEmpty()).replace('\n', ' ')
+                val text = (frame?.mode ?: ReadingMode.TEXT).display(frame?.text.orEmpty()).replace('\n', ' ')
                 if (text.isNotBlank()) {
                     Text(
                         text,

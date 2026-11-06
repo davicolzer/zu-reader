@@ -39,4 +39,11 @@ class ZuAlphabetTest {
     fun `glyphFor aceita minusculas`() {
         assertEquals(ZuAlphabet.glyphFor('A'), ZuAlphabet.glyphFor('a'))
     }
+
+    @Test
+    fun `letras gemeas dividem o glifo`() {
+        assertEquals('Q', ZuAlphabet.twin('K')); assertEquals('K', ZuAlphabet.twin('Q'))
+        assertEquals('V', ZuAlphabet.twin('U')); assertEquals('U', ZuAlphabet.twin('V'))
+        for (c in "ABCDEFGHIJLMNOPRSTWXYZ") assertEquals(null, ZuAlphabet.twin(c), c.toString())
+    }
 }
