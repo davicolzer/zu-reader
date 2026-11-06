@@ -34,7 +34,7 @@
     <string name="write_space">Espaço</string>
     <string name="write_delete">Apagar</string>
     <string name="write_clear">Limpar tudo</string>
-    <string name="write_done">Ver resultado</string>
+    <string name="write_done">Pronto</string>
     <string name="result_zoom_hint">Use dois dedos para ampliar a foto; ampliada, arraste com um dedo.</string>
     <string name="result_tap_to_fix">Toque numa letra, aqui ou na foto, para corrigir.</string>
     <string name="result_empty_title">Nenhum glifo encontrado</string>
