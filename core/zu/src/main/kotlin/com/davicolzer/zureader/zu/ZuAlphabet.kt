@@ -6,7 +6,7 @@ package com.davicolzer.zureader.zu
  */
 data class ZuGlyph(val letters: String, val pattern: BitMatrix) {
     init {
-        require(letters.isNotEmpty() && letters.all { it in 'A'..'Z' }) { "Letras inválidas: $letters" }
+        require(letters.isNotEmpty() && letters.none { it.isWhitespace() }) { "Símbolos inválidos: '$letters'" }
     }
 
     val primary: Char get() = letters[0]
@@ -22,10 +22,10 @@ data class ZuGlyph(val letters: String, val pattern: BitMatrix) {
  * Padrões extraídos da fonte FEZ Pixel Font de TakWolf (CC0 1.0,
  * https://github.com/TakWolf/fez-pixel-font). O alfabeto Zu pertence à Polytron.
  */
-object ZuAlphabet {
+object ZuAlphabet : GlyphSet {
     const val GRID = 5
 
-    val glyphs: List<ZuGlyph> = listOf(
+    override val glyphs: List<ZuGlyph> = listOf(
         glyph("A", "#####", "..#..", "#...#", "#####", "#####"),
         glyph("B", "#####", "#...#", "#.#.#", "....#", "#####"),
         glyph("C", "#####", "###..", "###.#", "###..", "#####"),
@@ -56,8 +56,10 @@ object ZuAlphabet {
         glyphs.flatMap { g -> g.letters.map { it to g } }.toMap()
 
     /** Glifo que representa [letter] (A–Z, maiúscula ou minúscula). */
-    fun glyphFor(letter: Char): ZuGlyph =
-        byLetter[letter.uppercaseChar()] ?: throw IllegalArgumentException("Letra sem glifo Zu: '$letter'")
+    override fun glyphFor(symbol: Char): ZuGlyph =
+        byLetter[symbol.uppercaseChar()] ?: throw IllegalArgumentException("Letra sem glifo Zu: '$symbol'")
+
+    override fun contains(symbol: Char): Boolean = symbol.uppercaseChar() in byLetter
 
     private fun glyph(letters: String, vararg rows: String) = ZuGlyph(letters, BitMatrix.parse(*rows))
 }

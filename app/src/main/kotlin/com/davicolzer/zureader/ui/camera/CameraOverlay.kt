@@ -44,8 +44,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.davicolzer.zureader.R
 import com.davicolzer.zureader.reader.LiveFrame
+import com.davicolzer.zureader.ui.components.ModeSelector
 import com.davicolzer.zureader.ui.theme.ZuTheme
 import com.davicolzer.zureader.vision.FillCenter
+import com.davicolzer.zureader.zu.ReadingMode
 
 private val Scrim = Color(0xCC0B0A18)
 
@@ -63,6 +65,8 @@ fun CameraOverlay(
     onGallery: () -> Unit,
     onShutter: () -> Unit,
     horizontal: Boolean = false,
+    mode: ReadingMode = ReadingMode.TEXT,
+    onMode: (ReadingMode) -> Unit = {},
 ) {
     val teal = ZuTheme.colors.teal
     val gold = ZuTheme.colors.gold
@@ -125,6 +129,8 @@ fun CameraOverlay(
                 )
             }
 
+            ModeSelector(mode, onMode, Modifier.padding(horizontal = 16.dp))
+
             Spacer(Modifier.weight(1f))
 
             Column(
@@ -135,7 +141,7 @@ fun CameraOverlay(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-                val text = frame?.text.orEmpty().replace('\n', ' ')
+                val text = mode.display(frame?.text.orEmpty()).replace('\n', ' ')
                 if (text.isNotBlank()) {
                     Text(
                         text,

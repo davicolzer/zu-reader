@@ -80,15 +80,18 @@ object ZuLayout {
     /**
      * Monta a disposição de [text] em Zu (para testes e dados sintéticos).
      * Quebra em colunas/linhas de até [maxPerLine] glifos sem cortar palavras.
-     * Letras fora de A–Z são ignoradas.
+     * Símbolos que não existem em [glyphs] são ignorados.
      */
     fun compose(
         text: String,
         direction: ReadingDirection = ReadingDirection.VERTICAL_RIGHT_TO_LEFT,
         maxPerLine: Int = 8,
         size: Float = 10f,
+        glyphs: GlyphSet = ZuAlphabet,
     ): List<PlacedGlyph> {
-        val words = text.uppercase().split(Regex("[^A-Z]+")).filter { it.isNotEmpty() }
+        val words = text.uppercase().split(Regex("\\s+"))
+            .map { word -> word.filter(glyphs::contains) }
+            .filter { it.isNotEmpty() }
         val lines = mutableListOf<MutableList<String>>()
         for (word in words) {
             val line = lines.lastOrNull()
@@ -103,7 +106,7 @@ object ZuLayout {
             line.forEachIndexed { w, word ->
                 if (w > 0) slot++ // célula vazia entre palavras
                 for (ch in word) {
-                    val bits = ZuAlphabet.glyphFor(ch).pattern
+                    val bits = glyphs.glyphFor(ch).pattern
                     val (x, y) = when (direction) {
                         ReadingDirection.VERTICAL_RIGHT_TO_LEFT -> -lineIndex * pitch * 1.5f to slot * pitch
                         ReadingDirection.HORIZONTAL_LEFT_TO_RIGHT -> slot * pitch to lineIndex * pitch * 1.5f

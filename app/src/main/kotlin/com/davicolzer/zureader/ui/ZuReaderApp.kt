@@ -52,6 +52,8 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
             recent = recent,
             onOpenSaved = viewModel::openSaved,
             onSeeAll = viewModel::openHistory,
+            mode = settings.mode,
+            onMode = viewModel::setMode,
         )
         ReaderUiState.History -> {
             val all by viewModel.allHistory.collectAsStateWithLifecycle()
@@ -68,6 +70,8 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
                     onClose = viewModel::goHome,
                     direction = settings.direction,
                     learned = learned,
+                    mode = settings.mode,
+                    onMode = viewModel::setMode,
                 )
             }
         }

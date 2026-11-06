@@ -32,6 +32,14 @@ class GlyphClassifier(
 ) {
     private val templates: List<Pair<ZuGlyph, Boolean>> = alphabet.map { it to false } + learned.map { it to true }
 
+    /**
+     * Folga que vale confiança total: a menor distância entre desenhos de símbolos diferentes do
+     * conjunto, até 2. Nas letras é 2; nos números, que só mudam no miolo 3×3, alguns ficam a 1 bloco.
+     */
+    private val fullMargin: Int = alphabet.flatMap { a ->
+        alphabet.filter { b -> b.letters.none { it in a.letters } }.map { b -> a.pattern.hammingDistance(b.pattern) }
+    }.minOrNull()?.coerceIn(1, 2) ?: 2
+
     fun classify(bits: BitMatrix): GlyphClassification {
         val ranked = templates
             .map { (glyph, isLearned) -> GlyphMatch(glyph, glyph.pattern.hammingDistance(bits), isLearned) }
@@ -45,13 +53,13 @@ class GlyphClassifier(
     }
 
     /**
-     * Confiança = folga para o segundo colocado (2 blocos ou mais = folga total)
+     * Confiança = folga para o segundo colocado ([fullMargin] blocos ou mais = folga total)
      * × proximidade do modelo (0 blocos diferentes = 1).
-     * Exato: 1,0. Um bloco errado sem empate: 0,8. Empate: 0.
+     * Letras: exato 1,0; um bloco errado sem empate 0,8; empate 0.
      */
     private fun confidence(d1: Int, d2: Int): Float {
         if (d1 > maxDistance) return 0f
-        val margin = (d2 - d1).coerceAtMost(2) / 2f
+        val margin = (d2 - d1).coerceAtMost(fullMargin) / fullMargin.toFloat()
         val closeness = 1f - d1 / (maxDistance + 1f)
         return margin * closeness
     }

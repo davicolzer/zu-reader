@@ -33,6 +33,7 @@ import com.davicolzer.zureader.R
 import com.davicolzer.zureader.data.HistoryItem
 import com.davicolzer.zureader.ui.components.Thumbnail
 import com.davicolzer.zureader.ui.theme.ZuTheme
+import com.davicolzer.zureader.zu.ReadingMode
 import java.text.DateFormat
 import java.util.Date
 
@@ -82,7 +83,7 @@ fun HistoryRow(item: HistoryItem, onOpen: (Long) -> Unit) {
         Thumbnail(item.image, size = 48.dp)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
-                item.text.replace('\n', ' ').ifBlank { "—" },
+                ReadingMode.of(item.text.firstOrNull { !it.isWhitespace() } ?: 'A').display(item.text).replace('\n', ' ').ifBlank { "—" },
                 style = MaterialTheme.typography.titleSmall,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,

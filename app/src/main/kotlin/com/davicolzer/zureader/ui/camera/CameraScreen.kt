@@ -55,6 +55,7 @@ import com.davicolzer.zureader.reader.LiveFrame
 import com.davicolzer.zureader.ui.components.PixelOutlinedButton
 import com.davicolzer.zureader.ui.components.PixelPrimaryButton
 import com.davicolzer.zureader.zu.ReadingDirection
+import com.davicolzer.zureader.zu.ReadingMode
 import com.davicolzer.zureader.zu.ZuGlyph
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
@@ -67,6 +68,8 @@ fun CameraScreen(
     onClose: () -> Unit,
     direction: ReadingDirection = ReadingDirection.VERTICAL_RIGHT_TO_LEFT,
     learned: List<ZuGlyph> = emptyList(),
+    mode: ReadingMode = ReadingMode.TEXT,
+    onMode: (ReadingMode) -> Unit = {},
 ) {
     val context = LocalContext.current
     var granted by remember { mutableStateOf(hasCameraPermission(context)) }
@@ -74,7 +77,7 @@ fun CameraScreen(
     LaunchedEffect(Unit) { if (!granted) launcher.launch(Manifest.permission.CAMERA) }
 
     if (granted) {
-        CameraContent(onCaptured, onPickFromGallery, onClose, direction, learned)
+        CameraContent(onCaptured, onPickFromGallery, onClose, direction, learned, mode, onMode)
     } else {
         PermissionNeeded(
             onAllow = { launcher.launch(Manifest.permission.CAMERA) },
@@ -98,6 +101,8 @@ private fun CameraContent(
     onClose: () -> Unit,
     direction: ReadingDirection,
     learned: List<ZuGlyph>,
+    mode: ReadingMode,
+    onMode: (ReadingMode) -> Unit,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -128,7 +133,7 @@ private fun CameraContent(
         imageCapture.flashMode = if (flashOn) ImageCapture.FLASH_MODE_ON else ImageCapture.FLASH_MODE_OFF
     }
 
-    DisposableEffect(lifecycleOwner, direction, learned) {
+    DisposableEffect(lifecycleOwner, direction, learned, mode) {
         val analysisExecutor = Executors.newSingleThreadExecutor()
         val future = ProcessCameraProvider.getInstance(context)
         var provider: ProcessCameraProvider? = null
@@ -141,7 +146,7 @@ private fun CameraContent(
                     .setResolutionSelector(resolution)
                     .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                     .build()
-                analysis.setAnalyzer(analysisExecutor, LiveAnalyzer(direction, learned) { live.value = it })
+                analysis.setAnalyzer(analysisExecutor, LiveAnalyzer(direction, learned, mode) { live.value = it })
                 cameraProvider.unbindAll()
                 cameraProvider.bindToLifecycle(lifecycleOwner, CameraSelector.DEFAULT_BACK_CAMERA, preview, analysis, imageCapture)
             } catch (e: Exception) {
@@ -164,6 +169,8 @@ private fun CameraContent(
             onToggleFlash = { flashOn = !flashOn },
             onGallery = onPickFromGallery,
             horizontal = direction == ReadingDirection.HORIZONTAL_LEFT_TO_RIGHT,
+            mode = mode,
+            onMode = { live.value = null; onMode(it) },
             onShutter = {
                 capturing = true
                 takePhoto(context, imageCapture, onDone = { photo ->

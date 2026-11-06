@@ -23,7 +23,7 @@ Nome sugerido: **Zu Reader**. Evitar "Fez" no nome publicado na Play Store para 
 | Estrutura | **6 formas, cada uma em 4 rotações** (ex.: A, G, M, S são a mesma forma girada) | Nunca girar glifo por glifo: a rotação muda a letra |
 | Rotação da foto | Um texto girado também forma letras válidas | Testar as 4 orientações do texto inteiro e escolher a mais parecida com inglês |
 | Direção | Colunas de cima para baixo, da direita para a esquerda (**confirmado** com a parede "THE POINTS CONSTELLATE…") | Padrão; opção horizontal |
-| Números | Sistema separado (0–10, com variantes de 3–7). Também trocam de valor ao girar (1, 2, 3, 4 são o mesmo desenho) e ficam a 2 blocos de algumas letras | Por enquanto o app lê só a escrita. Depois: **modo separado** "ler números" (Fase 8), para não misturar letras e números na mesma leitura |
+| Números | Sistema separado (0–10, com variantes de 3–7), todos com moldura e miolo 3×3; alguns ficam a só 1 bloco um do outro (ex.: 6 e 9). Também trocam de valor ao girar | **Modo separado** "Números" (Fase 8): não mistura letras e números; a confiança considera a folga de 1 bloco |
 
 Fonte dos desenhos: [FEZ Pixel Font, de TakWolf](https://github.com/TakWolf/fez-pixel-font) (CC0). O alfabeto pertence à Polytron.
 
@@ -147,7 +147,7 @@ Fontes: **Silkscreen** (títulos e texto lido, pixel), **Figtree** (interface), 
 | **6a. Aprender com as correções** ✅ | Ao corrigir uma letra, o desenho do glifo (na orientação de leitura) vira um exemplo do usuário (Room, até 300, migração automática 1→2). O classificador compara com o alfabeto e com os exemplos; um exemplo só vence se estiver mais perto (empate = alfabeto) e, se for idêntico, vale contra o contexto do inglês. Vale para galeria, câmera e visor ao vivo. Botão "Esquecer correções" nas configurações | Testes: um "E" deformado que o alfabeto lê como outra letra passa a ser lido certo no texto inteiro depois de um exemplo, também com a foto girada; empate continua com o alfabeto; exemplos da mesma letra não tiram confiança |
 | **6b. Modelo treinado (opcional)** | Modelo TFLite treinado com dados sintéticos + exemplos do usuário; leitura totalmente ao vivo | Acurácia em fotos ≥ 95%; só se a leitura por distância não bastar com fotos reais |
 | **7. Tradução (opcional)** | ML Kit Translation EN → PT no aparelho, mostrando inglês e português | Só se o projeto decidir retomar a tradução |
-| **8. Números (depois)** | Modo separado na tela inicial e na câmera: **Ler escrita** (atual) ou **Ler números**. O modo números usa só os glifos 0–10 (e variantes), sem o modelo de inglês; a orientação vem da foto ou de outros glifos lidos. Antes, entender com prints reais como os números aparecem no jogo (quantidades ou códigos de comandos) | Testes sintéticos com sequências de números em pé e giradas; validação com prints reais |
+| **8. Números** ✅ | Seletor **Escrita / Números** na tela inicial e na câmera (fica salvo). Modo números: 16 desenhos (0–10 e variantes de 3–7, todos com moldura e miolo 3×3), sem modelo do inglês, orientação da foto; resultado "3 10 7 / 1 2", correção com teclado 0–10; o modo fica salvo na leitura do histórico; exemplos aprendidos separados por modo | Testes: 16 desenhos distintos com moldura, cada um reconhecido; números em colunas, com ruído, em imagem com borrão/ruído/JPEG e colorida; modo escrita não devolve números; leitura salva guarda o modo (e as antigas abrem como escrita). Falta validar com prints reais de números do jogo |
 
 ### Dados de teste
 

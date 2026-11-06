@@ -36,6 +36,7 @@ import com.davicolzer.zureader.R
 import com.davicolzer.zureader.ui.components.MiniGlyph
 import com.davicolzer.zureader.ui.theme.ZuTheme
 import com.davicolzer.zureader.zu.GlyphReading
+import com.davicolzer.zureader.zu.ReadingMode
 
 /** Painel para corrigir a letra de um glifo. Tocar numa letra aplica e fecha. */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -43,6 +44,7 @@ import com.davicolzer.zureader.zu.GlyphReading
 fun CorrectionSheet(
     glyph: GlyphReading,
     rotation: Int,
+    mode: ReadingMode = ReadingMode.TEXT,
     onSelect: (Char) -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -51,25 +53,25 @@ fun CorrectionSheet(
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
     ) {
-        CorrectionContent(glyph, rotation, onSelect)
+        CorrectionContent(glyph, rotation, onSelect, mode)
     }
 }
 
 @Composable
-fun CorrectionContent(glyph: GlyphReading, rotation: Int, onSelect: (Char) -> Unit) {
+fun CorrectionContent(glyph: GlyphReading, rotation: Int, onSelect: (Char) -> Unit, mode: ReadingMode = ReadingMode.TEXT) {
     CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
-        CorrectionBody(glyph, rotation, onSelect)
+        CorrectionBody(glyph, rotation, onSelect, mode)
     }
 }
 
 @Composable
-private fun CorrectionBody(glyph: GlyphReading, rotation: Int, onSelect: (Char) -> Unit) {
+private fun CorrectionBody(glyph: GlyphReading, rotation: Int, onSelect: (Char) -> Unit, mode: ReadingMode) {
     val gold = ZuTheme.colors.gold
     Column(
         Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 20.dp).navigationBarsPadding(),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text(stringResource(R.string.correct_title), style = MaterialTheme.typography.titleLarge, modifier = Modifier.semantics { heading() })
+        Text(stringResource(if (mode == ReadingMode.TEXT) R.string.correct_title else R.string.correct_title_numbers), style = MaterialTheme.typography.titleLarge, modifier = Modifier.semantics { heading() })
         Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(
                 Modifier
@@ -81,15 +83,19 @@ private fun CorrectionBody(glyph: GlyphReading, rotation: Int, onSelect: (Char) 
                 MiniGlyph(glyph.source.bits.rotate(rotation), MaterialTheme.colorScheme.onSurface, size = 54.dp)
             }
             Text(
-                if (glyph.isLowConfidence) stringResource(R.string.correct_body_doubt)
-                else stringResource(R.string.correct_body, glyph.letter.toString()),
+                when {
+                    mode == ReadingMode.NUMBERS && glyph.isLowConfidence -> stringResource(R.string.correct_body_doubt_numbers)
+                    mode == ReadingMode.NUMBERS -> stringResource(R.string.correct_body_numbers, mode.symbolLabel(glyph.letter))
+                    glyph.isLowConfidence -> stringResource(R.string.correct_body_doubt)
+                    else -> stringResource(R.string.correct_body, mode.symbolLabel(glyph.letter))
+                },
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
 
         val suggestions = (listOf(glyph.letter) + glyph.alternatives.map { it.letter })
-            .filter { it in 'A'..'Z' }.distinct().take(3)
+            .filter { it in mode.keyboard }.distinct().take(3)
         if (suggestions.isNotEmpty()) {
             Text(stringResource(R.string.correct_suggestions), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -106,7 +112,7 @@ private fun CorrectionBody(glyph: GlyphReading, rotation: Int, onSelect: (Char) 
                             .padding(vertical = 10.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
-                        Text(letter.toString(), style = MaterialTheme.typography.headlineSmall, color = if (current) ZuTheme.colors.teal else MaterialTheme.colorScheme.onSurface)
+                        Text(mode.symbolLabel(letter), style = MaterialTheme.typography.headlineSmall, color = if (current) ZuTheme.colors.teal else MaterialTheme.colorScheme.onSurface)
                         if (current) Text(stringResource(R.string.correct_current), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
@@ -115,10 +121,10 @@ private fun CorrectionBody(glyph: GlyphReading, rotation: Int, onSelect: (Char) 
 
         // teclado A–Z, 6 por linha: cada tecla fica com pelo menos 48 dp
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            ('A'..'Z').chunked(KEYS_PER_ROW).forEach { row ->
+            mode.keyboard.chunked(KEYS_PER_ROW).forEach { row ->
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     for (letter in row) {
-                        val label = letter.toString()
+                        val label = mode.symbolLabel(letter)
                         Box(
                             Modifier
                                 .weight(1f)
