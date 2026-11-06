@@ -42,9 +42,9 @@ class RealPhotosTest {
         Photo("lapide-print-1.png", "JUMPS OVER THE LAZY DOG", 0, 0.99, crop = listOf(0.6f, 0.12f, 0.93f, 0.85f)),
         // inteira: as folhas do cenário viram letras soltas (a variante de neon troca F por M)
         Photo("lapide-print-2.png", "THE QUICK BROWN FOX", 0, 0.65),
-        Photo("lapide-print-2.png", "THE QUICK BROWN FOX", 0, 0.85, crop = listOf(0.6f, 0.12f, 0.93f, 0.85f)),
-        // recorte como o do usuário no app (pedra inteira, até a grama): só o W (debaixo da luz) erra
-        Photo("lapide-print-2.png", "THE QUICK BROWN FOX", 0, 0.93, crop = listOf(0.57f, 0.1f, 0.93f, 0.92f)),
+        Photo("lapide-print-2.png", "THE QUICK BROWN FOX", 0, 0.99, crop = listOf(0.6f, 0.12f, 0.93f, 0.85f)),
+        // recorte como o do usuário no app (pedra inteira, até a grama)
+        Photo("lapide-print-2.png", "THE QUICK BROWN FOX", 0, 0.99, crop = listOf(0.57f, 0.1f, 0.93f, 0.92f)),
         // letreiros de neon (só o contorno do glifo), recortados em volta de cada placa
         Photo("neon-cidade.png", "WORK", 0, 0.7, crop = listOf(0.725f, 0.285f, 0.770f, 0.565f)),
         Photo("neon-cidade.png", "EAT MEAT", 0, 0.8, crop = listOf(0.221f, 0.457f, 0.244f, 0.611f)),

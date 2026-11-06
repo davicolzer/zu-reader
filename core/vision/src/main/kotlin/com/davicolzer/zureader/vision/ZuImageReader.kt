@@ -92,7 +92,8 @@ class ZuImageReader(
         if (!escalateWhenEmpty && first.maxOf { it.reading.reading.glyphs.size } < 1) return choose(luma, listOf(first))
         // Segunda etapa: máscaras afinadas (separam glifos que a foto juntou) e versões de cor.
         val thinned = ERODE_RADII.map { r -> candidates(luma, deskew = false, windows = ERODE_WINDOWS, erosion = r) }
-        val variants = listOf(luma.stretched(), image.red(), image.green(), image.blue(), image.saturation())
+        // unlit: sem as manchas de luz das folhas (lápide na sombra de uma árvore)
+        val variants = listOf(luma.stretched(), image.unlit(), image.red(), image.green(), image.blue(), image.saturation())
         // letreiros de neon: só o contorno do glifo é desenhado; preenchido, vira o glifo
         val outlines = FILL_GAPS.map { g -> candidates(luma, deskew = false, windows = QUICK_WINDOWS, fill = g) }
         return choose(luma, listOf(first) + thinned + outlines + variants.map { candidates(it, deskew = false, windows = QUICK_WINDOWS) })
