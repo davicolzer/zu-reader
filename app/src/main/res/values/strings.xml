@@ -29,9 +29,6 @@
     <string name="home_write">Escrever à mão</string>
     <string name="write_title">Escrever em Zu</string>
     <string name="write_empty">Toque nos glifos abaixo para escrever. A mensagem aparece aqui em Zu, em colunas, como no jogo.</string>
-    <string name="write_by_shape">Por forma</string>
-    <string name="write_letters">A–Z</string>
-    <string name="write_numbers">Números</string>
     <string name="write_space">Espaço</string>
     <string name="write_delete">Apagar</string>
     <string name="write_clear">Limpar tudo</string>
