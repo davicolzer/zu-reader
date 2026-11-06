@@ -14,7 +14,9 @@ import com.davicolzer.zureader.vision.ImageReading
 import com.davicolzer.zureader.vision.Perspective
 import com.davicolzer.zureader.vision.Quad
 import com.davicolzer.zureader.vision.ZuImageReader
+import com.davicolzer.zureader.zu.GlyphClassifier
 import com.davicolzer.zureader.zu.ReadingDirection
+import com.davicolzer.zureader.zu.ZuGlyph
 import com.davicolzer.zureader.zu.ZuReader
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -46,10 +48,22 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
     val settings: StateFlow<Settings> =
         app.settings.settings.stateIn(viewModelScope, SharingStarted.Eagerly, Settings())
 
-    /** Leitor com a direção escolhida nas configurações. */
+    /** Glifos aprendidos com as correções do usuário. */
+    val learned: StateFlow<List<ZuGlyph>> =
+        app.learned.learned.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    /** Leitor com a direção escolhida e os glifos aprendidos; refeito quando um dos dois muda. */
     private val imageReader: ZuImageReader
-        get() = readers.getOrPut(settings.value.direction) { ZuImageReader(ZuReader(direction = settings.value.direction)) }
-    private val readers = java.util.concurrent.ConcurrentHashMap<ReadingDirection, ZuImageReader>()
+        get() {
+            val direction = settings.value.direction
+            val examples = learned.value
+            readerCache?.let { (d, e, reader) -> if (d == direction && e === examples) return reader }
+            val classifier = GlyphClassifier(learned = examples)
+            return ZuImageReader(ZuReader(classifier, direction), classifier).also { readerCache = Triple(direction, examples, it) }
+        }
+
+    @Volatile
+    private var readerCache: Triple<ReadingDirection, List<ZuGlyph>, ZuImageReader>? = null
     private val _state = MutableStateFlow<ReaderUiState>(ReaderUiState.Home)
     val state: StateFlow<ReaderUiState> = _state.asStateFlow()
 
@@ -95,12 +109,22 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         work { withContext(Dispatchers.Default) { ReaderUiState.Result(crop.image, imageReader.read(crop.gray)) } }
     }
 
-    /** Troca a letra do glifo [index]; se a leitura já está salva, grava a correção. */
+    /**
+     * Troca a letra do glifo [index]; se a leitura já está salva, grava a correção.
+     * O desenho do glifo (na orientação de leitura) vira um exemplo aprendido para as próximas leituras.
+     */
     fun correct(index: Int, letter: Char) {
         val current = _state.value as? ReaderUiState.Result ?: return
-        val updated = current.copy(result = current.result.copy(reading = current.result.reading.withLetter(index, letter)))
+        val reading = current.result.reading
+        val glyph = reading.glyphs.getOrNull(index) ?: return
+        val updated = current.copy(result = current.result.copy(reading = reading.withLetter(index, letter)))
         _state.value = updated
+        viewModelScope.launch { app.learned.learn(glyph.source.bits.rotate(reading.rotation), letter) }
         updated.savedId?.let { id -> viewModelScope.launch { history.update(id, updated.result) } }
+    }
+
+    fun forgetLearned() {
+        viewModelScope.launch { app.learned.forget() }
     }
 
     fun save() {

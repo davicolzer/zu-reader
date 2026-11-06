@@ -1,7 +1,7 @@
 package com.davicolzer.zureader.zu
 
-/** Distância de um glifo detectado para um glifo do alfabeto. */
-data class GlyphMatch(val glyph: ZuGlyph, val distance: Int)
+/** Distância de um glifo detectado para um modelo (do alfabeto ou aprendido com o usuário). */
+data class GlyphMatch(val glyph: ZuGlyph, val distance: Int, val learned: Boolean = false)
 
 /** Resultado da comparação de um glifo com o alfabeto. */
 data class GlyphClassification(
@@ -12,25 +12,36 @@ data class GlyphClassification(
 ) {
     val best: GlyphMatch? get() = matches.firstOrNull()
     val isGlyph: Boolean get() = matches.isNotEmpty()
+
+    /** O desenho é idêntico a um exemplo ensinado pelo usuário: a letra dele vale, sem depender do contexto. */
+    val taughtByUser: Boolean get() = best?.let { it.learned && it.distance == 0 } == true
 }
 
 /**
  * Compara um glifo (já normalizado para a grade 5×5) com os modelos do alfabeto,
  * pela distância de Hamming, sem girar: no Zu a rotação muda a letra.
+ *
+ * [learned] são exemplos ensinados pelo usuário ao corrigir letras (desenho como foi lido → letra certa).
+ * Um exemplo só vence se estiver mais perto que o modelo do alfabeto; no empate, vale o alfabeto.
  */
 class GlyphClassifier(
     private val alphabet: List<ZuGlyph> = ZuAlphabet.glyphs,
     /** Acima desta distância o desenho não é considerado um glifo. */
     private val maxDistance: Int = MAX_DISTANCE,
+    learned: List<ZuGlyph> = emptyList(),
 ) {
+    private val templates: List<Pair<ZuGlyph, Boolean>> = alphabet.map { it to false } + learned.map { it to true }
+
     fun classify(bits: BitMatrix): GlyphClassification {
-        val ranked = alphabet
-            .map { GlyphMatch(it, it.pattern.hammingDistance(bits)) }
-            .sortedBy { it.distance }
+        val ranked = templates
+            .map { (glyph, isLearned) -> GlyphMatch(glyph, glyph.pattern.hammingDistance(bits), isLearned) }
+            .sortedWith(compareBy<GlyphMatch> { it.distance }.thenBy { it.learned })
         val accepted = ranked.filter { it.distance <= maxDistance }
-        val d1 = ranked[0].distance
-        val d2 = ranked.getOrNull(1)?.distance ?: Int.MAX_VALUE
-        return GlyphClassification(accepted, confidence(d1, d2))
+        val best = ranked[0]
+        // segundo colocado = o melhor modelo de OUTRA letra (exemplos da mesma letra não tiram confiança)
+        val d2 = ranked.firstOrNull { m -> m.glyph.letters.none { it in best.glyph.letters } }?.distance ?: Int.MAX_VALUE
+        val confidence = if (best.learned && best.distance == 0) 1f else confidence(best.distance, d2)
+        return GlyphClassification(accepted, confidence)
     }
 
     /**

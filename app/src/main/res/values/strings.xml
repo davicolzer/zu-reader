@@ -90,4 +90,15 @@
     <string name="settings_version">Zu Reader %1$s</string>
     <string name="settings_offline">Tudo acontece no seu celular. Nenhuma imagem é enviada para a internet.</string>
     <string name="settings_credits">Desenhos dos glifos: FEZ Pixel Font, de TakWolf (CC0). O alfabeto Zu pertence à Polytron. Fontes Silkscreen, Figtree e JetBrains Mono sob a SIL Open Font License. Estatística do inglês calculada a partir de livros em domínio público (corpus Gutenberg do NLTK).</string>
+    <string name="settings_learning">APRENDIZADO</string>
+    <plurals name="settings_learned_count">
+        <item quantity="one">%1$d letra aprendida com suas correções</item>
+        <item quantity="many">%1$d letras aprendidas com suas correções</item>
+        <item quantity="other">%1$d letras aprendidas com suas correções</item>
+    </plurals>
+    <string name="settings_learning_body">Quando você corrige uma letra, o app guarda aquele desenho e passa a reconhecê-lo nas próximas leituras.</string>
+    <string name="settings_forget">Esquecer correções</string>
+    <string name="settings_forget_title">Esquecer as correções?</string>
+    <string name="settings_forget_body">O app volta a usar só o alfabeto padrão. Seu histórico não muda.</string>
+    <string name="settings_forget_confirm">Esquecer</string>
 </resources>

@@ -55,6 +55,7 @@ import com.davicolzer.zureader.reader.LiveFrame
 import com.davicolzer.zureader.ui.components.PixelOutlinedButton
 import com.davicolzer.zureader.ui.components.PixelPrimaryButton
 import com.davicolzer.zureader.zu.ReadingDirection
+import com.davicolzer.zureader.zu.ZuGlyph
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import java.util.concurrent.Executors
@@ -65,6 +66,7 @@ fun CameraScreen(
     onPickFromGallery: () -> Unit,
     onClose: () -> Unit,
     direction: ReadingDirection = ReadingDirection.VERTICAL_RIGHT_TO_LEFT,
+    learned: List<ZuGlyph> = emptyList(),
 ) {
     val context = LocalContext.current
     var granted by remember { mutableStateOf(hasCameraPermission(context)) }
@@ -72,7 +74,7 @@ fun CameraScreen(
     LaunchedEffect(Unit) { if (!granted) launcher.launch(Manifest.permission.CAMERA) }
 
     if (granted) {
-        CameraContent(onCaptured, onPickFromGallery, onClose, direction)
+        CameraContent(onCaptured, onPickFromGallery, onClose, direction, learned)
     } else {
         PermissionNeeded(
             onAllow = { launcher.launch(Manifest.permission.CAMERA) },
@@ -95,6 +97,7 @@ private fun CameraContent(
     onPickFromGallery: () -> Unit,
     onClose: () -> Unit,
     direction: ReadingDirection,
+    learned: List<ZuGlyph>,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -125,7 +128,7 @@ private fun CameraContent(
         imageCapture.flashMode = if (flashOn) ImageCapture.FLASH_MODE_ON else ImageCapture.FLASH_MODE_OFF
     }
 
-    DisposableEffect(lifecycleOwner, direction) {
+    DisposableEffect(lifecycleOwner, direction, learned) {
         val analysisExecutor = Executors.newSingleThreadExecutor()
         val future = ProcessCameraProvider.getInstance(context)
         var provider: ProcessCameraProvider? = null
@@ -138,7 +141,7 @@ private fun CameraContent(
                     .setResolutionSelector(resolution)
                     .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                     .build()
-                analysis.setAnalyzer(analysisExecutor, LiveAnalyzer(direction) { live.value = it })
+                analysis.setAnalyzer(analysisExecutor, LiveAnalyzer(direction, learned) { live.value = it })
                 cameraProvider.unbindAll()
                 cameraProvider.bindToLifecycle(lifecycleOwner, CameraSelector.DEFAULT_BACK_CAMERA, preview, analysis, imageCapture)
             } catch (e: Exception) {
