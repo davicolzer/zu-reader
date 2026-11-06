@@ -120,6 +120,8 @@ class ZuReader(
         data class Letters(val index: Int, val classification: GlyphClassification) : Slot {
             /** Candidatos: glifos até 1 bloco mais longe que o melhor, com custo pela distância. */
             val candidates: List<Pair<Char, Int>> by lazy {
+                // desenho ensinado pelo usuário: só a letra dele
+                if (classification.taughtByUser) return@lazy classification.matches.first().glyph.letters.map { it to 0 }
                 val best = classification.matches.first().distance
                 classification.matches
                     .filter { it.distance <= best + 1 }

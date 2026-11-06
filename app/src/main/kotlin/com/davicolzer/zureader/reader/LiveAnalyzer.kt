@@ -5,7 +5,9 @@ import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import com.davicolzer.zureader.vision.CameraFrames
 import com.davicolzer.zureader.vision.ZuImageReader
+import com.davicolzer.zureader.zu.GlyphClassifier
 import com.davicolzer.zureader.zu.ReadingDirection
+import com.davicolzer.zureader.zu.ZuGlyph
 import com.davicolzer.zureader.zu.ZuReader
 
 /** Glifo visto no visor, em pixels do quadro analisado (já girado como o usuário vê). */
@@ -20,10 +22,12 @@ data class LiveFrame(val width: Int, val height: Int, val glyphs: List<LiveGlyph
  */
 class LiveAnalyzer(
     direction: ReadingDirection = ReadingDirection.VERTICAL_RIGHT_TO_LEFT,
+    learned: List<ZuGlyph> = emptyList(),
     private val intervalMs: Long = 300,
     private val onFrame: (LiveFrame) -> Unit,
 ) : ImageAnalysis.Analyzer {
-    private val reader = ZuImageReader(ZuReader(direction = direction))
+    private val classifier = GlyphClassifier(learned = learned)
+    private val reader = ZuImageReader(ZuReader(classifier, direction), classifier)
     private var last = 0L
 
     override fun analyze(image: ImageProxy) {

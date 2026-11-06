@@ -14,6 +14,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -22,13 +23,19 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
@@ -37,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import com.davicolzer.zureader.R
 import com.davicolzer.zureader.data.Settings
 import com.davicolzer.zureader.data.ThemeMode
+import com.davicolzer.zureader.ui.components.PixelOutlinedButton
 import com.davicolzer.zureader.zu.ReadingDirection
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -47,7 +55,10 @@ fun SettingsScreen(
     onDirection: (ReadingDirection) -> Unit,
     onTheme: (ThemeMode) -> Unit,
     onBack: () -> Unit,
+    learnedCount: Int = 0,
+    onForgetLearned: () -> Unit = {},
 ) {
+    var confirmForget by remember { mutableStateOf(false) }
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
@@ -82,10 +93,32 @@ fun SettingsScreen(
                     settings.direction == ReadingDirection.HORIZONTAL_LEFT_TO_RIGHT,
                 ) { onDirection(ReadingDirection.HORIZONTAL_LEFT_TO_RIGHT) }
             }
+            Section(stringResource(R.string.settings_learning)) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        pluralStringResource(R.plurals.settings_learned_count, learnedCount, learnedCount),
+                        style = MaterialTheme.typography.bodyLarge,
+                    )
+                    Text(
+                        stringResource(R.string.settings_learning_body),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    PixelOutlinedButton(
+                        stringResource(R.string.settings_forget),
+                        R.drawable.ic_pixel_trash,
+                        onClick = { confirmForget = true },
+                        enabled = learnedCount > 0,
+                    )
+                }
+            }
             Section(stringResource(R.string.settings_appearance)) {
                 Option(stringResource(R.string.settings_theme_system), null, settings.theme == ThemeMode.SYSTEM) { onTheme(ThemeMode.SYSTEM) }
                 Option(stringResource(R.string.settings_theme_light), null, settings.theme == ThemeMode.LIGHT) { onTheme(ThemeMode.LIGHT) }
                 Option(stringResource(R.string.settings_theme_dark), null, settings.theme == ThemeMode.DARK) { onTheme(ThemeMode.DARK) }
+            }
+            if (confirmForget) {
+                ForgetDialog(onConfirm = { confirmForget = false; onForgetLearned() }, onDismiss = { confirmForget = false })
             }
             Section(stringResource(R.string.settings_about)) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -97,6 +130,20 @@ fun SettingsScreen(
             }
         }
     }
+}
+
+@Composable
+private fun ForgetDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.settings_forget_title)) },
+        text = { Text(stringResource(R.string.settings_forget_body)) },
+        confirmButton = {
+            TextButton(onClick = onConfirm) { Text(stringResource(R.string.settings_forget_confirm), color = MaterialTheme.colorScheme.error) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+    )
 }
 
 @Composable

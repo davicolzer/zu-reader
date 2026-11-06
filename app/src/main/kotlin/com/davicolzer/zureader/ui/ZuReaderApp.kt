@@ -36,6 +36,7 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val recent by viewModel.recent.collectAsStateWithLifecycle()
     val settings by viewModel.settings.collectAsStateWithLifecycle()
+    val learned by viewModel.learned.collectAsStateWithLifecycle()
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) viewModel.read(uri)
     }
@@ -66,6 +67,7 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
                     onPickFromGallery = pickImage,
                     onClose = viewModel::goHome,
                     direction = settings.direction,
+                    learned = learned,
                 )
             }
         }
@@ -76,6 +78,8 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
                 versionName = BuildConfig.VERSION_NAME,
                 onDirection = viewModel::setDirection,
                 onTheme = viewModel::setTheme,
+                learnedCount = learned.size,
+                onForgetLearned = viewModel::forgetLearned,
                 onBack = viewModel::goHome,
             )
         }
