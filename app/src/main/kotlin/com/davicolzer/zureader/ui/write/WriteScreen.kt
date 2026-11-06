@@ -55,7 +55,10 @@ import com.davicolzer.zureader.ui.theme.ZuTheme
 import com.davicolzer.zureader.vision.ZuWriter
 import com.davicolzer.zureader.zu.ReadingDirection
 import com.davicolzer.zureader.zu.ReadingMode
-import com.davicolzer.zureader.zu.ZuMixed
+import com.davicolzer.zureader.zu.SharedLetters
+import com.davicolzer.zureader.zu.ZuAlphabet
+import com.davicolzer.zureader.zu.ZuGlyph
+import com.davicolzer.zureader.zu.ZuNumerals
 
 /**
  * Escrever à mão: o usuário toca nos desenhos dos glifos e monta a mensagem. Em cima, a mensagem
@@ -95,12 +98,14 @@ fun WriteScreen(
                 .padding(horizontal = 20.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            ZuPreview(text, direction)
+            // K/Q e U/V dividem o glifo: a letra vem do contexto do inglês e muda enquanto o usuário digita
+            val message = SharedLetters.resolve(ZuWriter.normalize(text))
+            ZuPreview(message, direction)
             // texto em inglês, com cursor
             Text(
-                (ReadingMode.MIXED.display(ZuWriter.normalize(text)).takeIf { it.isNotEmpty() } ?: "") + "_",
+                ReadingMode.MIXED.display(message) + "_",
                 style = MaterialTheme.typography.headlineMedium,
-                modifier = Modifier.fillMaxWidth().semantics { contentDescription = ZuWriter.normalize(text) },
+                modifier = Modifier.fillMaxWidth().semantics { contentDescription = message },
             )
 
             SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
@@ -122,11 +127,12 @@ fun WriteScreen(
                 }
             }
 
-            val keys = if (numbers) ('0'..'9').toList() + ReadingMode.TEN else ('A'..'Z').toList()
+            // um glifo de cada: 24 letras (K/Q e U/V numa tecla só) ou os 11 números
+            val keys = if (numbers) (('0'..'9').toList() + ReadingMode.TEN).map { ZuNumerals.glyphFor(it) } else ZuAlphabet.glyphs
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 keys.chunked(KEYS_PER_ROW).forEach { row ->
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        row.forEach { symbol -> GlyphKey(symbol, Modifier.weight(1f)) { text += symbol } }
+                        row.forEach { glyph -> GlyphKey(glyph, Modifier.weight(1f)) { text += glyph.primary } }
                         repeat(KEYS_PER_ROW - row.size) { Spacer(Modifier.weight(1f)) }
                     }
                 }
@@ -143,7 +149,7 @@ fun WriteScreen(
             }
 
             if (ZuWriter.normalize(text).isNotEmpty()) {
-                PixelPrimaryButton(stringResource(R.string.write_done), R.drawable.ic_pixel_check, onClick = { onDone(text) })
+                PixelPrimaryButton(stringResource(R.string.write_done), R.drawable.ic_pixel_check, onClick = { onDone(message) })
             }
         }
     }
@@ -153,8 +159,8 @@ private const val KEYS_PER_ROW = 6
 
 /** A mensagem desenhada em Zu, ajustada ao quadro; o último glifo em dourado. */
 @Composable
-private fun ZuPreview(text: String, direction: ReadingDirection) {
-    val glyphs = remember(text, direction) { ZuWriter.layout(text, direction) }
+private fun ZuPreview(message: String, direction: ReadingDirection) {
+    val glyphs = remember(message, direction) { ZuWriter.layout(message, direction) }
     val ink = MaterialTheme.colorScheme.onBackground
     val last = ZuTheme.colors.gold
     Box(
@@ -198,10 +204,10 @@ private fun ZuPreview(text: String, direction: ReadingDirection) {
     }
 }
 
-/** Tecla com o desenho do glifo e a letra embaixo. */
+/** Tecla com o desenho do glifo e a letra (ou as duas letras, como K/Q) embaixo. */
 @Composable
-private fun GlyphKey(symbol: Char, modifier: Modifier, onClick: () -> Unit) {
-    val label = ReadingMode.MIXED.symbolLabel(symbol)
+private fun GlyphKey(glyph: ZuGlyph, modifier: Modifier, onClick: () -> Unit) {
+    val label = glyph.letters.map(ReadingMode.MIXED::symbolLabel).joinToString("/")
     Column(
         modifier
             .heightIn(min = 64.dp)
@@ -214,7 +220,7 @@ private fun GlyphKey(symbol: Char, modifier: Modifier, onClick: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        MiniGlyph(ZuMixed.glyphFor(symbol).pattern, MaterialTheme.colorScheme.onSurface, size = 26.dp)
+        MiniGlyph(glyph.pattern, MaterialTheme.colorScheme.onSurface, size = 26.dp)
         Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
