@@ -1,17 +1,16 @@
 # Release do Zu Reader
 
-O CI (`.github/workflows/android.yml`) tem três etapas:
+Há dois fluxos no GitHub Actions, cada um com só as etapas que rodam:
 
-| Etapa | No PR | Depois do merge na `main` |
+| Fluxo | Quando | Etapas |
 |---|---|---|
-| 1 · Testes e lint | roda | pulada (o código já passou no PR) |
-| 2 · Build dos APKs | roda, depois dos testes | roda |
-| 3 · Publicar release | não roda | roda: cria uma release em **Releases** com os arquivos |
+| **PR** (`.github/workflows/pr.yml`) | em cada PR | 1 · Testes e lint → 2 · Build dos APKs |
+| **Release** (`.github/workflows/release.yml`) | merge na `main`, ou à mão em **Actions → Release → Run workflow** | 1 · Build dos APKs → 2 · Publicar release |
 
-Também dá para rodar à mão em **Actions → Android CI → Run workflow** (faz o build e publica a release).
+As etapas comuns ficam em `.github/actions/preparar` (JDK, Gradle, SDK) e `.github/actions/gerar-apks`.
+No PR, o APK de teste fica nos artefatos da execução (`zu-reader`); na `main`, vai para **Releases**.
 
-Como a `main` não roda testes, vale proteger a branch no GitHub (**Settings → Branches**) exigindo PR com o
-job "1 · Testes e lint" aprovado antes do merge.
+Como a `main` não roda testes, o que entra nela deve passar por PR.
 
 ## Instalar para testar
 

@@ -16,7 +16,7 @@ inputs:
     default: ""
 outputs:
   version:
-    description: Versão com o número do build (ex.: 0.5.0-build.21).
+    description: "Versão com o número do build, por exemplo 0.5.0-build.21."
     value: ${{ steps.nomes.outputs.version }}
   signed:
     description: "true se o APK de release saiu assinado."

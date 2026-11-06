@@ -43,7 +43,7 @@ Requisitos: JDK 25 e Android SDK com a plataforma 37 (o Android Studio instala).
 ./gradlew :core:zu:test         # só os testes do leitor
 ```
 
-O CI (`.github/workflows/android.yml`) roda `./gradlew build bundleRelease` em cada push na `main` e em cada PR e publica o APK de debug e o APK/AAB de release como artefatos (assinados se os secrets estiverem configurados; ver `docs/RELEASE.md`).
+CI em dois fluxos: **PR** (testes e lint → build dos APKs) e **Release** (no merge na `main`: build dos APKs → release com o APK para instalar). Ver `docs/RELEASE.md`.
 
 ## Licenças
 
