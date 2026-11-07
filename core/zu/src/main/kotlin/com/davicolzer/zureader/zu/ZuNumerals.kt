@@ -1,7 +1,7 @@
 package com.davicolzer.zureader.zu
 
 /**
- * Os glifos de números do Zu: 0 a 10, mais desenhos alternativos para 3 a 7.
+ * Os glifos de números do Zu: 0 a 10, mais desenhos alternativos para 3 a 7, e o sinal de igual.
  * Todos são um quadrado com moldura completa e um desenho 3×3 no meio.
  * O 10 usa o símbolo `#` (não existe um caractere para "10"); [ReadingMode.display] mostra "10".
  *
@@ -25,6 +25,8 @@ object ZuNumerals : GlyphSet {
         glyph("8", "#####", "#.#.#", "###.#", "#.#.#", "#####"),
         glyph("9", "#####", "#...#", "#####", "#.#.#", "#####"),
         glyph("#", "#####", "#.#.#", "#####", "#.#.#", "#####"),
+        // sinal de igual das placas de contas ("1 2 7 = 10"): dois traços, sem moldura
+        glyph("=", ".....", "#####", ".....", "#####", "....."),
     )
 
     private val bySymbol: Map<Char, ZuGlyph> = glyphs.groupBy { it.primary }.mapValues { it.value.first() }

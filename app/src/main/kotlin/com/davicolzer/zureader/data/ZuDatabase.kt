@@ -2,6 +2,7 @@ package com.davicolzer.zureader.data
 
 import android.content.Context
 import androidx.room.AutoMigration
+import androidx.room.ColumnInfo
 import androidx.room.Dao
 import androidx.room.Database
 import androidx.room.Entity
@@ -13,7 +14,10 @@ import androidx.room.RoomDatabase
 import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
 
-/** Uma leitura salva. [data] guarda a leitura completa no formato de `ReadingCodec`. */
+/**
+ * Um item salvo: uma leitura ([kind] = [KIND_READING], [data] guarda a leitura completa no formato
+ * de `ReadingCodec`) ou uma foto anotada ([kind] = [KIND_NOTE], [text] é o nome dado pelo usuário).
+ */
 @Entity(tableName = "readings")
 data class ReadingEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -22,7 +26,13 @@ data class ReadingEntity(
     /** Nome do arquivo da imagem, dentro da pasta do app. */
     val imageFile: String,
     val data: String,
-)
+    @ColumnInfo(defaultValue = KIND_READING) val kind: String = KIND_READING,
+) {
+    companion object {
+        const val KIND_READING = "reading"
+        const val KIND_NOTE = "note"
+    }
+}
 
 @Dao
 interface ReadingDao {
@@ -37,6 +47,9 @@ interface ReadingDao {
 
     @Query("UPDATE readings SET text = :text, data = :data WHERE id = :id")
     suspend fun update(id: Long, text: String, data: String)
+
+    @Query("UPDATE readings SET text = :text, imageFile = :imageFile WHERE id = :id")
+    suspend fun updateNote(id: Long, text: String, imageFile: String)
 
     @Query("DELETE FROM readings WHERE id = :id")
     suspend fun delete(id: Long)
@@ -68,9 +81,9 @@ interface LearnedGlyphDao {
 
 @Database(
     entities = [ReadingEntity::class, LearnedGlyphEntity::class],
-    version = 2,
+    version = 3,
     exportSchema = true,
-    autoMigrations = [AutoMigration(from = 1, to = 2)],
+    autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3)],
 )
 abstract class ZuDatabase : RoomDatabase() {
     abstract fun readings(): ReadingDao

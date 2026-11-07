@@ -34,7 +34,14 @@ import kotlinx.coroutines.withContext
 
 sealed interface ReaderUiState {
     data object Home : ReaderUiState
-    data object Camera : ReaderUiState
+    /** Câmera; com [forNote], a foto vai para o editor de anotações em vez da leitura. */
+    data class Camera(val forNote: Boolean = false) : ReaderUiState
+
+    /** Editor de anotações sobre [image]; [noteId] não nulo = anotando mais uma foto já salva. */
+    data class Annotate(val image: Bitmap, val noteId: Long? = null, val title: String = "") : ReaderUiState
+
+    /** Foto anotada salva. */
+    data class Note(val id: Long, val image: Bitmap, val title: String) : ReaderUiState
     /** Recorte de uma foto ([fromCamera]) ou de uma imagem da galeria, com os cantos sugeridos. */
     data class Crop(val image: Bitmap, val rgb: RgbImage, val suggestion: Quad, val fromCamera: Boolean) : ReaderUiState
     data object Reading : ReaderUiState
@@ -98,11 +105,57 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun openCamera() {
-        _state.value = ReaderUiState.Camera
+        _state.value = ReaderUiState.Camera()
     }
 
     /** Foto da câmera: abre o recorte, com os cantos sugeridos em volta do texto. */
-    fun onCaptured(photo: Bitmap) = work { prepareCrop(photo, fromCamera = true) }
+    fun onCaptured(photo: Bitmap) {
+        if ((_state.value as? ReaderUiState.Camera)?.forNote == true) {
+            _state.value = ReaderUiState.Annotate(photo)
+        } else {
+            work { prepareCrop(photo, fromCamera = true) }
+        }
+    }
+
+    /** "Anotar foto" pela câmera. */
+    fun openCameraForNote() {
+        _state.value = ReaderUiState.Camera(forNote = true)
+    }
+
+    /** "Anotar foto" pela galeria. */
+    fun annotate(uri: Uri) = work {
+        ReaderUiState.Annotate(withContext(Dispatchers.IO) { ImageLoading.decode(getApplication(), uri) })
+    }
+
+    /** Salva a foto anotada (nova, ou por cima da que estava sendo anotada de novo) e abre ela. */
+    fun saveNote(image: Bitmap, title: String) {
+        val current = _state.value as? ReaderUiState.Annotate ?: return
+        viewModelScope.launch {
+            val id = current.noteId?.also { history.updateNote(it, image, title) } ?: history.saveNote(image, title)
+            _state.value = ReaderUiState.Note(id, image, title)
+        }
+    }
+
+    /** Anotar mais na foto anotada aberta. */
+    fun editNote() {
+        val note = _state.value as? ReaderUiState.Note ?: return
+        _state.value = ReaderUiState.Annotate(note.image, note.id, note.title)
+    }
+
+    /** Sai do editor: volta para a foto salva (se era uma) ou para o início. */
+    fun leaveAnnotate() {
+        val current = _state.value as? ReaderUiState.Annotate ?: return
+        _state.value = if (current.noteId != null) ReaderUiState.Note(current.noteId, current.image, current.title) else ReaderUiState.Home
+    }
+
+    /** Apaga a foto anotada aberta e volta para o histórico. */
+    fun deleteNote() {
+        val note = _state.value as? ReaderUiState.Note ?: return
+        viewModelScope.launch {
+            history.delete(note.id)
+            _state.value = ReaderUiState.History
+        }
+    }
 
     private suspend fun prepareCrop(image: Bitmap, fromCamera: Boolean): ReaderUiState.Crop =
         withContext(Dispatchers.Default) {
@@ -153,7 +206,7 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
     /** Sai do recorte: volta para a câmera se a imagem veio dela, senão para o início. */
     fun leaveCrop() {
         val crop = _state.value as? ReaderUiState.Crop ?: return
-        _state.value = if (crop.fromCamera) ReaderUiState.Camera else ReaderUiState.Home
+        _state.value = if (crop.fromCamera) ReaderUiState.Camera() else ReaderUiState.Home
     }
 
     /**
@@ -204,6 +257,10 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun openSaved(id: Long) = work {
+        if (history.isNote(id)) {
+            val note = history.loadNote(id) ?: throw IllegalStateException("Anotação $id não encontrada")
+            return@work ReaderUiState.Note(note.id, note.image, note.title)
+        }
         val saved = history.load(id) ?: throw IllegalStateException("Leitura $id não encontrada")
         ReaderUiState.Result(saved.image, saved.result, saved.id)
     }

@@ -128,7 +128,7 @@ fun WriteScreen(
         // teclas do tamanho que cabe: grandes em tela alta; em tela baixa encolhem (até 36 dp)
         // para a mensagem em Zu continuar com espaço
         fun lines(n: Int) = (n + layout.columns - 1) / layout.columns
-        val rows = if (byLetters) lines(26) + lines(11) else layout.letterRows().size + lines(ZuNumerals.glyphs.size)
+        val rows = if (byLetters) lines(26) + lines(12) else layout.letterRows().size + lines(ZuNumerals.glyphs.size)
         val keyHeight = ((maxHeight - MESSAGE_MIN - FIXED_PARTS) / rows - ROW_GAP).coerceIn(MIN_KEY, layout.keyHeight)
         Column(
             Modifier
@@ -192,7 +192,7 @@ fun WriteScreen(
             } else {
                 // um de cada, na ordem: A–Z e depois 0–10
                 // letras em cima e, separados, os números
-                val numberSymbols = ('0'..'9').toList() + ReadingMode.TEN
+                val numberSymbols = ('0'..'9').toList() + ReadingMode.TEN + ReadingMode.EQUALS
                 KeyGrid(layout, keyHeight, ('A'..'Z').toList().chunked(layout.columns), numberSymbols.chunked(layout.columns)) { symbol, modifier ->
                     LetterKey(symbol, modifier) { text += symbol }
                 }

@@ -82,12 +82,23 @@ fun HistoryRow(item: HistoryItem, onOpen: (Long) -> Unit) {
     ) {
         Thumbnail(item.image, size = 48.dp)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(
-                ReadingMode.of(item.text.firstOrNull { !it.isWhitespace() } ?: 'A').display(item.text).replace('\n', ' ').ifBlank { "—" },
-                style = MaterialTheme.typography.titleSmall,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
+            if (item.isNote) {
+                // foto anotada: marca e o nome dado pelo usuário
+                Text(stringResource(R.string.history_note_badge), style = MaterialTheme.typography.labelSmall, color = ZuTheme.colors.gold)
+                Text(
+                    item.text.ifBlank { stringResource(R.string.note_default_name) },
+                    style = MaterialTheme.typography.titleSmall,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            } else {
+                Text(
+                    ReadingMode.of(item.text.firstOrNull { !it.isWhitespace() } ?: 'A').display(item.text).replace('\n', ' ').ifBlank { "—" },
+                    style = MaterialTheme.typography.titleSmall,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
             Text(
                 DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT).format(Date(item.createdAt)),
                 style = MaterialTheme.typography.bodySmall,

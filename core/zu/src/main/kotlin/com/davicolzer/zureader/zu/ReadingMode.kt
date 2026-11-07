@@ -40,18 +40,21 @@ enum class ReadingMode(val glyphSet: GlyphSet, val usesLanguageModel: Boolean) {
     val keyboard: List<Char>
         get() = when (this) {
             TEXT -> ('A'..'Z').toList()
-            NUMBERS -> ('0'..'9').toList() + TEN
-            MIXED -> ('A'..'Z').toList() + ('0'..'9').toList() + TEN
+            NUMBERS -> ('0'..'9').toList() + TEN + EQUALS
+            MIXED -> ('A'..'Z').toList() + ('0'..'9').toList() + TEN + EQUALS
         }
 
     companion object {
         /** Símbolo usado para o número 10. */
         const val TEN = '#'
 
+        /** Sinal de igual das placas de contas. */
+        const val EQUALS = '='
+
         /** Modo de um glifo pelo símbolo lido (para leituras salvas). */
         fun of(symbol: Char): ReadingMode = if (symbol in 'A'..'Z') TEXT else NUMBERS
 
         /** `true` para os símbolos de número (0–9 e o 10). */
-        fun isNumber(symbol: Char): Boolean = symbol in '0'..'9' || symbol == TEN
+        fun isNumber(symbol: Char): Boolean = symbol in '0'..'9' || symbol == TEN || symbol == EQUALS
     }
 }

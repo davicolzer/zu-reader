@@ -304,15 +304,56 @@ class ZuImageReader(
      * final). Uma mancha comprida com a largura de um glifo é fatiada assim; cada fatia de 5×5
      * blocos que for um número vira um glifo. Cada faixa vira um grupo.
      */
-    private fun splitStrips(components: List<PixelBox>, deskewed: DeskewedMask): List<List<PixelBox>> =
+    private fun splitStrips(components: List<PixelBox>, deskewed: DeskewedMask): List<List<PixelBox>> = splitStripsOnly(components, deskewed) + equalsSigns(components)
+
+    /**
+     * Sinal de igual nas placas de contas ("1 2 7 = 10"): dois traços da largura de um número,
+     * um em cima do outro (ou lado a lado, na foto girada). Vira uma caixa quadrada no meio dos
+     * dois, que a amostragem lê como o desenho de [ZuNumerals] para `=`.
+     */
+    private fun equalsSigns(components: List<PixelBox>): List<List<PixelBox>> {
+        val bars = components.filter { c ->
+            val long = maxOf(c.width, c.height)
+            val short = minOf(c.width, c.height)
+            long >= GlyphSegmenter.MIN_GLYPH_PX && long >= short * 3.5f && c.area >= 0.6f * c.width * c.height
+        }
+        val used = HashSet<PixelBox>()
+        val signs = mutableListOf<PixelBox>()
+        for (a in bars) for (b in bars) {
+            if (a === b || a in used || b in used) continue
+            val horizontal = a.width > a.height
+            if (horizontal != (b.width > b.height)) continue
+            val long = maxOf(a.width, a.height).toFloat()
+            val short = minOf(a.width, a.height).toFloat()
+            if (kotlin.math.abs(maxOf(b.width, b.height) - long) > long * 0.15f) continue
+            // alinhados e separados por mais ou menos um traço
+            val aligned = if (horizontal) kotlin.math.abs(a.left - b.left) < long * 0.2f else kotlin.math.abs(a.top - b.top) < long * 0.2f
+            val gap = if (horizontal) b.top - a.bottom else b.left - a.right
+            if (!aligned || gap < short * 0.3f || gap > short * 2.5f) continue
+            used += a; used += b
+            // caixa: os dois traços com um traço de folga de cada lado (vazio, traço, vão, traço, vazio)
+            val left = minOf(a.left, b.left); val right = maxOf(a.right, b.right)
+            val top = minOf(a.top, b.top); val bottom = maxOf(a.bottom, b.bottom)
+            signs += if (horizontal) {
+                PixelBox(left, (top - short).toInt(), right, (bottom + short).toInt())
+            } else {
+                PixelBox((left - short).toInt(), top, (right + short).toInt(), bottom)
+            }
+        }
+        return signs.map { listOf(it) }
+    }
+
+    private fun splitStripsOnly(components: List<PixelBox>, deskewed: DeskewedMask): List<List<PixelBox>> =
         components.mapNotNull { c ->
             val vertical = c.height >= c.width
             val across = if (vertical) c.width else c.height
             val along = if (vertical) c.height else c.width
             if (across < GlyphSegmenter.MIN_GLYPH_PX || along < across * 1.6f) return@mapNotNull null
-            val block = across / 5f
-            val n = Math.round((along / block - 1) / 4f)
-            if (n < 2 || kotlin.math.abs(along - (4 * n + 1) * block) > block * 0.6f) return@mapNotNull null
+            // quantos números cabem: o n em que o bloco (altura ÷ (4n+1)) deixa a largura mais perto
+            // de 5 blocos (as bordas entre números podem sair mais finas na foto)
+            val n = (2..MAX_STRIP).minByOrNull { k -> kotlin.math.abs(across / (along / (4 * k + 1f)) - 5f) } ?: return@mapNotNull null
+            val block = along / (4 * n + 1f)
+            if (kotlin.math.abs(across / block - 5f) > STRIP_TOLERANCE) return@mapNotNull null
             val slices = (0 until n).map { k ->
                 val start = (if (vertical) c.top else c.left) + k * 4 * block
                 if (vertical) PixelBox(c.left, start.toInt(), c.right, (start + 5 * block).toInt().coerceAtMost(deskewed.height))
@@ -496,6 +537,12 @@ class ZuImageReader(
 
         /** Passo do ajuste de posição ao ler uma vaga da grade (fração do glifo). */
         const val SLOT_SHIFT = 0.06f
+
+        /** Faixa de números: até tantos números encostados. */
+        const val MAX_STRIP = 8
+
+        /** Faixa de números: quanto a largura pode fugir de 5 blocos. */
+        const val STRIP_TOLERANCE = 0.8f
 
         /** Na ponta de uma coluna, o glifo achado precisa bater com uma letra a até tantos blocos. */
         const val END_MAX_DISTANCE = 3
