@@ -11,17 +11,18 @@ class ZuNumeralsTest {
     private val reader = ZuReader(classifier, languageModel = false)
 
     @Test
-    fun `16 desenhos para os numeros de 0 a 10`() {
-        assertEquals(16, ZuNumerals.glyphs.size)
-        assertEquals(16, ZuNumerals.glyphs.map { it.pattern }.distinct().size)
-        assertEquals((('0'..'9') + '#').toSet(), ZuNumerals.glyphs.map { it.primary }.toSet())
+    fun `16 desenhos para os numeros de 0 a 10, mais o sinal de igual`() {
+        assertEquals(17, ZuNumerals.glyphs.size)
+        assertEquals(17, ZuNumerals.glyphs.map { it.pattern }.distinct().size)
+        assertEquals((('0'..'9') + '#' + '=').toSet(), ZuNumerals.glyphs.map { it.primary }.toSet())
         // variantes: 3, 4, 5, 6 e 7 têm dois desenhos
         assertEquals(listOf('3', '4', '5', '6', '7'), ZuNumerals.glyphs.groupBy { it.primary }.filter { it.value.size == 2 }.keys.sorted())
     }
 
     @Test
     fun `todo numero tem moldura completa`() {
-        for (g in ZuNumerals.glyphs) for (i in 0 until 5) {
+        // o sinal de igual (dois traços) não é número e não tem moldura
+        for (g in ZuNumerals.glyphs.filter { it.primary != '=' }) for (i in 0 until 5) {
             assertTrue(g.pattern[0, i] && g.pattern[4, i] && g.pattern[i, 0] && g.pattern[i, 4], "moldura de ${g.letters}")
         }
     }
@@ -59,7 +60,9 @@ class ZuNumeralsTest {
         assertEquals("1 / 2\n10", ReadingMode.NUMBERS.display("1 2\n#"))
         assertEquals("OPEN THE", ReadingMode.TEXT.display("OPEN THE"))
         assertEquals("10", ReadingMode.NUMBERS.symbolLabel('#'))
-        assertEquals(11, ReadingMode.NUMBERS.keyboard.size)
+        // 0–10 e o sinal de igual
+        assertEquals(12, ReadingMode.NUMBERS.keyboard.size)
+        assertEquals("1 2 7 = 10", ReadingMode.NUMBERS.display("127=#"))
     }
 
     @Test

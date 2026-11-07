@@ -72,6 +72,7 @@ fun HomeScreen(
     mode: ModeChoice = ModeChoice.AUTO,
     onMode: (ModeChoice) -> Unit = {},
     onWrite: () -> Unit = {},
+    onAnnotate: () -> Unit = {},
 ) {
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -141,6 +142,11 @@ fun HomeScreen(
                 text = stringResource(R.string.home_write),
                 icon = R.drawable.ic_pixel_keyboard,
                 onClick = onWrite,
+            )
+            PixelOutlinedButton(
+                text = stringResource(R.string.home_annotate),
+                icon = R.drawable.ic_pixel_note,
+                onClick = onAnnotate,
             )
             Spacer(Modifier.height(6.dp))
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {

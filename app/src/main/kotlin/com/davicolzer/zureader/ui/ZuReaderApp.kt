@@ -31,6 +31,13 @@ import com.davicolzer.zureader.ui.settings.SettingsScreen
 import com.davicolzer.zureader.ui.theme.ZuReaderTheme
 import com.davicolzer.zureader.ui.result.ResultScreen
 import com.davicolzer.zureader.ui.write.WriteScreen
+import com.davicolzer.zureader.ui.note.AnnotateScreen
+import com.davicolzer.zureader.ui.note.NoteScreen
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 
 @Composable
 fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
@@ -42,6 +49,18 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
         if (uri != null) viewModel.read(uri)
     }
     val pickImage = { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }
+    // "Anotar foto": a imagem escolhida vai para o editor de anotações
+    val notePicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) viewModel.annotate(uri)
+    }
+    var chooseNoteSource by remember { mutableStateOf(false) }
+    if (chooseNoteSource) {
+        NoteSourceDialog(
+            onCamera = { chooseNoteSource = false; viewModel.openCameraForNote() },
+            onGallery = { chooseNoteSource = false; notePicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+            onDismiss = { chooseNoteSource = false },
+        )
+    }
 
     when (val s = state) {
         ReaderUiState.Home, ReaderUiState.CouldNotOpen -> HomeScreen(
@@ -56,7 +75,16 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
             mode = settings.mode,
             onMode = viewModel::setMode,
             onWrite = { viewModel.openWriter() },
+            onAnnotate = { chooseNoteSource = true },
         )
+        is ReaderUiState.Annotate -> {
+            BackHandler(onBack = viewModel::leaveAnnotate)
+            AnnotateScreen(image = s.image, title = s.title, onSave = viewModel::saveNote, onBack = viewModel::leaveAnnotate)
+        }
+        is ReaderUiState.Note -> {
+            BackHandler(onBack = viewModel::openHistory)
+            NoteScreen(image = s.image, title = s.title, onBack = viewModel::openHistory, onEdit = viewModel::editNote, onDelete = viewModel::deleteNote)
+        }
         is ReaderUiState.Write -> {
             BackHandler(onBack = viewModel::goHome)
             WriteScreen(draft = s.draft, direction = settings.direction, onDone = viewModel::finishWriting, onBack = viewModel::goHome)
@@ -66,7 +94,7 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
             BackHandler(onBack = viewModel::goHome)
             HistoryScreen(all, onOpen = viewModel::openSaved, onBack = viewModel::goHome)
         }
-        ReaderUiState.Camera -> {
+        is ReaderUiState.Camera -> {
             BackHandler(onBack = viewModel::goHome)
             // a câmera é sempre escura, independente do tema
             ZuReaderTheme(darkTheme = true) {
@@ -137,4 +165,16 @@ private fun ReadingProgress() {
             Text(stringResource(R.string.reading_progress), style = MaterialTheme.typography.titleSmall)
         }
     }
+}
+
+/** "Anotar foto": tirar uma foto ou escolher uma da galeria. */
+@Composable
+private fun NoteSourceDialog(onCamera: () -> Unit, onGallery: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.note_source_title)) },
+        text = { Text(stringResource(R.string.note_source_body)) },
+        confirmButton = { TextButton(onClick = onCamera) { Text(stringResource(R.string.home_take_photo)) } },
+        dismissButton = { TextButton(onClick = onGallery) { Text(stringResource(R.string.home_pick_gallery)) } },
+    )
 }
