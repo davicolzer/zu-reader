@@ -152,4 +152,12 @@ class ZuImageReaderTest {
         assertEquals("", reader.read(GrayImage.filled(200, 120, 200)).reading.text)
         assertEquals("", reader.read(ImageEffects.noise(GrayImage.filled(200, 120, 128), 40.0)).reading.text)
     }
+
+    @Test
+    fun `placa curta em pe nao vira de cabeca para baixo`() {
+        // placa do jogo com "ZU" e "NU" (2×2 glifos): antes saía "IE IB", girada 180°
+        val result = reader.read(ZuRenderer.render("NU ZU", maxPerLine = 2, ink = 240, paper = 40))
+        assertEquals("NU ZU", result.reading.text)
+        assertEquals(0, result.reading.rotation)
+    }
 }

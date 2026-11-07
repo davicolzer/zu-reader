@@ -36,6 +36,8 @@ data class ImageReading(
     val skewDegrees: Float = 0f,
     /** Escrita ou números. */
     val mode: ReadingMode = ReadingMode.TEXT,
+    /** QR code achado na mesma imagem, se houver. */
+    val qr: QrCode? = null,
 ) {
     /** Nota da leitura: glifos confiantes somam, duvidosos subtraem (compara leituras da mesma imagem). */
     val quality: Float get() = reading.glyphs.sumOf { it.confidence.toDouble() - ZuImageReader.QUALITY_OFFSET }.toFloat()
@@ -377,7 +379,7 @@ class ZuImageReader(
         // A orientação vale para a imagem inteira: soma a pontuação de todos os blocos.
         val (rotation, firstBlocks) = (0..3)
             .map { q -> q to found.map { reader.read(it, rotation = q) } }
-            .maxBy { (q, readings) -> readings.sumOf { it.score } - if (q == 0) 0 else ZuReader.ROTATION_COST }
+            .maxBy { (q, readings) -> readings.sumOf { it.score } - if (q == 0) 0 else ZuReader.rotationCost(found.sumOf { it.size }) }
         // Com a orientação escolhida, as colunas de leitura são conhecidas: completa as vagas
         // ao longo delas e relê (só se achou algum glifo novo).
         val columnsVertical = (firstBlocks.first().direction == ReadingDirection.VERTICAL_RIGHT_TO_LEFT) == (rotation % 2 == 0)

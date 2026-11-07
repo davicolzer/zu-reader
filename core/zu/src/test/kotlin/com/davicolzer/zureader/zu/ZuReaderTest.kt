@@ -48,8 +48,8 @@ class ZuReaderTest {
     @ParameterizedTest
     @ValueSource(ints = [1, 2, 3])
     fun `detecta foto girada`(turns: Int) {
-        // textos com 4 letras ou mais; abaixo disso a orientação é ambígua
-        for (s in sentences.filter { it.count(Char::isLetter) >= 4 }) {
+        // textos com ZuReader.SHORT_TEXT glifos ou mais; os curtos ficam na orientação da foto
+        for (s in sentences.filter { it.count(Char::isLetter) >= ZuReader.SHORT_TEXT }) {
             val photo = ZuLayout.rotate(ZuLayout.compose(s, maxPerLine = 6), turns)
             val reading = reader.read(photo)
             assertEquals(s, reading.text, "frase: $s, girada $turns×90°")
@@ -156,5 +156,15 @@ class ZuReaderTest {
     @Test
     fun `lista vazia`() {
         assertEquals("", reader.read(emptyList()).text)
+    }
+
+    @Test
+    fun `texto curto fica na orientacao da foto`() {
+        // "ZU" de cabeça para baixo é "IE", que o inglês prefere; com poucos glifos vale a foto
+        for (s in listOf("ZU", "NU ZU", "ZU NU", "FEZ", "OWL", "KEY")) {
+            val reading = reader.read(ZuLayout.compose(s, maxPerLine = 2))
+            assertEquals(s, reading.text, "frase: $s")
+            assertEquals(0, reading.rotation)
+        }
     }
 }
