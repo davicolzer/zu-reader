@@ -40,4 +40,17 @@ class ViewportTest {
         val back = z.toView(p).let { z.toImage(it.x, it.y) }
         assertEquals(p.x, back.x, 1e-2f); assertEquals(p.y, back.y, 1e-2f)
     }
+
+    @Test
+    fun `area que cresce mantem zoom e o ponto do centro`() {
+        val z = fit.zoomedAt(200f, 400f, 3f)
+        val before = z.toImage(200f, 400f)
+        val big = z.resized(400f, 1000f)
+        assertEquals(3f, big.zoom)
+        val after = big.toImage(200f, 500f)
+        assertEquals(before.x, after.x, 0.5f); assertEquals(before.y, after.y, 0.5f)
+        // perto da borda, a foto continua presa (sem faixa vazia)
+        val edge = fit.zoomedAt(0f, 200f, 3f).resized(400f, 1200f)
+        assertEquals(0f, edge.top, 0.01f)
+    }
 }

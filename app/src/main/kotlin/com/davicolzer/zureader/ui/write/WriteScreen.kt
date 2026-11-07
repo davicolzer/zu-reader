@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -123,7 +124,7 @@ fun WriteScreen(
             )
         },
     ) { padding ->
-      BoxWithConstraints(Modifier.fillMaxSize().padding(padding).navigationBarsPadding()) {
+      BoxWithConstraints(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).navigationBarsPadding()) {
         // teclas do tamanho que cabe: grandes em tela alta; em tela baixa encolhem (até 36 dp)
         // para a mensagem em Zu continuar com espaço
         fun lines(n: Int) = (n + layout.columns - 1) / layout.columns

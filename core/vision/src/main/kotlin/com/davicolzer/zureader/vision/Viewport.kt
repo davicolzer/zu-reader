@@ -34,6 +34,16 @@ data class Viewport(
     /** Arrasta a foto ampliada. */
     fun panned(dx: Float, dy: Float): Viewport = copy(left = left + dx, top = top + dy).clamped()
 
+    /**
+     * A área de exibição mudou de tamanho (ex.: cresceu ao ampliar): mantém o zoom e o ponto da
+     * foto que estava no centro da área continua no centro.
+     */
+    fun resized(newWidth: Float, newHeight: Float): Viewport {
+        val center = toImage(viewWidth / 2, viewHeight / 2)
+        val next = Viewport(newWidth, newHeight, imageWidth, imageHeight, zoom = zoom, left = 0f, top = 0f)
+        return next.copy(left = newWidth / 2 - center.x * next.scale, top = newHeight / 2 - center.y * next.scale).clamped()
+    }
+
     /** Prende a foto: centralizada se couber, cobrindo a área toda se for maior. */
     fun clamped(): Viewport {
         val w = imageWidth * scale

@@ -7,6 +7,9 @@ import androidx.compose.foundation.gestures.calculatePan
 import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.input.pointer.positionChange
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.unit.IntOffset
@@ -43,6 +46,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -130,6 +134,35 @@ fun ResultScreen(
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(snackbar) },
+        // ações fixas no rodapé, sempre inteiras e acima da barra de gestos (o resto rola)
+        bottomBar = {
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.background)
+                    .navigationBarsPadding()
+                    .padding(horizontal = 20.dp, vertical = 10.dp),
+            ) {
+                // alturas iguais mesmo com fonte grande
+                Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ActionTile(R.drawable.ic_pixel_copy, stringResource(R.string.result_copy), Modifier.weight(1f)) {
+                        copyText(context, mode.display(reading.text))
+                        scope.launch { snackbar.showSnackbar(copied) }
+                    }
+                    ActionTile(R.drawable.ic_pixel_share, stringResource(R.string.result_share), Modifier.weight(1f)) {
+                        shareText(context, mode.display(reading.text))
+                    }
+                    if (savedId == null) {
+                        ActionTile(R.drawable.ic_pixel_save, stringResource(R.string.result_save), Modifier.weight(1f), primary = true) {
+                            onSave()
+                            scope.launch { snackbar.showSnackbar(savedMessage) }
+                        }
+                    } else {
+                        ActionTile(R.drawable.ic_pixel_check, stringResource(R.string.result_saved), Modifier.weight(1f), enabled = false) {}
+                    }
+                }
+            }
+        },
         topBar = {
             TopAppBar(
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
@@ -225,24 +258,6 @@ fun ResultScreen(
                 }
             }
 
-            // alturas iguais mesmo com fonte grande
-            Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ActionTile(R.drawable.ic_pixel_copy, stringResource(R.string.result_copy), Modifier.weight(1f)) {
-                    copyText(context, mode.display(reading.text))
-                    scope.launch { snackbar.showSnackbar(copied) }
-                }
-                ActionTile(R.drawable.ic_pixel_share, stringResource(R.string.result_share), Modifier.weight(1f)) {
-                    shareText(context, mode.display(reading.text))
-                }
-                if (savedId == null) {
-                    ActionTile(R.drawable.ic_pixel_save, stringResource(R.string.result_save), Modifier.weight(1f), primary = true) {
-                        onSave()
-                        scope.launch { snackbar.showSnackbar(savedMessage) }
-                    }
-                } else {
-                    ActionTile(R.drawable.ic_pixel_check, stringResource(R.string.result_saved), Modifier.weight(1f), enabled = false) {}
-                }
-            }
         }
     }
 
@@ -280,6 +295,12 @@ fun ResultScreen(
  * Foto com uma caixa em cada glifo (turquesa = certo, dourado = com dúvida) e a letra lida
  * em cima de cada um. Tocar num glifo da foto abre a correção dele; o selecionado fica em destaque.
  */
+/** Altura da foto sem zoom. */
+private val PHOTO_MAX_HEIGHT = 320.dp
+
+/** Parte da altura da tela que a foto ocupa quando ampliada. */
+private const val ZOOMED_SHARE = 0.7f
+
 @Composable
 private fun PhotoWithBoxes(bitmap: ImageBitmap, result: ImageReading, selected: Int?, onTapGlyph: (Int) -> Unit) {
     val teal = ZuTheme.colors.teal
@@ -290,28 +311,42 @@ private fun PhotoWithBoxes(bitmap: ImageBitmap, result: ImageReading, selected: 
     val measurer = rememberTextMeasurer()
     val labelStyle = MaterialTheme.typography.titleSmall
     val glyphs = result.reading.glyphs
-    BoxWithConstraints(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(max = 320.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(ZuTheme.colors.ink),
-        contentAlignment = Alignment.Center,
-    ) {
+    // A área usa a largura toda. Sem zoom, tem a altura da foto (até 320 dp); ao ampliar, cresce
+    // para boa parte da tela, para o zoom ter espaço, mantendo no centro o ponto que se olhava.
+    var stored by remember(result) { mutableStateOf<Viewport?>(null) }
+    val zoomed = (stored?.zoom ?: 1f) > 1.01f
+    val screenHeight = LocalConfiguration.current.screenHeightDp.dp
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
         val aspect = result.width / result.height.toFloat()
-        val width = minOf(maxWidth, maxHeight * aspect)
-        Box(Modifier.size(width, width / aspect).semantics { contentDescription = description }) {
+        val fullWidth = maxWidth
+        val normalHeight = minOf(PHOTO_MAX_HEIGHT, fullWidth / aspect)
+        val areaHeight by animateDpAsState(if (zoomed) maxOf(normalHeight, screenHeight * ZOOMED_SHARE) else normalHeight, label = "photo")
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(areaHeight)
+                .clip(RoundedCornerShape(16.dp))
+                .background(ZuTheme.colors.ink)
+                .semantics { contentDescription = description },
+        ) {
             val density = LocalDensity.current
-            val viewW = with(density) { width.toPx() }
-            val viewH = viewW / aspect
+            val viewW = with(density) { fullWidth.toPx() }
+            val viewH = with(density) { areaHeight.toPx() }
             // zoom: dois dedos ampliam e arrastam; ampliada, um dedo também arrasta; toque corrige o glifo
-            var view by remember(result, viewW) { mutableStateOf(Viewport.fit(viewW, viewH, result.width, result.height)) }
+            val current = stored
+            val fitted = when {
+                current == null -> Viewport.fit(viewW, viewH, result.width, result.height)
+                current.viewWidth != viewW || current.viewHeight != viewH -> current.resized(viewW, viewH)
+                else -> current
+            }
+            SideEffect { if (stored !== fitted) stored = fitted }
+            val view = fitted
             val slop = LocalViewConfiguration.current.touchSlop
             Canvas(
                 Modifier
                     .fillMaxSize()
                     .clipToBounds()
-                    .pointerInput(glyphs, viewW) {
+                    .pointerInput(glyphs, viewW, viewH) {
                         awaitEachGesture {
                             val down = awaitFirstDown(requireUnconsumed = false)
                             var moved = 0f
@@ -324,21 +359,21 @@ private fun PhotoWithBoxes(bitmap: ImageBitmap, result: ImageReading, selected: 
                                     multi = true
                                     val c = event.calculateCentroid()
                                     val pan = event.calculatePan()
-                                    view = view.zoomedAt(c.x, c.y, event.calculateZoom()).panned(pan.x, pan.y)
+                                    stored = (stored ?: fitted).zoomedAt(c.x, c.y, event.calculateZoom()).panned(pan.x, pan.y)
                                     event.changes.forEach { it.consume() }
                                 } else {
                                     val change = pressed.first()
                                     val d = change.positionChange()
                                     moved += kotlin.math.abs(d.x) + kotlin.math.abs(d.y)
                                     // sem zoom, o arrasto de um dedo fica para a rolagem da tela
-                                    if (view.zoom > 1f && !multi) {
-                                        view = view.panned(d.x, d.y)
+                                    if ((stored ?: fitted).zoom > 1f && !multi) {
+                                        stored = (stored ?: fitted).panned(d.x, d.y)
                                         change.consume()
                                     }
                                 }
                             }
                             if (multi || moved > slop) return@awaitEachGesture
-                            val p = view.toImage(down.position.x, down.position.y)
+                            val p = (stored ?: fitted).toImage(down.position.x, down.position.y)
                             // o glifo cuja caixa contém o toque (ou o mais perto, até meio glifo de distância)
                             val nearest = glyphs.indices.minByOrNull { k ->
                                 val g = glyphs[k].source
