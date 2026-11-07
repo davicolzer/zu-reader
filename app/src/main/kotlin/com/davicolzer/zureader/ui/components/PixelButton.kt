@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -74,24 +75,27 @@ fun PixelOutlinedButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    /** Para dois botões lado a lado: menos margem por dentro e texto numa linha só. */
+    compact: Boolean = false,
 ) {
     OutlinedButton(
         onClick = onClick,
         enabled = enabled,
         shape = ButtonShape,
+        contentPadding = if (compact) PaddingValues(horizontal = 8.dp) else ButtonDefaults.ContentPadding,
         border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.outline),
         colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
         modifier = modifier
             .fillMaxWidth()
             .height(ButtonHeight),
     ) {
-        ButtonContent(text, icon)
+        ButtonContent(text, icon, compact)
     }
 }
 
 @Composable
-private fun ButtonContent(text: String, @DrawableRes icon: Int) {
+private fun ButtonContent(text: String, @DrawableRes icon: Int, compact: Boolean = false) {
     Icon(painterResource(icon), contentDescription = null, modifier = Modifier.size(20.dp))
-    Spacer(Modifier.width(10.dp))
-    Text(text, style = MaterialTheme.typography.labelLarge)
+    Spacer(Modifier.width(if (compact) 8.dp else 10.dp))
+    Text(text, style = MaterialTheme.typography.labelLarge, maxLines = 1, softWrap = !compact)
 }

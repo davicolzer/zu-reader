@@ -44,6 +44,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.davicolzer.zureader.vision.ModeChoice
 import com.davicolzer.zureader.R
+import com.davicolzer.zureader.reader.CameraPurpose
 import com.davicolzer.zureader.reader.LiveFrame
 import com.davicolzer.zureader.ui.components.ModeSelector
 import com.davicolzer.zureader.ui.theme.ZuTheme
@@ -68,7 +69,10 @@ fun CameraOverlay(
     horizontal: Boolean = false,
     mode: ModeChoice = ModeChoice.AUTO,
     onMode: (ModeChoice) -> Unit = {},
+    /** Só na leitura de glifos aparecem o contador, o seletor de modo e o texto ao vivo. */
+    purpose: CameraPurpose = CameraPurpose.READ,
 ) {
+    val reading = purpose == CameraPurpose.READ
     val teal = ZuTheme.colors.teal
     val gold = ZuTheme.colors.gold
     val count = frame?.glyphs?.size ?: 0
@@ -119,8 +123,15 @@ fun CameraOverlay(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
-                    Box(Modifier.size(7.dp).clip(CircleShape).background(if (count > 0) teal else MaterialTheme.colorScheme.onSurfaceVariant))
-                    Text(pluralStringResource(R.plurals.camera_glyph_count, count, count), style = MaterialTheme.typography.labelSmall)
+                    if (reading) {
+                        Box(Modifier.size(7.dp).clip(CircleShape).background(if (count > 0) teal else MaterialTheme.colorScheme.onSurfaceVariant))
+                        Text(pluralStringResource(R.plurals.camera_glyph_count, count, count), style = MaterialTheme.typography.labelSmall)
+                    } else {
+                        Text(
+                            stringResource(if (purpose == CameraPurpose.QR) R.string.camera_qr_hint else R.string.camera_note_hint),
+                            style = MaterialTheme.typography.labelSmall,
+                        )
+                    }
                 }
                 Spacer(Modifier.weight(1f))
                 RoundControl(
@@ -130,7 +141,7 @@ fun CameraOverlay(
                 )
             }
 
-            ModeSelector(mode, onMode, Modifier.padding(horizontal = 16.dp))
+            if (reading) ModeSelector(mode, onMode, Modifier.padding(horizontal = 16.dp))
 
             Spacer(Modifier.weight(1f))
 
@@ -157,16 +168,25 @@ fun CameraOverlay(
                     )
                 }
                 Text(
-                    stringResource(if (count > 0) R.string.camera_hold else R.string.camera_aim),
+                    stringResource(
+                        when {
+                            purpose == CameraPurpose.QR -> R.string.camera_qr_aim
+                            purpose == CameraPurpose.NOTE -> R.string.camera_note_aim
+                            count > 0 -> R.string.camera_hold
+                            else -> R.string.camera_aim
+                        },
+                    ),
                     style = MaterialTheme.typography.bodyMedium,
                     textAlign = TextAlign.Center,
                 )
-                Text(
-                    stringResource(if (horizontal) R.string.camera_order_horizontal else R.string.camera_order),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                )
+                if (reading) {
+                    Text(
+                        stringResource(if (horizontal) R.string.camera_order_horizontal else R.string.camera_order),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                    )
+                }
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     RoundControl(R.drawable.ic_pixel_gallery, stringResource(R.string.home_pick_gallery), onGallery)
                     Spacer(Modifier.weight(1f))

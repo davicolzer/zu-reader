@@ -33,6 +33,8 @@ import com.davicolzer.zureader.ui.result.ResultScreen
 import com.davicolzer.zureader.ui.write.WriteScreen
 import com.davicolzer.zureader.ui.note.AnnotateScreen
 import com.davicolzer.zureader.ui.note.NoteScreen
+import com.davicolzer.zureader.ui.qr.QrScreen
+import com.davicolzer.zureader.reader.CameraPurpose
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.mutableStateOf
@@ -54,8 +56,24 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
         if (uri != null) viewModel.annotate(uri)
     }
     var chooseNoteSource by remember { mutableStateOf(false) }
+    // "Ler QR code": a imagem escolhida vai direto para a leitura do QR
+    val qrPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) viewModel.readQr(uri)
+    }
+    var chooseQrSource by remember { mutableStateOf(false) }
+    if (chooseQrSource) {
+        SourceDialog(
+            title = R.string.qr_source_title,
+            body = R.string.qr_source_body,
+            onCamera = { chooseQrSource = false; viewModel.openCameraForQr() },
+            onGallery = { chooseQrSource = false; qrPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+            onDismiss = { chooseQrSource = false },
+        )
+    }
     if (chooseNoteSource) {
-        NoteSourceDialog(
+        SourceDialog(
+            title = R.string.note_source_title,
+            body = R.string.note_source_body,
             onCamera = { chooseNoteSource = false; viewModel.openCameraForNote() },
             onGallery = { chooseNoteSource = false; notePicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
             onDismiss = { chooseNoteSource = false },
@@ -76,7 +94,33 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
             onMode = viewModel::setMode,
             onWrite = { viewModel.openWriter() },
             onAnnotate = { chooseNoteSource = true },
+            onReadQr = { chooseQrSource = true },
         )
+        is ReaderUiState.QrResult -> {
+            val back = if (s.savedId != null) viewModel::openHistory else viewModel::goHome
+            BackHandler(onBack = back)
+            QrScreen(
+                code = s.code,
+                onReadAnother = { chooseQrSource = true },
+                onBack = back,
+                image = s.image,
+                savedId = s.savedId,
+                onCrop = viewModel::cropQr,
+                onSave = viewModel::saveQr,
+                onDelete = viewModel::deleteQr,
+            )
+        }
+        is ReaderUiState.QrCrop -> {
+            BackHandler(onBack = viewModel::leaveQrCrop)
+            CropScreen(
+                image = s.image,
+                suggestion = com.davicolzer.zureader.vision.Quad.inset(s.image.width, s.image.height, 0.05f),
+                onConfirm = { viewModel.confirmQrCrop(it) },
+                onUseWhole = { viewModel.confirmQrCrop(null) },
+                onRetake = viewModel::leaveQrCrop,
+                confirmLabel = R.string.qr_crop_confirm,
+            )
+        }
         is ReaderUiState.Annotate -> {
             BackHandler(onBack = viewModel::leaveAnnotate)
             AnnotateScreen(image = s.image, title = s.title, onSave = viewModel::saveNote, onBack = viewModel::leaveAnnotate)
@@ -100,7 +144,14 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
             ZuReaderTheme(darkTheme = true) {
                 CameraScreen(
                     onCaptured = viewModel::onCaptured,
-                    onPickFromGallery = pickImage,
+                    // a galeria segue o propósito da câmera
+                    onPickFromGallery = when (s.purpose) {
+                        CameraPurpose.NOTE -> { { notePicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) } }
+                        CameraPurpose.QR -> { { qrPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) } }
+                        CameraPurpose.READ -> pickImage
+                    },
+                    purpose = s.purpose,
+                    onQrFound = viewModel::onQrFound,
                     onClose = viewModel::goHome,
                     direction = settings.direction,
                     learned = learned,
@@ -167,13 +218,13 @@ private fun ReadingProgress() {
     }
 }
 
-/** "Anotar foto": tirar uma foto ou escolher uma da galeria. */
+/** "Anotar foto" e "Ler QR code": tirar uma foto ou escolher uma da galeria. */
 @Composable
-private fun NoteSourceDialog(onCamera: () -> Unit, onGallery: () -> Unit, onDismiss: () -> Unit) {
+private fun SourceDialog(title: Int, body: Int, onCamera: () -> Unit, onGallery: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.note_source_title)) },
-        text = { Text(stringResource(R.string.note_source_body)) },
+        title = { Text(stringResource(title)) },
+        text = { Text(stringResource(body)) },
         confirmButton = { TextButton(onClick = onCamera) { Text(stringResource(R.string.home_take_photo)) } },
         dismissButton = { TextButton(onClick = onGallery) { Text(stringResource(R.string.home_pick_gallery)) } },
     )

@@ -73,6 +73,7 @@ fun HomeScreen(
     onMode: (ModeChoice) -> Unit = {},
     onWrite: () -> Unit = {},
     onAnnotate: () -> Unit = {},
+    onReadQr: () -> Unit = {},
 ) {
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -138,15 +139,27 @@ fun HomeScreen(
                 icon = R.drawable.ic_pixel_gallery,
                 onClick = onPickFromGallery ?: notYet,
             )
+            // anotar e QR lado a lado
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                PixelOutlinedButton(
+                    text = stringResource(R.string.home_annotate),
+                    icon = R.drawable.ic_pixel_note,
+                    onClick = onAnnotate,
+                    modifier = Modifier.weight(1f),
+                    compact = true,
+                )
+                PixelOutlinedButton(
+                    text = stringResource(R.string.home_read_qr),
+                    icon = R.drawable.ic_pixel_qr,
+                    onClick = onReadQr,
+                    modifier = Modifier.weight(1f),
+                    compact = true,
+                )
+            }
             PixelOutlinedButton(
                 text = stringResource(R.string.home_write),
                 icon = R.drawable.ic_pixel_keyboard,
                 onClick = onWrite,
-            )
-            PixelOutlinedButton(
-                text = stringResource(R.string.home_annotate),
-                icon = R.drawable.ic_pixel_note,
-                onClick = onAnnotate,
             )
             Spacer(Modifier.height(6.dp))
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
