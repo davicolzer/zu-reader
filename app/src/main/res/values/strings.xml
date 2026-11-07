@@ -37,6 +37,12 @@
     <string name="qr_not_found_title">Nenhum QR code encontrado</string>
     <string name="qr_not_found_body">Tente de novo com o QR code inteiro na imagem, reto e sem reflexo.</string>
     <string name="qr_read_another">Ler outro QR code</string>
+    <string name="qr_another_short">Ler outro</string>
+    <string name="qr_crop">Recortar</string>
+    <string name="qr_crop_confirm">Usar recorte</string>
+    <string name="qr_image_description">Imagem de onde o QR code foi lido</string>
+    <string name="qr_delete_title">Apagar QR code?</string>
+    <string name="qr_delete_body">O QR code e a imagem saem do histórico.</string>
     <string name="camera_qr_hint">QR code</string>
     <string name="camera_qr_aim">Aponte para o QR code: ele é lido sozinho</string>
     <string name="camera_note_hint">Anotar foto</string>

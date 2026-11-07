@@ -139,11 +139,6 @@ fun HomeScreen(
                 icon = R.drawable.ic_pixel_gallery,
                 onClick = onPickFromGallery ?: notYet,
             )
-            PixelOutlinedButton(
-                text = stringResource(R.string.home_write),
-                icon = R.drawable.ic_pixel_keyboard,
-                onClick = onWrite,
-            )
             // anotar e QR lado a lado
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 PixelOutlinedButton(
@@ -161,6 +156,11 @@ fun HomeScreen(
                     compact = true,
                 )
             }
+            PixelOutlinedButton(
+                text = stringResource(R.string.home_write),
+                icon = R.drawable.ic_pixel_keyboard,
+                onClick = onWrite,
+            )
             Spacer(Modifier.height(6.dp))
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(

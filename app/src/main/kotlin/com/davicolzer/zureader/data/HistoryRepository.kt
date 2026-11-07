@@ -52,6 +52,10 @@ class HistoryRepository(private val dao: ReadingDao, filesDir: File) {
         SavedNote(row.id, image, row.text)
     }
 
+    /** Texto da lista do histórico: o lido em Zu ou, se só houver QR, "QR: …". */
+    private fun listText(result: ImageReading): String =
+        result.reading.text.ifBlank { result.qr?.let { "QR: ${it.text}" }.orEmpty() }
+
     private fun writeImage(image: Bitmap): String {
         val name = "${UUID.randomUUID()}.jpg"
         File(imagesDir, name).outputStream().use { image.compress(Bitmap.CompressFormat.JPEG, 92, it) }
@@ -63,7 +67,7 @@ class HistoryRepository(private val dao: ReadingDao, filesDir: File) {
         dao.insert(
             ReadingEntity(
                 createdAt = System.currentTimeMillis(),
-                text = result.reading.text,
+                text = listText(result),
                 imageFile = name,
                 data = ReadingCodec.encode(result),
             ),
@@ -71,7 +75,7 @@ class HistoryRepository(private val dao: ReadingDao, filesDir: File) {
     }
 
     suspend fun update(id: Long, result: ImageReading) = withContext(Dispatchers.IO) {
-        dao.update(id, result.reading.text, ReadingCodec.encode(result))
+        dao.update(id, listText(result), ReadingCodec.encode(result))
     }
 
     suspend fun load(id: Long): SavedReading? = withContext(Dispatchers.IO) {

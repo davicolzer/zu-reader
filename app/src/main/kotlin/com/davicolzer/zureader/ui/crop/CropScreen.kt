@@ -74,6 +74,8 @@ fun CropScreen(
     onConfirm: (Quad) -> Unit,
     onUseWhole: () -> Unit,
     onRetake: () -> Unit,
+    /** Texto do botão principal (ler o texto, ou só usar o recorte, no caso do QR). */
+    confirmLabel: Int = R.string.crop_confirm,
 ) {
     var box by remember(suggestion, image) { mutableStateOf(CropBox.around(suggestion, image.width, image.height)) }
     val bitmap = remember(image) { image.asImageBitmap() }
@@ -201,7 +203,7 @@ fun CropScreen(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            PixelPrimaryButton(stringResource(R.string.crop_confirm), R.drawable.ic_pixel_camera, onClick = { onConfirm(box.toQuad()) })
+            PixelPrimaryButton(stringResource(confirmLabel), if (confirmLabel == R.string.crop_confirm) R.drawable.ic_pixel_camera else R.drawable.ic_pixel_check, onClick = { onConfirm(box.toQuad()) })
             PixelOutlinedButton(stringResource(R.string.crop_whole), R.drawable.ic_pixel_gallery, onClick = onUseWhole)
         }
     }

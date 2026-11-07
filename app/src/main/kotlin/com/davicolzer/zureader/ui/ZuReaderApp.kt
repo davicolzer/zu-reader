@@ -97,8 +97,29 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
             onReadQr = { chooseQrSource = true },
         )
         is ReaderUiState.QrResult -> {
-            BackHandler(onBack = viewModel::goHome)
-            QrScreen(code = s.code, onReadAnother = { chooseQrSource = true }, onBack = viewModel::goHome)
+            val back = if (s.savedId != null) viewModel::openHistory else viewModel::goHome
+            BackHandler(onBack = back)
+            QrScreen(
+                code = s.code,
+                onReadAnother = { chooseQrSource = true },
+                onBack = back,
+                image = s.image,
+                savedId = s.savedId,
+                onCrop = viewModel::cropQr,
+                onSave = viewModel::saveQr,
+                onDelete = viewModel::deleteQr,
+            )
+        }
+        is ReaderUiState.QrCrop -> {
+            BackHandler(onBack = viewModel::leaveQrCrop)
+            CropScreen(
+                image = s.image,
+                suggestion = com.davicolzer.zureader.vision.Quad.inset(s.image.width, s.image.height, 0.05f),
+                onConfirm = { viewModel.confirmQrCrop(it) },
+                onUseWhole = { viewModel.confirmQrCrop(null) },
+                onRetake = viewModel::leaveQrCrop,
+                confirmLabel = R.string.qr_crop_confirm,
+            )
         }
         is ReaderUiState.Annotate -> {
             BackHandler(onBack = viewModel::leaveAnnotate)

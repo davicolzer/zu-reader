@@ -17,6 +17,7 @@ import com.davicolzer.zureader.vision.ModeChoice
 import com.davicolzer.zureader.vision.ZuImageReader
 import com.davicolzer.zureader.vision.ZuWriter
 import com.davicolzer.zureader.vision.QrReader
+import com.davicolzer.zureader.zu.ZuReading
 import com.davicolzer.zureader.vision.QrCode
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -42,7 +43,18 @@ sealed interface ReaderUiState {
     data class Camera(val purpose: CameraPurpose = CameraPurpose.READ) : ReaderUiState
 
     /** O que está num QR code; [code] nulo = a imagem não tinha QR. */
-    data class QrResult(val code: QrCode?) : ReaderUiState
+    data class QrResult(
+        val code: QrCode?,
+        /** Foto ou imagem de onde o QR foi lido (já recortada, se o usuário recortou). */
+        val image: Bitmap? = null,
+        /** Não nulo = QR que está no histórico. */
+        val savedId: Long? = null,
+        /** Imagem antes do recorte (para recortar de novo). */
+        val original: Bitmap? = null,
+    ) : ReaderUiState
+
+    /** Recortando a imagem de um QR antes de salvar. */
+    data class QrCrop(val result: QrResult, val image: Bitmap) : ReaderUiState
 
     /** Editor de anotações sobre [image]; [noteId] não nulo = anotando mais uma foto já salva. */
     data class Annotate(val image: Bitmap, val noteId: Long? = null, val title: String = "") : ReaderUiState
@@ -120,7 +132,7 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         when ((_state.value as? ReaderUiState.Camera)?.purpose) {
             CameraPurpose.NOTE -> _state.value = ReaderUiState.Annotate(photo)
             // fotografou em vez de esperar a leitura ao vivo: procura o QR na foto
-            CameraPurpose.QR -> work { ReaderUiState.QrResult(withContext(Dispatchers.Default) { QrReader.read(ImageLoading.toRgb(photo)) }) }
+            CameraPurpose.QR -> work { ReaderUiState.QrResult(withContext(Dispatchers.Default) { QrReader.read(ImageLoading.toRgb(photo)) }, photo) }
             else -> work { prepareCrop(photo, fromCamera = true) }
         }
     }
@@ -136,14 +148,59 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     /** A câmera achou um QR code ao vivo. */
-    fun onQrFound(code: QrCode) {
-        if ((_state.value as? ReaderUiState.Camera)?.purpose == CameraPurpose.QR) _state.value = ReaderUiState.QrResult(code)
+    fun onQrFound(code: QrCode, photo: Bitmap?) {
+        if ((_state.value as? ReaderUiState.Camera)?.purpose == CameraPurpose.QR) _state.value = ReaderUiState.QrResult(code, photo)
+    }
+
+    /** Abre o recorte da imagem do QR. */
+    fun cropQr() {
+        val current = _state.value as? ReaderUiState.QrResult ?: return
+        val image = current.original ?: current.image ?: return
+        _state.value = ReaderUiState.QrCrop(current, image)
+    }
+
+    /** Recorte do QR escolhido (ou [quad] nulo = imagem inteira). */
+    fun confirmQrCrop(quad: Quad?) {
+        val crop = _state.value as? ReaderUiState.QrCrop ?: return
+        work {
+            withContext(Dispatchers.Default) {
+                val image = if (quad == null) crop.image else ImageLoading.toBitmap(ImageLoading.toRgb(crop.image).rectify(quad))
+                crop.result.copy(image = image, original = crop.image)
+            }
+        }
+    }
+
+    fun leaveQrCrop() {
+        val crop = _state.value as? ReaderUiState.QrCrop ?: return
+        _state.value = crop.result
+    }
+
+    /** Guarda o QR (texto e imagem) no histórico. */
+    fun saveQr() {
+        val current = _state.value as? ReaderUiState.QrResult ?: return
+        val code = current.code ?: return
+        if (current.savedId != null) return
+        val image = current.image ?: ImageLoading.toBitmap(RgbImage.fromGray(com.davicolzer.zureader.vision.GrayImage.filled(64, 64, 230)))
+        viewModelScope.launch {
+            val reading = ImageReading(ZuReading.EMPTY, emptyList(), true, image.width, image.height, qr = code)
+            val id = history.save(image, reading)
+            (_state.value as? ReaderUiState.QrResult)?.let { if (it.code == code) _state.value = it.copy(savedId = id) }
+        }
+    }
+
+    /** Apaga o QR aberto do histórico. */
+    fun deleteQr() {
+        val id = (_state.value as? ReaderUiState.QrResult)?.savedId ?: return
+        viewModelScope.launch {
+            history.delete(id)
+            _state.value = ReaderUiState.History
+        }
     }
 
     /** "Ler QR code" pela galeria. */
     fun readQr(uri: Uri) = work {
         val bitmap = withContext(Dispatchers.IO) { ImageLoading.decode(getApplication(), uri) }
-        ReaderUiState.QrResult(withContext(Dispatchers.Default) { QrReader.read(ImageLoading.toRgb(bitmap)) })
+        ReaderUiState.QrResult(withContext(Dispatchers.Default) { QrReader.read(ImageLoading.toRgb(bitmap)) }, bitmap)
     }
 
     /** "Anotar foto" pela galeria. */
@@ -286,6 +343,10 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
             return@work ReaderUiState.Note(note.id, note.image, note.title)
         }
         val saved = history.load(id) ?: throw IllegalStateException("Leitura $id não encontrada")
+        // QR salvo pela tela do QR: abre nela de novo
+        if (saved.result.reading.glyphs.isEmpty() && saved.result.qr != null) {
+            return@work ReaderUiState.QrResult(saved.result.qr, saved.image, saved.id)
+        }
         ReaderUiState.Result(saved.image, saved.result, saved.id)
     }
 

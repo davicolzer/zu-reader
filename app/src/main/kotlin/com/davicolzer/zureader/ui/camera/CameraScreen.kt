@@ -73,7 +73,7 @@ fun CameraScreen(
     direction: ReadingDirection = ReadingDirection.VERTICAL_RIGHT_TO_LEFT,
     /** Para que a câmera foi aberta: ler glifos (caixas ao vivo), anotar uma foto ou ler um QR code (ao vivo). */
     purpose: CameraPurpose = CameraPurpose.READ,
-    onQrFound: (QrCode) -> Unit = {},
+    onQrFound: (QrCode, Bitmap?) -> Unit = { _, _ -> },
     learned: List<ZuGlyph> = emptyList(),
     mode: ModeChoice = ModeChoice.AUTO,
     onMode: (ModeChoice) -> Unit = {},
@@ -111,7 +111,7 @@ private fun CameraContent(
     mode: ModeChoice,
     onMode: (ModeChoice) -> Unit,
     purpose: CameraPurpose,
-    onQrFound: (QrCode) -> Unit,
+    onQrFound: (QrCode, Bitmap?) -> Unit,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -157,7 +157,12 @@ private fun CameraContent(
                     .build()
                 val main = ContextCompat.getMainExecutor(context)
                 val analyzer = when (purpose) {
-                    CameraPurpose.QR -> QrAnalyzer { code -> main.execute { onQrFound(code) } }
+                    // achou o QR: tira uma foto colorida para guardar junto (se falhar, segue sem foto)
+                    CameraPurpose.QR -> QrAnalyzer { code ->
+                        main.execute {
+                            takePhoto(context, imageCapture, onDone = { photo -> onQrFound(code, photo) }, onError = { onQrFound(code, null) })
+                        }
+                    }
                     // anotar: a câmera só fotografa, não precisa analisar
                     CameraPurpose.NOTE -> null
                     CameraPurpose.READ -> LiveAnalyzer(direction, learned, mode) { live.value = it }
