@@ -35,4 +35,14 @@ class ReadingCodecTest {
     fun `formato desconhecido e recusado`() {
         assertThrows<IllegalArgumentException> { ReadingCodec.decode("outra coisa") }
     }
+
+    @Test
+    fun `qr code vai e volta, e leitura antiga abre sem qr`() {
+        val base = ZuImageReader().read(ZuRenderer.render("OPEN"))
+        for (text in listOf("https://example.com/a;b|c", "RT RB LT LB\nA A", "ação; ünïcode")) {
+            val withQr = base.copy(qr = QrCode(text))
+            assertEquals(text, ReadingCodec.decode(ReadingCodec.encode(withQr)).qr?.text)
+        }
+        assertEquals(null, ReadingCodec.decode(ReadingCodec.encode(base)).qr)
+    }
 }

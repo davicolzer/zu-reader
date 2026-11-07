@@ -7,6 +7,7 @@ import com.davicolzer.zureader.zu.PlacedGlyph
 import com.davicolzer.zureader.zu.ReadingDirection
 import com.davicolzer.zureader.zu.ReadingMode
 import com.davicolzer.zureader.zu.ZuReading
+import java.util.Base64
 
 /**
  * Grava e lê uma [ImageReading] como texto, para o histórico.
@@ -14,7 +15,7 @@ import com.davicolzer.zureader.zu.ZuReading
  * Formato (uma linha por item, campos separados por `;`):
  * ```
  * zu1
- * w;h;rotação;inclinação;tinta escura;direção;pontuação;modo
+ * w;h;rotação;inclinação;tinta escura;direção;pontuação;modo;QR code (Base64, vazio se não houver)
  * texto (com | no lugar de quebra de linha)
  * x;y;largura;altura;25 blocos (# ou .);letra;confiança;corrigida;alternativas (letra:nota,...)
  * ...
@@ -26,7 +27,8 @@ object ReadingCodec {
     fun encode(reading: ImageReading): String = buildString {
         val r = reading.reading
         appendLine(VERSION)
-        appendLine(listOf(reading.width, reading.height, r.rotation, reading.skewDegrees, if (reading.inkIsDark) 1 else 0, r.direction.name, r.score, reading.mode.name).joinToString(";"))
+        val qr = reading.qr?.let { Base64.getEncoder().encodeToString(it.text.toByteArray(Charsets.UTF_8)) }.orEmpty()
+        appendLine(listOf(reading.width, reading.height, r.rotation, reading.skewDegrees, if (reading.inkIsDark) 1 else 0, r.direction.name, r.score, reading.mode.name, qr).joinToString(";"))
         appendLine(r.text.replace('\n', '|'))
         for (g in r.glyphs) {
             val s = g.source
@@ -72,6 +74,8 @@ object ReadingCodec {
             skewDegrees = head[3].toFloat(),
             // leituras salvas antes do modo números não têm este campo
             mode = head.getOrNull(7)?.let { runCatching { ReadingMode.valueOf(it) }.getOrNull() } ?: ReadingMode.TEXT,
+            // leituras salvas antes do leitor de QR não têm este campo
+            qr = head.getOrNull(8)?.takeIf { it.isNotEmpty() }?.let { QrCode(String(Base64.getDecoder().decode(it), Charsets.UTF_8)) },
         )
     }
 }

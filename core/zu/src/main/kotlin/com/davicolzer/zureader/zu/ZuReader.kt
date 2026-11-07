@@ -77,7 +77,7 @@ class ZuReader(
         val rotations = rotation?.let { listOf(Math.floorMod(it, 4)) } ?: (0..3).toList()
         return rotations
             .map { q -> readRotated(glyphs, q) }
-            .maxBy { it.score - if (it.rotation == 0) 0 else ROTATION_COST }
+            .maxBy { it.score - if (it.rotation == 0) 0 else rotationCost(glyphs.size) }
     }
 
     private fun readRotated(original: List<PlacedGlyph>, quarterTurns: Int): ZuReading {
@@ -201,7 +201,20 @@ class ZuReader(
         /** Custo de cada bloco diferente do modelo (milésimos de nat). */
         const val BIT_COST = 2_000
 
-        /** Custo fixo de girar a imagem (milésimos de nat, ≈ 5% de probabilidade a priori). */
+        /** Custo de girar a imagem num texto longo (milésimos de nat, ≈ 5% de probabilidade a priori). */
         const val ROTATION_COST = 3_000
+
+        /** Abaixo de tantos glifos, o texto é curto demais para o inglês decidir o giro. */
+        const val SHORT_TEXT = 6
+
+        /** Custo de girar um texto curto: na prática, fica a orientação da foto. */
+        const val SHORT_ROTATION_COST = 9_000
+
+        /**
+         * Custo de girar a imagem para um texto de [glyphs] glifos. Com poucos glifos falta contexto,
+         * e nomes como "ZU" não são inglês ("ZU" de cabeça para baixo vira "IE", que o inglês
+         * prefere): fica a orientação da foto (a câmera e os prints já chegam em pé).
+         */
+        fun rotationCost(glyphs: Int): Int = if (glyphs < SHORT_TEXT) SHORT_ROTATION_COST else ROTATION_COST
     }
 }

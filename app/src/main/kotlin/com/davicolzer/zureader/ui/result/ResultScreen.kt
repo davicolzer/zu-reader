@@ -95,6 +95,10 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.ui.text.font.FontFamily
+import android.net.Uri
+import com.davicolzer.zureader.vision.QrCode
 import com.davicolzer.zureader.R
 import com.davicolzer.zureader.ui.components.MiniGlyph
 import com.davicolzer.zureader.ui.components.PixelOutlinedButton
@@ -146,11 +150,11 @@ fun ResultScreen(
                 // alturas iguais mesmo com fonte grande
                 Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     ActionTile(R.drawable.ic_pixel_copy, stringResource(R.string.result_copy), Modifier.weight(1f)) {
-                        copyText(context, mode.display(reading.text))
+                        copyText(context, shareable(result))
                         scope.launch { snackbar.showSnackbar(copied) }
                     }
                     ActionTile(R.drawable.ic_pixel_share, stringResource(R.string.result_share), Modifier.weight(1f)) {
-                        shareText(context, mode.display(reading.text))
+                        shareText(context, shareable(result))
                     }
                     if (savedId == null) {
                         ActionTile(R.drawable.ic_pixel_save, stringResource(R.string.result_save), Modifier.weight(1f), primary = true) {
@@ -202,8 +206,20 @@ fun ResultScreen(
                 PixelOutlinedButton(stringResource(R.string.result_adjust_crop), R.drawable.ic_pixel_crop, onAdjustCrop)
             }
 
+            result.qr?.let { qr ->
+                QrCard(
+                    qr,
+                    onCopy = {
+                        copyText(context, qr.text)
+                        scope.launch { snackbar.showSnackbar(copied) }
+                    },
+                    onOpen = { link -> openLink(context, link) },
+                )
+            }
+
             if (reading.glyphs.isEmpty()) {
-                EmptyResult(onPickAnother, onAdjustCrop)
+                // só o QR code: nada de glifos para mostrar
+                if (result.qr == null) EmptyResult(onPickAnother, onAdjustCrop)
                 return@Column
             }
 
@@ -549,6 +565,50 @@ private fun EmptyResult(onPickAnother: () -> Unit, onAdjustCrop: (() -> Unit)?) 
         PixelPrimaryButton(stringResource(R.string.result_other_image), R.drawable.ic_pixel_gallery, onPickAnother)
     }
     Box(Modifier.height(8.dp))
+}
+
+/** Texto para copiar e compartilhar: o lido em Zu e, se houver, o do QR code. */
+private fun shareable(result: ImageReading): String =
+    listOfNotNull(
+        result.mode.display(result.reading.text).takeIf { it.isNotBlank() },
+        result.qr?.text,
+    ).joinToString("\n\n")
+
+/** Cartão do QR code: o texto inteiro, legível e selecionável; se for link, botão para abrir. */
+@Composable
+private fun QrCard(qr: QrCode, onCopy: () -> Unit, onOpen: (String) -> Unit) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Text(
+            stringResource(R.string.qr_label),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.semantics { heading() },
+        )
+        // texto do jeito que veio (pode ser um comando para digitar no jogo): fonte monoespaçada,
+        // grande e selecionável
+        SelectionContainer {
+            Text(
+                qr.text,
+                style = MaterialTheme.typography.titleMedium.copy(fontFamily = FontFamily.Monospace),
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+        }
+        qr.link?.let { link ->
+            PixelPrimaryButton(stringResource(R.string.qr_open), R.drawable.ic_pixel_link, onClick = { onOpen(link) })
+        }
+        PixelOutlinedButton(stringResource(R.string.qr_copy), R.drawable.ic_pixel_copy, onClick = onCopy)
+    }
+}
+
+private fun openLink(context: Context, link: String) {
+    runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(link))) }
 }
 
 private fun copyText(context: Context, text: String) {

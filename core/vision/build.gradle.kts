@@ -19,9 +19,12 @@ kotlin {
 
 dependencies {
     api(project(":core:zu"))
+    // QR codes (Java puro, sem internet)
+    implementation(libs.zxing.core)
 
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
+    testImplementation(libs.zxing.core)
     testRuntimeOnly(libs.junit.platform.launcher)
 }
 

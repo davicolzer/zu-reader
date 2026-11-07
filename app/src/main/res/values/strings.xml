@@ -41,6 +41,9 @@
     <string name="write_full_hint">Use dois dedos para ampliar; ampliada, arraste com um dedo.</string>
     <string name="write_clear">Limpar tudo</string>
     <string name="write_done">Pronto</string>
+    <string name="qr_label">QR CODE</string>
+    <string name="qr_open">Abrir link</string>
+    <string name="qr_copy">Copiar o texto do QR code</string>
     <string name="result_zoom_hint">Use dois dedos para ampliar a foto; ampliada, arraste com um dedo.</string>
     <string name="result_tap_to_fix">Toque numa letra, aqui ou na foto, para corrigir.</string>
     <string name="result_empty_title">Nenhum glifo encontrado</string>

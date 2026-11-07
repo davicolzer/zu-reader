@@ -16,6 +16,9 @@ import com.davicolzer.zureader.vision.ImageTextReader
 import com.davicolzer.zureader.vision.ModeChoice
 import com.davicolzer.zureader.vision.ZuImageReader
 import com.davicolzer.zureader.vision.ZuWriter
+import com.davicolzer.zureader.vision.QrReader
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import com.davicolzer.zureader.zu.ReadingDirection
 import com.davicolzer.zureader.zu.ReadingMode
 import com.davicolzer.zureader.zu.ZuGlyph
@@ -116,7 +119,7 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         work {
             withContext(Dispatchers.Default) {
                 val rectified = crop.rgb.rectify(quad)
-                ReaderUiState.Result(ImageLoading.toBitmap(rectified), imageReader.read(rectified), crop = crop.copy(suggestion = quad))
+                ReaderUiState.Result(ImageLoading.toBitmap(rectified), readAll(rectified, whole = crop.rgb), crop = crop.copy(suggestion = quad))
             }
         }
     }
@@ -126,9 +129,19 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         work {
             withContext(Dispatchers.Default) {
                 val whole = Quad.inset(crop.rgb.width, crop.rgb.height, 0f)
-                ReaderUiState.Result(crop.image, imageReader.read(crop.rgb), crop = crop.copy(suggestion = whole))
+                ReaderUiState.Result(crop.image, readAll(crop.rgb), crop = crop.copy(suggestion = whole))
             }
         }
+    }
+
+    /**
+     * Lê os glifos e, ao mesmo tempo, procura um QR code na imagem; se o recorte deixou o QR de
+     * fora, procura também na foto inteira ([whole]).
+     */
+    private suspend fun readAll(image: RgbImage, whole: RgbImage? = null): ImageReading = coroutineScope {
+        val qr = async { QrReader.read(image) ?: whole?.let(QrReader::read) }
+        val glyphs = imageReader.read(image)
+        glyphs.copy(qr = qr.await())
     }
 
     /** Volta da leitura para o recorte, com os cantos que foram usados. */
