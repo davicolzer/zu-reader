@@ -50,6 +50,9 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.davicolzer.zureader.vision.ModeChoice
 import com.davicolzer.zureader.R
+import com.davicolzer.zureader.reader.CameraPurpose
+import com.davicolzer.zureader.reader.QrAnalyzer
+import com.davicolzer.zureader.vision.QrCode
 import com.davicolzer.zureader.reader.ImageLoading
 import com.davicolzer.zureader.reader.LiveAnalyzer
 import com.davicolzer.zureader.reader.LiveFrame
@@ -68,6 +71,9 @@ fun CameraScreen(
     onPickFromGallery: () -> Unit,
     onClose: () -> Unit,
     direction: ReadingDirection = ReadingDirection.VERTICAL_RIGHT_TO_LEFT,
+    /** Para que a câmera foi aberta: ler glifos (caixas ao vivo), anotar uma foto ou ler um QR code (ao vivo). */
+    purpose: CameraPurpose = CameraPurpose.READ,
+    onQrFound: (QrCode) -> Unit = {},
     learned: List<ZuGlyph> = emptyList(),
     mode: ModeChoice = ModeChoice.AUTO,
     onMode: (ModeChoice) -> Unit = {},
@@ -78,7 +84,7 @@ fun CameraScreen(
     LaunchedEffect(Unit) { if (!granted) launcher.launch(Manifest.permission.CAMERA) }
 
     if (granted) {
-        CameraContent(onCaptured, onPickFromGallery, onClose, direction, learned, mode, onMode)
+        CameraContent(onCaptured, onPickFromGallery, onClose, direction, learned, mode, onMode, purpose, onQrFound)
     } else {
         PermissionNeeded(
             onAllow = { launcher.launch(Manifest.permission.CAMERA) },
@@ -104,6 +110,8 @@ private fun CameraContent(
     learned: List<ZuGlyph>,
     mode: ModeChoice,
     onMode: (ModeChoice) -> Unit,
+    purpose: CameraPurpose,
+    onQrFound: (QrCode) -> Unit,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -134,7 +142,7 @@ private fun CameraContent(
         imageCapture.flashMode = if (flashOn) ImageCapture.FLASH_MODE_ON else ImageCapture.FLASH_MODE_OFF
     }
 
-    DisposableEffect(lifecycleOwner, direction, learned, mode) {
+    DisposableEffect(lifecycleOwner, direction, learned, mode, purpose) {
         val analysisExecutor = Executors.newSingleThreadExecutor()
         val future = ProcessCameraProvider.getInstance(context)
         var provider: ProcessCameraProvider? = null
@@ -147,7 +155,14 @@ private fun CameraContent(
                     .setResolutionSelector(resolution)
                     .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                     .build()
-                analysis.setAnalyzer(analysisExecutor, LiveAnalyzer(direction, learned, mode) { live.value = it })
+                val main = ContextCompat.getMainExecutor(context)
+                val analyzer = when (purpose) {
+                    CameraPurpose.QR -> QrAnalyzer { code -> main.execute { onQrFound(code) } }
+                    // anotar: a câmera só fotografa, não precisa analisar
+                    CameraPurpose.NOTE -> null
+                    CameraPurpose.READ -> LiveAnalyzer(direction, learned, mode) { live.value = it }
+                }
+                analyzer?.let { analysis.setAnalyzer(analysisExecutor, it) }
                 cameraProvider.unbindAll()
                 cameraProvider.bindToLifecycle(lifecycleOwner, CameraSelector.DEFAULT_BACK_CAMERA, preview, analysis, imageCapture)
             } catch (e: Exception) {
@@ -172,6 +187,7 @@ private fun CameraContent(
             horizontal = direction == ReadingDirection.HORIZONTAL_LEFT_TO_RIGHT,
             mode = mode,
             onMode = { live.value = null; onMode(it) },
+            purpose = purpose,
             onShutter = {
                 capturing = true
                 takePhoto(context, imageCapture, onDone = { photo ->

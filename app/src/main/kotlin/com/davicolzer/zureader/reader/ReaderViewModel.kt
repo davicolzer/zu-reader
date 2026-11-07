@@ -17,6 +17,7 @@ import com.davicolzer.zureader.vision.ModeChoice
 import com.davicolzer.zureader.vision.ZuImageReader
 import com.davicolzer.zureader.vision.ZuWriter
 import com.davicolzer.zureader.vision.QrReader
+import com.davicolzer.zureader.vision.QrCode
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import com.davicolzer.zureader.zu.ReadingDirection
@@ -32,10 +33,16 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+/** Para que a câmera foi aberta. */
+enum class CameraPurpose { READ, NOTE, QR }
+
 sealed interface ReaderUiState {
     data object Home : ReaderUiState
-    /** Câmera; com [forNote], a foto vai para o editor de anotações em vez da leitura. */
-    data class Camera(val forNote: Boolean = false) : ReaderUiState
+    /** Câmera: para ler glifos, para anotar uma foto ou para ler um QR code. */
+    data class Camera(val purpose: CameraPurpose = CameraPurpose.READ) : ReaderUiState
+
+    /** O que está num QR code; [code] nulo = a imagem não tinha QR. */
+    data class QrResult(val code: QrCode?) : ReaderUiState
 
     /** Editor de anotações sobre [image]; [noteId] não nulo = anotando mais uma foto já salva. */
     data class Annotate(val image: Bitmap, val noteId: Long? = null, val title: String = "") : ReaderUiState
@@ -110,16 +117,33 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
 
     /** Foto da câmera: abre o recorte, com os cantos sugeridos em volta do texto. */
     fun onCaptured(photo: Bitmap) {
-        if ((_state.value as? ReaderUiState.Camera)?.forNote == true) {
-            _state.value = ReaderUiState.Annotate(photo)
-        } else {
-            work { prepareCrop(photo, fromCamera = true) }
+        when ((_state.value as? ReaderUiState.Camera)?.purpose) {
+            CameraPurpose.NOTE -> _state.value = ReaderUiState.Annotate(photo)
+            // fotografou em vez de esperar a leitura ao vivo: procura o QR na foto
+            CameraPurpose.QR -> work { ReaderUiState.QrResult(withContext(Dispatchers.Default) { QrReader.read(ImageLoading.toRgb(photo)) }) }
+            else -> work { prepareCrop(photo, fromCamera = true) }
         }
     }
 
     /** "Anotar foto" pela câmera. */
     fun openCameraForNote() {
-        _state.value = ReaderUiState.Camera(forNote = true)
+        _state.value = ReaderUiState.Camera(CameraPurpose.NOTE)
+    }
+
+    /** "Ler QR code" pela câmera (lê ao vivo, basta apontar). */
+    fun openCameraForQr() {
+        _state.value = ReaderUiState.Camera(CameraPurpose.QR)
+    }
+
+    /** A câmera achou um QR code ao vivo. */
+    fun onQrFound(code: QrCode) {
+        if ((_state.value as? ReaderUiState.Camera)?.purpose == CameraPurpose.QR) _state.value = ReaderUiState.QrResult(code)
+    }
+
+    /** "Ler QR code" pela galeria. */
+    fun readQr(uri: Uri) = work {
+        val bitmap = withContext(Dispatchers.IO) { ImageLoading.decode(getApplication(), uri) }
+        ReaderUiState.QrResult(withContext(Dispatchers.Default) { QrReader.read(ImageLoading.toRgb(bitmap)) })
     }
 
     /** "Anotar foto" pela galeria. */
