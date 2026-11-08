@@ -7,9 +7,7 @@ import androidx.compose.foundation.gestures.calculatePan
 import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.input.pointer.positionChange
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.runtime.SideEffect
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.unit.IntOffset
@@ -252,7 +250,7 @@ fun ResultScreen(
             }
 
             if (typed) {
-                TypedSection(typedImage!!, typedReading!!, onWriteByHand)
+                TypedSection(typedImage, typedReading, onWriteByHand)
                 DetailsFields(name, description, onDetails, showDescription = false)
                 return@Column
             }
@@ -367,9 +365,6 @@ fun ResultScreen(
 /** Altura da foto sem zoom. */
 private val PHOTO_MAX_HEIGHT = 320.dp
 
-/** Parte da altura da tela que a foto ocupa quando ampliada. */
-private const val ZOOMED_SHARE = 0.7f
-
 @Composable
 private fun PhotoWithBoxes(bitmap: ImageBitmap, result: ImageReading, selected: Int?, onTapGlyph: (Int) -> Unit) {
     val teal = ZuTheme.colors.teal
@@ -380,16 +375,13 @@ private fun PhotoWithBoxes(bitmap: ImageBitmap, result: ImageReading, selected: 
     val measurer = rememberTextMeasurer()
     val labelStyle = MaterialTheme.typography.titleSmall
     val glyphs = result.reading.glyphs
-    // A área usa a largura toda. Sem zoom, tem a altura da foto (até 320 dp); ao ampliar, cresce
-    // para boa parte da tela, para o zoom ter espaço, mantendo no centro o ponto que se olhava.
+    // A área usa a largura toda e a altura da foto (até 320 dp), e não muda com o zoom: ampliar
+    // acontece dentro do quadro (dois dedos ampliam e arrastam; ampliada, um dedo arrasta).
     var stored by remember(result) { mutableStateOf<Viewport?>(null) }
-    val zoomed = (stored?.zoom ?: 1f) > 1.01f
-    val screenHeight = LocalConfiguration.current.screenHeightDp.dp
     BoxWithConstraints(Modifier.fillMaxWidth()) {
         val aspect = result.width / result.height.toFloat()
         val fullWidth = maxWidth
-        val normalHeight = minOf(PHOTO_MAX_HEIGHT, fullWidth / aspect)
-        val areaHeight by animateDpAsState(if (zoomed) maxOf(normalHeight, screenHeight * ZOOMED_SHARE) else normalHeight, label = "photo")
+        val areaHeight = minOf(PHOTO_MAX_HEIGHT, fullWidth / aspect)
         Box(
             Modifier
                 .fillMaxWidth()

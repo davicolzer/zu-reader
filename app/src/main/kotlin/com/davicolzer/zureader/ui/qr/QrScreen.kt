@@ -53,6 +53,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import com.davicolzer.zureader.R
+import com.davicolzer.zureader.ui.components.ZoomableImage
 import androidx.compose.foundation.layout.IntrinsicSize
 import com.davicolzer.zureader.ui.components.ActionTile
 import com.davicolzer.zureader.ui.components.ShareCard
@@ -133,13 +134,13 @@ fun QrScreen(
             ) {
                 image?.let { bitmap ->
                     val shown = remember(bitmap) { bitmap.asImageBitmap() }
-                    Image(
+                    // zoom dentro do quadro (o tamanho do quadro não muda)
+                    ZoomableImage(
                         shown,
-                        contentDescription = stringResource(R.string.qr_image_description),
-                        contentScale = ContentScale.Fit,
-                        modifier = Modifier
+                        stringResource(R.string.qr_image_description),
+                        Modifier
                             .fillMaxWidth()
-                            .heightIn(max = 180.dp)
+                            .height(200.dp)
                             .clip(RoundedCornerShape(16.dp))
                             .background(ZuTheme.colors.ink),
                     )

@@ -40,6 +40,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import com.davicolzer.zureader.R
+import com.davicolzer.zureader.ui.components.ZoomableImage
 import com.davicolzer.zureader.ui.components.ShareCard
 import com.davicolzer.zureader.ui.components.DetailsFields
 import com.davicolzer.zureader.ui.components.AppDialog
@@ -105,11 +106,11 @@ fun NoteScreen(
         ) {
             // nome e descrição, opcionais (nome em branco = "Anotação")
             DetailsFields(name, about, { n, d -> name = n; about = d })
-            Image(
+            // zoom dentro do quadro (o tamanho do quadro não muda)
+            ZoomableImage(
                 bitmap,
-                contentDescription = stringResource(R.string.note_image_description),
-                contentScale = ContentScale.Fit,
-                modifier = Modifier
+                stringResource(R.string.note_image_description),
+                Modifier
                     .fillMaxWidth()
                     .weight(1f)
                     .clip(RoundedCornerShape(16.dp))
