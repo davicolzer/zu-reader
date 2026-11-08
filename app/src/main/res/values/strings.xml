@@ -138,6 +138,10 @@
     <string name="result_delete_title">Delete this reading?</string>
     <string name="result_delete_body">The image and the text leave the collection.</string>
     <string name="cancel">Cancel</string>
+    <string name="details_name">Name (optional)</string>
+    <string name="details_name_hint">E.g.: Forest tombstone</string>
+    <string name="details_description">Description (optional)</string>
+    <string name="details_description_hint">Anything you want to remember</string>
     <string name="glyph_letter">Letter %1$s</string>
     <string name="glyph_letter_doubt">Letter %1$s, uncertain</string>
     <string name="correct_title">WHICH LETTER IS THIS?</string>

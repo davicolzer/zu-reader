@@ -102,6 +102,9 @@ import androidx.compose.ui.text.font.FontFamily
 import android.net.Uri
 import com.davicolzer.zureader.vision.QrCode
 import com.davicolzer.zureader.R
+import com.davicolzer.zureader.ui.components.ActionTile
+import com.davicolzer.zureader.ui.components.ShareCard
+import com.davicolzer.zureader.ui.components.DetailsFields
 import com.davicolzer.zureader.ui.components.AppDialog
 import com.davicolzer.zureader.ui.components.MiniGlyph
 import com.davicolzer.zureader.ui.components.PixelOutlinedButton
@@ -139,6 +142,10 @@ fun ResultScreen(
     alreadySavedAt: Long? = null,
     /** "Ler mesmo assim": mostra a leitura que acabou de ser feita, no lugar do item salvo. */
     onReadAnyway: (() -> Unit)? = null,
+    /** Nome (de onde veio) e descrição, opcionais; [onDetails] grava as mudanças. */
+    name: String = "",
+    description: String = "",
+    onDetails: (name: String, description: String) -> Unit = { _, _ -> },
 ) {
     var editing by remember { mutableStateOf<Int?>(null) }
     var confirmDelete by remember { mutableStateOf(false) }
@@ -178,7 +185,8 @@ fun ResultScreen(
                         scope.launch { snackbar.showSnackbar(copied) }
                     }
                     ActionTile(R.drawable.ic_pixel_share, stringResource(R.string.result_share), Modifier.weight(1f)) {
-                        shareText(context, shareable(result, typedReading))
+                        // a foto com um rodapé (nome, texto, descrição) e o mesmo texto na mensagem
+                        ShareCard.share(context, image, name, shareable(result, typedReading), description)
                     }
                     if (savedId == null) {
                         ActionTile(R.drawable.ic_pixel_save, stringResource(R.string.result_save), Modifier.weight(1f), primary = true) {
@@ -245,6 +253,7 @@ fun ResultScreen(
 
             if (typed) {
                 TypedSection(typedImage!!, typedReading!!, onWriteByHand)
+                DetailsFields(name, description, onDetails)
                 return@Column
             }
 
@@ -306,6 +315,9 @@ fun ResultScreen(
                     )
                 }
             }
+
+            // nome (de onde veio) e descrição: para reconhecer o item depois
+            DetailsFields(name, description, onDetails)
 
             // separado das ações de salvar: uma saída para quando a foto não ajudou
             onWriteByHand?.let { WriteByHandCard(it) }
@@ -550,43 +562,6 @@ private fun GlyphStrip(glyphs: List<GlyphReading>, rotation: Int, mode: ReadingM
 }
 
 @Composable
-private fun ActionTile(
-    @DrawableRes icon: Int,
-    label: String,
-    modifier: Modifier = Modifier,
-    primary: Boolean = false,
-    enabled: Boolean = true,
-    onClick: () -> Unit,
-) {
-    val background = if (primary) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainer
-    val content = when {
-        !enabled -> ZuTheme.colors.teal
-        primary -> MaterialTheme.colorScheme.onPrimary
-        else -> MaterialTheme.colorScheme.onSurface
-    }
-    Column(
-        modifier = modifier
-            .fillMaxHeight()
-            .clip(RoundedCornerShape(12.dp))
-            .background(background)
-            .clickable(enabled = enabled, onClick = onClick)
-            .padding(vertical = 12.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        Icon(painterResource(icon), contentDescription = null, tint = content, modifier = Modifier.size(20.dp))
-        // encolhe para caber numa linha em vez de quebrar a palavra
-        BasicText(
-            label,
-            style = MaterialTheme.typography.labelMedium.copy(color = content),
-            maxLines = 1,
-            autoSize = TextAutoSize.StepBased(minFontSize = 9.sp, maxFontSize = MaterialTheme.typography.labelMedium.fontSize),
-            modifier = Modifier.padding(horizontal = 6.dp),
-        )
-    }
-}
-
-@Composable
 private fun EmptyResult(onPickAnother: () -> Unit, onAdjustCrop: (() -> Unit)?) {
     Column(
         modifier = Modifier
@@ -732,9 +707,4 @@ private fun openLink(context: Context, link: String) {
 private fun copyText(context: Context, text: String) {
     val clipboard = context.getSystemService(ClipboardManager::class.java)
     clipboard.setPrimaryClip(ClipData.newPlainText("Zu", text))
-}
-
-private fun shareText(context: Context, text: String) {
-    val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text)
-    context.startActivity(Intent.createChooser(send, null))
 }

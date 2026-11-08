@@ -139,6 +139,10 @@
     <string name="result_delete_title">Apagar esta leitura?</string>
     <string name="result_delete_body">A imagem e o texto saem da coleção.</string>
     <string name="cancel">Cancelar</string>
+    <string name="details_name">Nome (opcional)</string>
+    <string name="details_name_hint">Ex.: Lápide da floresta</string>
+    <string name="details_description">Descrição (opcional)</string>
+    <string name="details_description_hint">O que quiser lembrar</string>
     <string name="glyph_letter">Letra %1$s</string>
     <string name="glyph_letter_doubt">Letra %1$s, com dúvida</string>
     <string name="correct_title">QUAL É ESTA LETRA?</string>

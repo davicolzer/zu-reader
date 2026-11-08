@@ -28,19 +28,34 @@ enum class SavedKind(val key: String) {
     }
 }
 
-data class HistoryItem(val id: Long, val text: String, val createdAt: Long, val image: File, val kind: SavedKind = SavedKind.READING) {
+data class HistoryItem(
+    val id: Long,
+    val text: String,
+    val createdAt: Long,
+    val image: File,
+    val kind: SavedKind = SavedKind.READING,
+    /** Nome e descrição dados pelo usuário (vazios = sem). */
+    val name: String = "",
+    val description: String = "",
+) {
     val isNote: Boolean get() = kind == SavedKind.NOTE
 }
 
-/** Foto anotada salva. */
 /**
  * Foto anotada salva: [image] já com os desenhos (miniatura, compartilhar); [original] sem eles e
  * [marks], para "Anotar mais" poder mover ou apagar cada desenho.
  */
-data class SavedNote(val id: Long, val image: Bitmap, val title: String, val original: Bitmap, val marks: List<Mark>)
+data class SavedNote(val id: Long, val image: Bitmap, val title: String, val original: Bitmap, val marks: List<Mark>, val description: String = "")
 
 /** Leitura salva, pronta para abrir na tela de resultado. */
-data class SavedReading(val id: Long, val image: Bitmap, val result: ImageReading, val createdAt: Long = 0)
+data class SavedReading(
+    val id: Long,
+    val image: Bitmap,
+    val result: ImageReading,
+    val createdAt: Long = 0,
+    val name: String = "",
+    val description: String = "",
+)
 
 /** Leituras salvas: dados no banco e imagens em arquivos na pasta do app. */
 class HistoryRepository(private val dao: ReadingDao, filesDir: File) {
@@ -48,7 +63,9 @@ class HistoryRepository(private val dao: ReadingDao, filesDir: File) {
 
     fun recent(limit: Int = Int.MAX_VALUE): Flow<List<HistoryItem>> =
         dao.observeRecent(limit).map { rows ->
-            rows.map { HistoryItem(it.id, it.text, it.createdAt, File(imagesDir, it.imageFile), kind = SavedKind.of(it.kind)) }
+            rows.map {
+                HistoryItem(it.id, it.text, it.createdAt, File(imagesDir, it.imageFile), SavedKind.of(it.kind), it.name, it.description)
+            }
         }
 
     /** `true` se o item [id] é uma foto anotada. */
@@ -58,7 +75,7 @@ class HistoryRepository(private val dao: ReadingDao, filesDir: File) {
      * Guarda uma foto anotada com o nome [title]: a foto já desenhada ([rendered]) e, para editar
      * depois, a [original] e os desenhos ([marks]).
      */
-    suspend fun saveNote(original: Bitmap, marks: List<Mark>, rendered: Bitmap, title: String): Long = withContext(Dispatchers.IO) {
+    suspend fun saveNote(original: Bitmap, marks: List<Mark>, rendered: Bitmap, title: String, description: String = ""): Long = withContext(Dispatchers.IO) {
         val originalFile = writeImage(original)
         val name = writeImage(rendered)
         // a original foi reduzida para HD: os desenhos acompanham
@@ -70,18 +87,20 @@ class HistoryRepository(private val dao: ReadingDao, filesDir: File) {
                 imageFile = name,
                 data = MarkCodec.encode(originalFile, marks.map { it.scaled(factor) }),
                 kind = ReadingEntity.KIND_NOTE,
+                name = title,
+                description = description,
             ),
         )
     }
 
     /** Troca os desenhos, a foto desenhada e o nome de uma foto anotada (ao anotar mais). */
-    suspend fun updateNote(id: Long, original: Bitmap, marks: List<Mark>, rendered: Bitmap, title: String) = withContext(Dispatchers.IO) {
+    suspend fun updateNote(id: Long, original: Bitmap, marks: List<Mark>, rendered: Bitmap, title: String, description: String = "") = withContext(Dispatchers.IO) {
         val old = dao.get(id) ?: return@withContext
         // a original pode ter mudado (recorte): grava as duas de novo e apaga as antigas
         val originalFile = writeImage(original)
         val name = writeImage(rendered)
         val factor = SaveSize.scale(original.width, original.height)
-        dao.updateNote(id, title, name, MarkCodec.encode(originalFile, marks.map { it.scaled(factor) }))
+        dao.updateNote(id, title, description, name, MarkCodec.encode(originalFile, marks.map { it.scaled(factor) }))
         File(imagesDir, old.imageFile).delete()
         MarkCodec.decode(old.data)?.let { File(imagesDir, it.originalFile).delete() }
     }
@@ -91,8 +110,8 @@ class HistoryRepository(private val dao: ReadingDao, filesDir: File) {
         val image = BitmapFactory.decodeFile(File(imagesDir, row.imageFile).path) ?: return@withContext null
         val saved = MarkCodec.decode(row.data)
         val original = saved?.let { BitmapFactory.decodeFile(File(imagesDir, it.originalFile).path) }
-        if (saved == null || original == null) SavedNote(row.id, image, row.text, image, emptyList())
-        else SavedNote(row.id, image, row.text, original, saved.marks)
+        if (saved == null || original == null) SavedNote(row.id, image, row.text, image, emptyList(), row.description)
+        else SavedNote(row.id, image, row.text, original, saved.marks, row.description)
     }
 
     /** Texto da lista do histórico: o escrito à mão, o lido em Zu ou, se só houver QR, "QR: …". */
@@ -110,7 +129,13 @@ class HistoryRepository(private val dao: ReadingDao, filesDir: File) {
     }
 
     /** Guarda uma leitura; [written] = veio de "Escrever à mão". Só QR, sem glifos, é do tipo QR. */
-    suspend fun save(image: Bitmap, result: ImageReading, written: Boolean = false): Long = withContext(Dispatchers.IO) {
+    suspend fun save(
+        image: Bitmap,
+        result: ImageReading,
+        written: Boolean = false,
+        name: String = "",
+        description: String = "",
+    ): Long = withContext(Dispatchers.IO) {
         val kind = when {
             written -> SavedKind.WRITTEN
             result.reading.glyphs.isEmpty() && result.qr != null && result.typed == null -> SavedKind.QR
@@ -124,6 +149,8 @@ class HistoryRepository(private val dao: ReadingDao, filesDir: File) {
                 imageFile = name,
                 data = ReadingCodec.encode(result),
                 kind = kind.key,
+                name = name.trim(),
+                description = description.trim(),
             ),
         )
     }
@@ -135,7 +162,12 @@ class HistoryRepository(private val dao: ReadingDao, filesDir: File) {
     suspend fun load(id: Long): SavedReading? = withContext(Dispatchers.IO) {
         val row = dao.get(id) ?: return@withContext null
         val image = BitmapFactory.decodeFile(File(imagesDir, row.imageFile).path) ?: return@withContext null
-        SavedReading(row.id, image, ReadingCodec.decode(row.data), row.createdAt)
+        SavedReading(row.id, image, ReadingCodec.decode(row.data), row.createdAt, row.name, row.description)
+    }
+
+    /** Troca o nome e a descrição de um item salvo. */
+    suspend fun updateDetails(id: Long, name: String, description: String) = withContext(Dispatchers.IO) {
+        dao.updateDetails(id, name.trim(), description.trim())
     }
 
     /**

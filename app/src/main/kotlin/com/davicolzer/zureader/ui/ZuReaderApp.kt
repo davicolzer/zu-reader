@@ -123,6 +123,9 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
                 onCrop = viewModel::cropQr,
                 onSave = viewModel::saveQr,
                 onDelete = viewModel::deleteQr,
+                name = s.name,
+                description = s.description,
+                onDetails = viewModel::setDetails,
             )
         }
         is ReaderUiState.QrCrop -> {
@@ -169,6 +172,7 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
                 onEdit = viewModel::editNote,
                 onSave = viewModel::saveNote,
                 onDelete = if (s.id != null) viewModel::deleteNote else null,
+                description = s.description,
             )
         }
         is ReaderUiState.Write -> {
@@ -248,6 +252,9 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
                 onAdjustCrop = if (s.crop != null) viewModel::adjustCrop else null,
                 alreadySavedAt = s.savedAt.takeIf { s.fresh != null },
                 onReadAnyway = if (s.fresh != null) viewModel::readAnyway else null,
+                name = s.name,
+                description = s.description,
+                onDetails = viewModel::setDetails,
                 typedImage = s.typed?.image,
                 typedReading = s.typed?.reading,
                 // escrever à mão vale para leituras de foto (o resultado de "Escrever à mão" já é escrito)

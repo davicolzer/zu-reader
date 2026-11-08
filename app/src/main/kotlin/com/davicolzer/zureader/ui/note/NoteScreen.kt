@@ -40,6 +40,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import com.davicolzer.zureader.R
+import com.davicolzer.zureader.ui.components.ShareCard
+import com.davicolzer.zureader.ui.components.DetailsFields
 import com.davicolzer.zureader.ui.components.AppDialog
 import com.davicolzer.zureader.ui.components.PixelOutlinedButton
 import com.davicolzer.zureader.ui.components.PixelPrimaryButton
@@ -59,13 +61,16 @@ fun NoteScreen(
     saved: Boolean,
     onBack: () -> Unit,
     onEdit: () -> Unit,
-    onSave: (String) -> Unit,
+    onSave: (name: String, description: String) -> Unit,
     onDelete: (() -> Unit)? = null,
+    /** Descrição livre da anotação (o nome é [title]). */
+    description: String = "",
 ) {
     val context = LocalContext.current
     var confirmDelete by remember { mutableStateOf(false) }
     var name by remember(title) { mutableStateOf(title) }
-    val upToDate = saved && name.trim() == title
+    var about by remember(description) { mutableStateOf(description) }
+    val upToDate = saved && name.trim() == title && about.trim() == description
     val bitmap = remember(image) { image.asImageBitmap() }
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -98,16 +103,8 @@ fun NoteScreen(
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            // nome opcional; em branco, fica "Anotação"
-            OutlinedTextField(
-                name,
-                { name = it },
-                singleLine = true,
-                placeholder = { Text(stringResource(R.string.note_name_label)) },
-                leadingIcon = { Icon(painterResource(R.drawable.ic_pixel_note), null, Modifier.size(18.dp)) },
-                textStyle = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.fillMaxWidth(),
-            )
+            // nome e descrição, opcionais (nome em branco = "Anotação")
+            DetailsFields(name, about, { n, d -> name = n; about = d })
             Image(
                 bitmap,
                 contentDescription = stringResource(R.string.note_image_description),
@@ -120,12 +117,12 @@ fun NoteScreen(
             )
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 PixelOutlinedButton(stringResource(R.string.note_edit), R.drawable.ic_pixel_pen, onClick = onEdit, modifier = Modifier.weight(1f), compact = true)
-                PixelOutlinedButton(stringResource(R.string.note_share), R.drawable.ic_pixel_share, onClick = { shareImage(context, image) }, modifier = Modifier.weight(1f), compact = true)
+                PixelOutlinedButton(stringResource(R.string.note_share), R.drawable.ic_pixel_share, onClick = { ShareCard.share(context, image, name.ifBlank { null }, null, about) }, modifier = Modifier.weight(1f), compact = true)
             }
             if (upToDate) {
                 PixelOutlinedButton(stringResource(R.string.note_saved), R.drawable.ic_pixel_check, onClick = {}, enabled = false)
             } else {
-                PixelPrimaryButton(stringResource(R.string.note_save), R.drawable.ic_pixel_save, onClick = { onSave(name.trim()) })
+                PixelPrimaryButton(stringResource(R.string.note_save), R.drawable.ic_pixel_save, onClick = { onSave(name.trim(), about.trim()) })
             }
         }
     }
@@ -142,17 +139,4 @@ fun NoteScreen(
             onDismiss = { confirmDelete = false },
         )
     }
-}
-
-/** Compartilha a foto anotada (cópia temporária na pasta de cache, entregue por FileProvider). */
-private fun shareImage(context: Context, image: Bitmap) {
-    val dir = File(context.cacheDir, "shared").apply { mkdirs() }
-    val file = File(dir, "anotacao.jpg")
-    file.outputStream().use { image.compress(Bitmap.CompressFormat.JPEG, 92, it) }
-    val uri = FileProvider.getUriForFile(context, "${context.packageName}.files", file)
-    val send = Intent(Intent.ACTION_SEND)
-        .setType("image/jpeg")
-        .putExtra(Intent.EXTRA_STREAM, uri)
-        .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-    context.startActivity(Intent.createChooser(send, null))
 }

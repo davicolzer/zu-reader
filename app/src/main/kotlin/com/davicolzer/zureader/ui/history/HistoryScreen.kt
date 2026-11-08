@@ -45,6 +45,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.davicolzer.zureader.R
@@ -258,9 +259,13 @@ private fun HistoryTile(item: HistoryItem, onOpen: (Long) -> Unit, onDelete: (Hi
     }
 }
 
-/** O texto que representa o item na lista e no mosaico. */
+/** O texto que representa o item na lista e no mosaico: o nome, se tiver; senão, o conteúdo. */
 @Composable
-private fun listTitle(item: HistoryItem): String = when (item.kind) {
+private fun listTitle(item: HistoryItem): String = item.name.takeIf { it.isNotBlank() } ?: contentText(item)
+
+/** O conteúdo do item: a tradução, o texto do QR ou o nome da anotação. */
+@Composable
+private fun contentText(item: HistoryItem): String = when (item.kind) {
     SavedKind.QR -> item.text.removePrefix("QR: ")
     SavedKind.NOTE -> item.text.ifBlank { stringResource(R.string.note_default_name) }
     else -> ReadingMode.of(item.text.firstOrNull { !it.isWhitespace() } ?: 'A').display(item.text).replace('\n', ' ').ifBlank { "—" }
@@ -285,7 +290,17 @@ fun HistoryRow(item: HistoryItem, onOpen: (Long) -> Unit, onDelete: ((HistoryIte
                 Icon(painterResource(item.kind.icon), null, Modifier.size(12.dp), tint = item.kind.color())
                 Text(stringResource(item.kind.badge), style = MaterialTheme.typography.labelSmall, color = item.kind.color())
             }
-            if (item.kind == SavedKind.QR) {
+            // com nome: o nome em destaque e o texto (tradução, QR) embaixo, menor
+            if (item.name.isNotBlank() && !item.isNote) {
+                Text(item.name, style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(
+                    contentText(item),
+                    style = if (item.kind == SavedKind.QR) MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace) else MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            } else if (item.kind == SavedKind.QR) {
                 // QR: o conteúdo como está (pode ser link ou comando), sem a fonte de pixel
                 Text(
                     item.text.removePrefix("QR: "),
@@ -296,8 +311,8 @@ fun HistoryRow(item: HistoryItem, onOpen: (Long) -> Unit, onDelete: ((HistoryIte
             } else if (item.isNote) {
                 // foto anotada: o nome dado pelo usuário
                 Text(
-                    item.text.ifBlank { stringResource(R.string.note_default_name) },
-                    style = MaterialTheme.typography.titleSmall,
+                    item.name.ifBlank { item.text }.ifBlank { stringResource(R.string.note_default_name) },
+                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )

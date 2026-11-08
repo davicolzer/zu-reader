@@ -35,6 +35,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.withContext
 
 /** Para que a câmera foi aberta. */
@@ -54,6 +56,9 @@ sealed interface ReaderUiState {
         val savedId: Long? = null,
         /** Imagem antes do recorte (para recortar de novo). */
         val original: Bitmap? = null,
+        /** Nome (de onde veio) e descrição livre, opcionais. */
+        val name: String = "",
+        val description: String = "",
     ) : ReaderUiState
 
     /** Recortando a imagem de um QR antes de salvar. */
@@ -81,6 +86,8 @@ sealed interface ReaderUiState {
         val original: Bitmap = image,
         val marks: List<Mark> = emptyList(),
         val saved: Boolean = id != null,
+        /** Descrição livre (o nome é [title]). */
+        val description: String = "",
     ) : ReaderUiState
     /** Recorte de uma foto ([fromCamera]) ou de uma imagem da galeria, com os cantos sugeridos. */
     data class Crop(val image: Bitmap, val rgb: RgbImage, val suggestion: Quad, val fromCamera: Boolean) : ReaderUiState
@@ -114,6 +121,9 @@ sealed interface ReaderUiState {
          */
         val fresh: Result? = null,
         val savedAt: Long? = null,
+        /** Nome (de onde veio) e descrição livre, opcionais. */
+        val name: String = "",
+        val description: String = "",
     ) : ReaderUiState
     data object History : ReaderUiState
     data object Settings : ReaderUiState
@@ -219,7 +229,8 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         val image = current.image ?: ImageLoading.toBitmap(RgbImage.fromGray(com.davicolzer.zureader.vision.GrayImage.filled(64, 64, 230)))
         viewModelScope.launch {
             val reading = ImageReading(ZuReading.EMPTY, emptyList(), true, image.width, image.height, qr = code)
-            val id = history.save(image, reading)
+            val now = _state.value as? ReaderUiState.QrResult
+            val id = history.save(image, reading, name = now?.name.orEmpty(), description = now?.description.orEmpty())
             // salvo: só a imagem em HD fica (a original para recortar de novo sai)
             (_state.value as? ReaderUiState.QrResult)?.let {
                 if (it.code == code) _state.value = it.copy(savedId = id, image = it.image?.let(ImageLoading::hd), original = null)
@@ -254,15 +265,15 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
     fun finishAnnotating(rendered: Bitmap, marks: List<Mark>) {
         val current = _state.value as? ReaderUiState.Annotate ?: return
         val note = current.note
-        _state.value = ReaderUiState.Note(note?.id, rendered, note?.title.orEmpty(), current.image, marks, saved = false)
+        _state.value = ReaderUiState.Note(note?.id, rendered, note?.title.orEmpty(), current.image, marks, saved = false, description = note?.description.orEmpty())
     }
 
     /** Salva a anotação aberta com o nome [title] (nova, ou por cima da já salva). */
-    fun saveNote(title: String) {
+    fun saveNote(title: String, description: String = "") {
         val note = _state.value as? ReaderUiState.Note ?: return
         viewModelScope.launch {
-            val id = note.id?.also { history.updateNote(it, note.original, note.marks, note.image, title) }
-                ?: history.saveNote(note.original, note.marks, note.image, title)
+            val id = note.id?.also { history.updateNote(it, note.original, note.marks, note.image, title, description) }
+                ?: history.saveNote(note.original, note.marks, note.image, title, description)
             (_state.value as? ReaderUiState.Note)?.takeIf { it.image === note.image }?.let {
                 // o editor já trabalha em HD; garante que nada maior fique depois de salvar
                 val original = ImageLoading.hd(it.original)
@@ -270,6 +281,7 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
                 _state.value = it.copy(
                     id = id,
                     title = title,
+                    description = description,
                     saved = true,
                     image = ImageLoading.hd(it.image),
                     original = original,
@@ -407,6 +419,8 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
             typed = saved.result.typed?.let { typedView(it) },
             fresh = read,
             savedAt = saved.createdAt,
+            name = saved.name,
+            description = saved.description,
         )
     }
 
@@ -453,7 +467,13 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         val current = _state.value as? ReaderUiState.Result ?: return
         if (current.savedId != null) return
         viewModelScope.launch {
-            val id = history.save(current.image, current.result, written = current.written != null)
+            val id = history.save(
+                current.image,
+                current.result,
+                written = current.written != null,
+                name = current.name,
+                description = current.description,
+            )
             // o usuário pode ter corrigido letras enquanto salvava
             val now = _state.value as? ReaderUiState.Result ?: return@launch
             if (now.image === current.image) {
@@ -461,7 +481,27 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
                 // reler saem da memória; as caixas continuam no lugar, a tela usa o tamanho da leitura)
                 _state.value = now.copy(savedId = id, image = ImageLoading.hd(now.image), crop = null)
                 if (now.result != current.result) history.update(id, now.result)
+                if (now.name != current.name || now.description != current.description) history.updateDetails(id, now.name, now.description)
             }
+        }
+    }
+
+    private var detailsJob: Job? = null
+
+    /**
+     * Nome e descrição da leitura ou do QR aberto. Já salvo: grava (um instante depois da última
+     * tecla, para não gravar a cada letra).
+     */
+    fun setDetails(name: String, description: String) {
+        val savedId = when (val s = _state.value) {
+            is ReaderUiState.Result -> s.copy(name = name, description = description).also { _state.value = it }.savedId
+            is ReaderUiState.QrResult -> s.copy(name = name, description = description).also { _state.value = it }.savedId
+            else -> return
+        } ?: return
+        detailsJob?.cancel()
+        detailsJob = viewModelScope.launch {
+            delay(400)
+            history.updateDetails(savedId, name, description)
         }
     }
 
@@ -539,14 +579,21 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
     fun openSaved(id: Long) = work {
         if (history.isNote(id)) {
             val note = history.loadNote(id) ?: throw IllegalStateException("Anotação $id não encontrada")
-            return@work ReaderUiState.Note(note.id, note.image, note.title, note.original, note.marks)
+            return@work ReaderUiState.Note(note.id, note.image, note.title, note.original, note.marks, description = note.description)
         }
         val saved = history.load(id) ?: throw IllegalStateException("Leitura $id não encontrada")
         // QR salvo pela tela do QR: abre nela de novo
         if (saved.result.reading.glyphs.isEmpty() && saved.result.qr != null && saved.result.typed == null) {
-            return@work ReaderUiState.QrResult(saved.result.qr, saved.image, saved.id)
+            return@work ReaderUiState.QrResult(saved.result.qr, saved.image, saved.id, name = saved.name, description = saved.description)
         }
-        ReaderUiState.Result(saved.image, saved.result, saved.id, typed = saved.result.typed?.let { typedView(it) })
+        ReaderUiState.Result(
+            saved.image,
+            saved.result,
+            saved.id,
+            typed = saved.result.typed?.let { typedView(it) },
+            name = saved.name,
+            description = saved.description,
+        )
     }
 
     /** Apaga um item direto da lista do histórico. */
