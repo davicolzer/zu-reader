@@ -417,10 +417,9 @@ class ZuImageReader(
         val found = raw.map(::withoutPieces).filter { it.isNotEmpty() }
         if (found.isEmpty()) return ImageReading(ZuReading.EMPTY, emptyList(), inkIsDark, image.width, image.height, mode = mode).let { Triple(it, 0f, found) }
 
-        // A orientação vale para a imagem inteira: soma a pontuação de todos os blocos.
-        val (rotation, firstBlocks) = (0..3)
-            .map { q -> q to found.map { reader.read(it, rotation = q) } }
-            .maxBy { (q, readings) -> readings.sumOf { it.score } - if (q == 0) 0 else ZuReader.rotationCost(found.sumOf { it.size }) }
+        // A foto já vem em pé (o app confia na orientação dela): não tenta outros giros.
+        val rotation = 0
+        val firstBlocks = found.map { reader.read(it) }
         // Com a orientação escolhida, as colunas de leitura são conhecidas: completa as vagas
         // ao longo delas e relê (só se achou algum glifo novo).
         val columnsVertical = (firstBlocks.first().direction == ReadingDirection.VERTICAL_RIGHT_TO_LEFT) == (rotation % 2 == 0)

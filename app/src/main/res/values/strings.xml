@@ -2,8 +2,8 @@
     <string name="app_name">Zu Reader</string>
     <string name="app_title">ZU READER</string>
     <string name="settings">Configurações</string>
-    <string name="home_hero_title">Fotografe um texto em Zu</string>
-    <string name="home_hero_body">Funciona com foto da tela, print do jogo ou imagem da galeria.</string>
+    <string name="home_hero_title">Leia textos em Zu</string>
+    <string name="home_hero_body">Escolha o que fazer; depois, tire uma foto ou pegue uma imagem da galeria.</string>
     <string name="home_take_photo">Fotografar</string>
     <string name="home_pick_gallery">Escolher da galeria</string>
     <string name="home_recent">Recentes</string>
@@ -27,6 +27,11 @@
     <string name="result_low_confidence">Letras em dourado têm dúvida. Toque numa letra, aqui ou na foto, para corrigir.</string>
     <string name="result_twin_letters">%1$s usam o mesmo glifo no Zu. A letra foi escolhida pelo contexto do inglês; toque no glifo para trocar.</string>
     <string name="home_write">Escrever à mão</string>
+    <string name="home_read_zu">Ler Zu</string>
+    <string name="zu_source_title">Ler Zu</string>
+    <string name="zu_source_body">Letras, números ou os dois misturados: o app reconhece sozinho. Tire uma foto agora ou escolha uma imagem da galeria.</string>
+    <string name="source_camera">Tirar foto</string>
+    <string name="source_gallery">Escolher da galeria</string>
     <string name="home_annotate">Anotar foto</string>
     <string name="home_read_qr">Ler QR code</string>
     <string name="qr_source_title">Ler QR code</string>
@@ -101,15 +106,12 @@
     <string name="camera_flash_on">Ligar flash</string>
     <string name="camera_flash_off">Desligar flash</string>
     <string name="camera_shutter">Tirar foto</string>
-    <string name="camera_aim">Aponte para o texto Zu</string>
-    <string name="camera_hold">Segure firme e toque para fotografar</string>
+    <string name="camera_aim">Enquadre o texto Zu nos cantos</string>
+    <string name="camera_quality_good">Boa! Pode fotografar</string>
+    <string name="camera_quality_fair">Quase lá: segure firme</string>
+    <string name="camera_quality_poor">Ruim: foque e segure parado</string>
     <string name="camera_order">Leitura: de cima para baixo, da direita para a esquerda</string>
     <string name="camera_order_horizontal">Leitura: da esquerda para a direita, de cima para baixo</string>
-    <plurals name="camera_glyph_count">
-        <item quantity="one">%1$d glifo</item>
-        <item quantity="many">%1$d glifos</item>
-        <item quantity="other">%1$d glifos</item>
-    </plurals>
     <string name="camera_permission_title">A câmera está bloqueada</string>
     <string name="camera_permission_body">O Zu Reader usa a câmera só para fotografar o texto. Nada sai do seu celular.</string>
     <string name="camera_permission_allow">Permitir câmera</string>
@@ -166,10 +168,6 @@
     <string name="settings_forget_body">O app volta a usar só o alfabeto padrão. Seu histórico não muda.</string>
     <string name="settings_forget_confirm">Esquecer</string>
     <string name="result_adjust_crop">Ajustar recorte</string>
-    <string name="mode_auto">Auto</string>
-    <string name="mode_text">Escrita</string>
-    <string name="mode_numbers">Números</string>
-    <string name="home_hero_title_numbers">Fotografe números em Zu</string>
     <string name="result_numbers_label">NÚMEROS LIDOS</string>
     <string name="correct_title_numbers">QUAL É ESTE NÚMERO?</string>
     <string name="result_glyphs_label_numbers">NÚMERO A NÚMERO</string>

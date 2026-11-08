@@ -3,6 +3,7 @@ package com.davicolzer.zureader.vision
 import com.davicolzer.zureader.zu.ReadingDirection
 import com.davicolzer.zureader.zu.ZuReader
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -103,14 +104,13 @@ class ZuImageReaderTest {
     }
 
     @Test
-    fun `foto girada`() {
-        val upright = ZuRenderer.render("OPEN THE DOOR")
-        var img = upright
+    fun `foto girada e lida como veio`() {
+        var img = ZuRenderer.render("OPEN THE DOOR")
         for (turn in 1..3) {
             img = ImageEffects.rotate90(img)
             val result = reader.read(img)
-            assertEquals("OPEN THE DOOR", result.reading.text, "girada $turn×90°")
-            assertEquals((4 - turn) % 4, result.reading.rotation)
+            assertEquals(0, result.reading.rotation, "girada $turn×90°")
+            assertNotEquals("OPEN THE DOOR", result.reading.text, "girada $turn×90°")
         }
     }
 

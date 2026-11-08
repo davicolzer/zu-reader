@@ -30,36 +30,32 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.davicolzer.zureader.vision.ModeChoice
 import com.davicolzer.zureader.R
+import com.davicolzer.zureader.vision.PhotoQuality
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.LiveRegionMode
 import com.davicolzer.zureader.reader.CameraPurpose
-import com.davicolzer.zureader.reader.LiveFrame
-import com.davicolzer.zureader.ui.components.ModeSelector
 import com.davicolzer.zureader.ui.theme.ZuTheme
-import com.davicolzer.zureader.vision.FillCenter
-import com.davicolzer.zureader.zu.ReadingMode
 
 private val Scrim = Color(0xCC0B0A18)
 
 /**
- * Tudo o que fica por cima do visor: guia, caixas dos glifos, contador e controles.
+ * Tudo o que fica por cima do visor: guia, qualidade da imagem e controles. Não há leitura ao
+ * vivo: o texto é lido na foto, em resolução cheia. Em "Ler Zu", a cor da moldura e a frase
+ * dizem se está bom (verde-água), médio (dourado) ou ruim (vermelho) para fotografar.
  * Separado do preview da câmera para poder ser testado com uma imagem qualquer atrás.
  */
 @Composable
 fun CameraOverlay(
-    frame: LiveFrame?,
+    quality: PhotoQuality?,
     flashOn: Boolean,
     capturing: Boolean,
     onClose: () -> Unit,
@@ -67,35 +63,23 @@ fun CameraOverlay(
     onGallery: () -> Unit,
     onShutter: () -> Unit,
     horizontal: Boolean = false,
-    mode: ModeChoice = ModeChoice.AUTO,
-    onMode: (ModeChoice) -> Unit = {},
-    /** Só na leitura de glifos aparecem o contador, o seletor de modo e o texto ao vivo. */
+    /** Só na leitura de glifos aparece a ordem de leitura. */
     purpose: CameraPurpose = CameraPurpose.READ,
 ) {
     val reading = purpose == CameraPurpose.READ
-    val teal = ZuTheme.colors.teal
     val gold = ZuTheme.colors.gold
-    val count = frame?.glyphs?.size ?: 0
+    val frameColor = when (if (reading) quality else null) {
+        PhotoQuality.GOOD -> ZuTheme.colors.teal
+        PhotoQuality.FAIR -> gold
+        PhotoQuality.POOR -> MaterialTheme.colorScheme.primary
+        null -> gold
+    }
 
     // fora de um Scaffold o texto não herda a cor do tema
     CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
     Box(Modifier.fillMaxSize()) {
-        // caixas dos glifos, alinhadas ao preview (FILL_CENTER)
         Canvas(Modifier.fillMaxSize()) {
-            val f = frame ?: return@Canvas
-            val map = FillCenter.of(f.width, f.height, size.width, size.height)
-            val stroke = Stroke(width = 2.dp.toPx())
-            for (g in f.glyphs) {
-                val w = g.width * map.scale + 6
-                val h = g.height * map.scale + 6
-                drawRect(
-                    color = if (g.lowConfidence) gold else teal,
-                    topLeft = Offset(map.mapX(g.x) - w / 2, map.mapY(g.y) - h / 2),
-                    size = Size(w, h),
-                    style = stroke,
-                )
-            }
-            // cantos dourados da guia
+            // cantos da guia (a cor mostra a qualidade)
             val gw = size.width * 0.8f
             val gh = size.height * 0.5f
             val left = (size.width - gw) / 2
@@ -106,8 +90,8 @@ fun CameraOverlay(
                 listOf(left, top, 1f, 1f), listOf(left + gw, top, -1f, 1f),
                 listOf(left, top + gh, 1f, -1f), listOf(left + gw, top + gh, -1f, -1f),
             )) {
-                drawRect(gold, Offset(if (dx > 0) x else x - arm, if (dy > 0) y else y - t), Size(arm, t))
-                drawRect(gold, Offset(if (dx > 0) x else x - t, if (dy > 0) y else y - arm), Size(t, arm))
+                drawRect(frameColor, Offset(if (dx > 0) x else x - arm, if (dy > 0) y else y - t), Size(arm, t))
+                drawRect(frameColor, Offset(if (dx > 0) x else x - t, if (dy > 0) y else y - arm), Size(t, arm))
             }
         }
 
@@ -123,15 +107,16 @@ fun CameraOverlay(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
-                    if (reading) {
-                        Box(Modifier.size(7.dp).clip(CircleShape).background(if (count > 0) teal else MaterialTheme.colorScheme.onSurfaceVariant))
-                        Text(pluralStringResource(R.plurals.camera_glyph_count, count, count), style = MaterialTheme.typography.labelSmall)
-                    } else {
-                        Text(
-                            stringResource(if (purpose == CameraPurpose.QR) R.string.camera_qr_hint else R.string.camera_note_hint),
-                            style = MaterialTheme.typography.labelSmall,
-                        )
-                    }
+                    Text(
+                        stringResource(
+                            when (purpose) {
+                                CameraPurpose.QR -> R.string.camera_qr_hint
+                                CameraPurpose.NOTE -> R.string.camera_note_hint
+                                CameraPurpose.READ -> R.string.home_read_zu
+                            },
+                        ),
+                        style = MaterialTheme.typography.labelSmall,
+                    )
                 }
                 Spacer(Modifier.weight(1f))
                 RoundControl(
@@ -141,7 +126,6 @@ fun CameraOverlay(
                 )
             }
 
-            if (reading) ModeSelector(mode, onMode, Modifier.padding(horizontal = 16.dp))
 
             Spacer(Modifier.weight(1f))
 
@@ -153,32 +137,21 @@ fun CameraOverlay(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
-                val text = (frame?.mode ?: ReadingMode.TEXT).display(frame?.text.orEmpty()).replace('\n', ' ')
-                if (text.isNotBlank()) {
+                if (reading && quality != null) {
+                    QualityLabel(quality, frameColor)
+                } else {
                     Text(
-                        text,
-                        style = MaterialTheme.typography.titleLarge,
-                        color = teal,
+                        stringResource(
+                            when (purpose) {
+                                CameraPurpose.QR -> R.string.camera_qr_aim
+                                CameraPurpose.NOTE -> R.string.camera_note_aim
+                                CameraPurpose.READ -> R.string.camera_aim
+                            },
+                        ),
+                        style = MaterialTheme.typography.bodyMedium,
                         textAlign = TextAlign.Center,
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(Scrim)
-                            .semantics { liveRegion = LiveRegionMode.Polite }
-                            .padding(horizontal = 14.dp, vertical = 8.dp),
                     )
                 }
-                Text(
-                    stringResource(
-                        when {
-                            purpose == CameraPurpose.QR -> R.string.camera_qr_aim
-                            purpose == CameraPurpose.NOTE -> R.string.camera_note_aim
-                            count > 0 -> R.string.camera_hold
-                            else -> R.string.camera_aim
-                        },
-                    ),
-                    style = MaterialTheme.typography.bodyMedium,
-                    textAlign = TextAlign.Center,
-                )
                 if (reading) {
                     Text(
                         stringResource(if (horizontal) R.string.camera_order_horizontal else R.string.camera_order),
@@ -197,6 +170,33 @@ fun CameraOverlay(
             }
         }
     }
+    }
+}
+
+/** A frase do nível de qualidade, com um ponto na cor da moldura. */
+@Composable
+private fun QualityLabel(quality: PhotoQuality, color: Color) {
+    Row(
+        Modifier
+            .clip(RoundedCornerShape(50))
+            .background(Scrim)
+            .semantics { liveRegion = LiveRegionMode.Polite }
+            .padding(horizontal = 16.dp, vertical = 9.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Box(Modifier.size(10.dp).clip(CircleShape).background(color))
+        Text(
+            stringResource(
+                when (quality) {
+                    PhotoQuality.GOOD -> R.string.camera_quality_good
+                    PhotoQuality.FAIR -> R.string.camera_quality_fair
+                    PhotoQuality.POOR -> R.string.camera_quality_poor
+                },
+            ),
+            style = MaterialTheme.typography.titleMedium,
+            color = color,
+        )
     }
 }
 

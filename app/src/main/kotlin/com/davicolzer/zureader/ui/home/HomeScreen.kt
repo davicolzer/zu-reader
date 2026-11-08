@@ -42,9 +42,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.davicolzer.zureader.vision.ModeChoice
 import com.davicolzer.zureader.R
-import com.davicolzer.zureader.ui.components.ModeSelector
 import com.davicolzer.zureader.zu.ReadingMode
 import com.davicolzer.zureader.data.HistoryItem
 import com.davicolzer.zureader.ui.history.HistoryEmpty
@@ -61,16 +59,13 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    onTakePhoto: (() -> Unit)? = null,
-    onPickFromGallery: (() -> Unit)? = null,
+    onReadZu: () -> Unit = {},
     onOpenSettings: (() -> Unit)? = null,
     errorMessage: String? = null,
     onErrorShown: () -> Unit = {},
     recent: List<HistoryItem> = emptyList(),
     onOpenSaved: (Long) -> Unit = {},
     onSeeAll: () -> Unit = {},
-    mode: ModeChoice = ModeChoice.AUTO,
-    onMode: (ModeChoice) -> Unit = {},
     onWrite: () -> Unit = {},
     onAnnotate: () -> Unit = {},
     onReadQr: () -> Unit = {},
@@ -127,17 +122,12 @@ fun HomeScreen(
                 .padding(horizontal = 20.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            HeroCard(mode)
-            ModeSelector(mode, onMode)
+            HeroCard()
+            // ações: o que fazer; de onde vem a imagem (câmera ou galeria) é perguntado depois
             PixelPrimaryButton(
-                text = stringResource(R.string.home_take_photo),
-                icon = R.drawable.ic_pixel_camera,
-                onClick = onTakePhoto ?: notYet,
-            )
-            PixelOutlinedButton(
-                text = stringResource(R.string.home_pick_gallery),
-                icon = R.drawable.ic_pixel_gallery,
-                onClick = onPickFromGallery ?: notYet,
+                text = stringResource(R.string.home_read_zu),
+                icon = R.drawable.ic_fez_glyph,
+                onClick = onReadZu,
             )
             // anotar e QR lado a lado
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -188,7 +178,7 @@ fun HomeScreen(
 }
 
 @Composable
-private fun HeroCard(mode: ModeChoice) {
+private fun HeroCard() {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -207,7 +197,7 @@ private fun HeroCard(mode: ModeChoice) {
             Image(painterResource(R.drawable.ic_fez_hat), contentDescription = null, modifier = Modifier.size(56.dp))
         }
         Text(
-            stringResource(if (mode == ModeChoice.NUMBERS) R.string.home_hero_title_numbers else R.string.home_hero_title),
+            stringResource(R.string.home_hero_title),
             style = MaterialTheme.typography.headlineSmall,
         )
         Text(

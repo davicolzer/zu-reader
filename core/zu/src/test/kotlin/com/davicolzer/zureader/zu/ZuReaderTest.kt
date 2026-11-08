@@ -1,6 +1,7 @@
 package com.davicolzer.zureader.zu
 
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
@@ -47,19 +48,11 @@ class ZuReaderTest {
 
     @ParameterizedTest
     @ValueSource(ints = [1, 2, 3])
-    fun `detecta foto girada`(turns: Int) {
-        // textos com ZuReader.SHORT_TEXT glifos ou mais; os curtos ficam na orientação da foto
-        for (s in sentences.filter { it.count(Char::isLetter) >= ZuReader.SHORT_TEXT }) {
-            val photo = ZuLayout.rotate(ZuLayout.compose(s, maxPerLine = 6), turns)
-            val reading = reader.read(photo)
-            assertEquals(s, reading.text, "frase: $s, girada $turns×90°")
-            assertEquals((4 - turns) % 4, reading.rotation)
-        }
-    }
-
-    @Test
-    fun `texto curto prefere a foto em pe`() {
-        assertEquals("BOX", reader.read(ZuLayout.compose("BOX")).text)
+    fun `confia na orientacao da foto e nao gira sozinho`(turns: Int) {
+        val photo = ZuLayout.rotate(ZuLayout.compose("OPEN THE DOOR", maxPerLine = 6), turns)
+        val reading = reader.read(photo)
+        assertEquals(0, reading.rotation)
+        assertNotEquals("OPEN THE DOOR", reading.text)
     }
 
     @Test
@@ -80,7 +73,7 @@ class ZuReaderTest {
     @Test
     fun `glifos voltam na ordem de leitura com a posicao original`() {
         val photo = ZuLayout.rotate(ZuLayout.compose("OPEN THE DOOR", maxPerLine = 4), 1)
-        val reading = reader.read(photo)
+        val reading = reader.read(photo, rotation = 3)
         assertEquals("OPENTHEDOOR", reading.glyphs.map { it.letter }.joinToString(""))
         assertTrue(reading.glyphs.all { it.source in photo })
         assertTrue(reading.glyphs.none { it.isLowConfidence })
