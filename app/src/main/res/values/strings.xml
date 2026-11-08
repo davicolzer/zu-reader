@@ -29,7 +29,7 @@
     <string name="home_write">Escrever à mão</string>
     <string name="home_read_zu">Ler Zu</string>
     <string name="zu_source_title">Ler Zu</string>
-    <string name="zu_source_body">Escolha o que ler e de onde vem a imagem: uma foto agora ou uma imagem da galeria.</string>
+    <string name="zu_source_body">Letras, números ou os dois misturados: o app reconhece sozinho. Tire uma foto agora ou escolha uma imagem da galeria.</string>
     <string name="source_camera">Tirar foto</string>
     <string name="source_gallery">Escolher da galeria</string>
     <string name="home_annotate">Anotar foto</string>
@@ -171,10 +171,6 @@
     <string name="settings_forget_body">O app volta a usar só o alfabeto padrão. Seu histórico não muda.</string>
     <string name="settings_forget_confirm">Esquecer</string>
     <string name="result_adjust_crop">Ajustar recorte</string>
-    <string name="mode_auto">Auto</string>
-    <string name="mode_text">Escrita</string>
-    <string name="mode_numbers">Números</string>
-    <string name="home_hero_title_numbers">Leia números em Zu</string>
     <string name="result_numbers_label">NÚMEROS LIDOS</string>
     <string name="correct_title_numbers">QUAL É ESTE NÚMERO?</string>
     <string name="result_glyphs_label_numbers">NÚMERO A NÚMERO</string>

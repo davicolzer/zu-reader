@@ -34,7 +34,6 @@ import com.davicolzer.zureader.ui.write.WriteScreen
 import com.davicolzer.zureader.ui.note.AnnotateScreen
 import com.davicolzer.zureader.ui.note.NoteScreen
 import com.davicolzer.zureader.ui.qr.QrScreen
-import com.davicolzer.zureader.ui.components.ModeSelector
 import com.davicolzer.zureader.ui.components.SourceDialog
 import com.davicolzer.zureader.reader.CameraPurpose
 import androidx.compose.material3.AlertDialog
@@ -68,7 +67,6 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
             onCamera = { chooseZuSource = false; viewModel.openCamera() },
             onGallery = { chooseZuSource = false; pickImage() },
             onDismiss = { chooseZuSource = false },
-            extra = { ModeSelector(settings.mode, viewModel::setMode) },
         )
     }
     // "Ler QR code": a imagem escolhida vai direto para a leitura do QR
@@ -106,7 +104,6 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
             recent = recent,
             onOpenSaved = viewModel::openSaved,
             onSeeAll = viewModel::openHistory,
-            mode = settings.mode,
             onWrite = { viewModel.openWriter() },
             onAnnotate = { chooseNoteSource = true },
             onReadQr = { chooseQrSource = true },
@@ -170,8 +167,6 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
                     onClose = viewModel::goHome,
                     direction = settings.direction,
                     learned = learned,
-                    mode = settings.mode,
-                    onMode = viewModel::setMode,
                 )
             }
         }

@@ -75,8 +75,6 @@ fun CameraScreen(
     purpose: CameraPurpose = CameraPurpose.READ,
     onQrFound: (QrCode, Bitmap?) -> Unit = { _, _ -> },
     learned: List<ZuGlyph> = emptyList(),
-    mode: ModeChoice = ModeChoice.AUTO,
-    onMode: (ModeChoice) -> Unit = {},
 ) {
     val context = LocalContext.current
     var granted by remember { mutableStateOf(hasCameraPermission(context)) }
@@ -84,7 +82,7 @@ fun CameraScreen(
     LaunchedEffect(Unit) { if (!granted) launcher.launch(Manifest.permission.CAMERA) }
 
     if (granted) {
-        CameraContent(onCaptured, onPickFromGallery, onClose, direction, learned, mode, onMode, purpose, onQrFound)
+        CameraContent(onCaptured, onPickFromGallery, onClose, direction, learned, purpose, onQrFound)
     } else {
         PermissionNeeded(
             onAllow = { launcher.launch(Manifest.permission.CAMERA) },
@@ -108,8 +106,6 @@ private fun CameraContent(
     onClose: () -> Unit,
     direction: ReadingDirection,
     learned: List<ZuGlyph>,
-    mode: ModeChoice,
-    onMode: (ModeChoice) -> Unit,
     purpose: CameraPurpose,
     onQrFound: (QrCode, Bitmap?) -> Unit,
 ) {
@@ -142,7 +138,7 @@ private fun CameraContent(
         imageCapture.flashMode = if (flashOn) ImageCapture.FLASH_MODE_ON else ImageCapture.FLASH_MODE_OFF
     }
 
-    DisposableEffect(lifecycleOwner, direction, learned, mode, purpose) {
+    DisposableEffect(lifecycleOwner, direction, learned, purpose) {
         val analysisExecutor = Executors.newSingleThreadExecutor()
         val future = ProcessCameraProvider.getInstance(context)
         var provider: ProcessCameraProvider? = null
@@ -165,7 +161,7 @@ private fun CameraContent(
                     }
                     // anotar: a câmera só fotografa, não precisa analisar
                     CameraPurpose.NOTE -> null
-                    CameraPurpose.READ -> LiveAnalyzer(direction, learned, mode) { live.value = it }
+                    CameraPurpose.READ -> LiveAnalyzer(direction, learned, ModeChoice.AUTO) { live.value = it }
                 }
                 analyzer?.let { analysis.setAnalyzer(analysisExecutor, it) }
                 cameraProvider.unbindAll()
@@ -190,8 +186,6 @@ private fun CameraContent(
             onToggleFlash = { flashOn = !flashOn },
             onGallery = onPickFromGallery,
             horizontal = direction == ReadingDirection.HORIZONTAL_LEFT_TO_RIGHT,
-            mode = mode,
-            onMode = { live.value = null; onMode(it) },
             purpose = purpose,
             onShutter = {
                 capturing = true

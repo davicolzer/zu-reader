@@ -42,7 +42,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.davicolzer.zureader.vision.ModeChoice
 import com.davicolzer.zureader.R
 import com.davicolzer.zureader.zu.ReadingMode
 import com.davicolzer.zureader.data.HistoryItem
@@ -67,7 +66,6 @@ fun HomeScreen(
     recent: List<HistoryItem> = emptyList(),
     onOpenSaved: (Long) -> Unit = {},
     onSeeAll: () -> Unit = {},
-    mode: ModeChoice = ModeChoice.AUTO,
     onWrite: () -> Unit = {},
     onAnnotate: () -> Unit = {},
     onReadQr: () -> Unit = {},
@@ -124,7 +122,7 @@ fun HomeScreen(
                 .padding(horizontal = 20.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            HeroCard(mode)
+            HeroCard()
             // ações: o que fazer; de onde vem a imagem (câmera ou galeria) é perguntado depois
             PixelPrimaryButton(
                 text = stringResource(R.string.home_read_zu),
@@ -180,7 +178,7 @@ fun HomeScreen(
 }
 
 @Composable
-private fun HeroCard(mode: ModeChoice) {
+private fun HeroCard() {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -199,7 +197,7 @@ private fun HeroCard(mode: ModeChoice) {
             Image(painterResource(R.drawable.ic_fez_hat), contentDescription = null, modifier = Modifier.size(56.dp))
         }
         Text(
-            stringResource(if (mode == ModeChoice.NUMBERS) R.string.home_hero_title_numbers else R.string.home_hero_title),
+            stringResource(R.string.home_hero_title),
             style = MaterialTheme.typography.headlineSmall,
         )
         Text(

@@ -42,11 +42,9 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.davicolzer.zureader.vision.ModeChoice
 import com.davicolzer.zureader.R
 import com.davicolzer.zureader.reader.CameraPurpose
 import com.davicolzer.zureader.reader.LiveFrame
-import com.davicolzer.zureader.ui.components.ModeSelector
 import com.davicolzer.zureader.ui.theme.ZuTheme
 import com.davicolzer.zureader.vision.FillCenter
 import com.davicolzer.zureader.zu.ReadingMode
@@ -67,8 +65,6 @@ fun CameraOverlay(
     onGallery: () -> Unit,
     onShutter: () -> Unit,
     horizontal: Boolean = false,
-    mode: ModeChoice = ModeChoice.AUTO,
-    onMode: (ModeChoice) -> Unit = {},
     /** Só na leitura de glifos aparecem o contador, o seletor de modo e o texto ao vivo. */
     purpose: CameraPurpose = CameraPurpose.READ,
 ) {
@@ -141,7 +137,6 @@ fun CameraOverlay(
                 )
             }
 
-            if (reading) ModeSelector(mode, onMode, Modifier.padding(horizontal = 16.dp))
 
             Spacer(Modifier.weight(1f))
 
