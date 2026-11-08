@@ -8,17 +8,17 @@ Há dois fluxos no GitHub Actions, cada um com só as etapas que rodam:
 | **Release** (`.github/workflows/release.yml`) | merge na `main`, ou à mão em **Actions → Release → Run workflow** | 1 · Build dos APKs → 2 · Publicar release |
 
 As etapas comuns ficam em `.github/actions/preparar` (JDK, Gradle, SDK) e `.github/actions/gerar-apks`.
-No PR, o APK de teste fica nos artefatos da execução (`zu-reader`); na `main`, vai para **Releases**.
+No PR, o APK fica nos artefatos da execução (`zu-reader`); na `main`, vai para **Releases**.
 
 Como a `main` não roda testes, o que entra nela deve passar por PR.
 
-## Instalar para testar
+## Instalar
 
-Na página da release, baixe `zu-reader-<versão>-teste.apk` no celular e abra. Ele é assinado com a
-chave de teste do projeto (`app/debug.keystore`, senha pública `android`), então cada versão nova
+Na página da release, baixe `zu-reader-<versão>.apk` no celular e abra. Sem chave de publicação
+configurada, ele é assinado com a chave do projeto (`app/debug.keystore`, senha pública `android`), então cada versão nova
 instala por cima da anterior. O número da build (`versionCode`, e o "build.N" no nome) é a quantidade de commits: sempre cresce, nos dois fluxos.
 
-A chave de teste serve só para testes. Para publicar, use uma chave própria (abaixo).
+A chave do projeto é pública e serve só para uso pessoal e testes. Para publicar, use uma chave própria (abaixo).
 
 ## Assinar o release
 

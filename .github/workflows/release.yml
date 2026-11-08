@@ -65,16 +65,17 @@ jobs:
             echo
             echo "## Instalar no celular"
             echo
-            echo "1. No celular, abra esta página e baixe **zu-reader-${VERSION}-teste.apk**."
+            echo "1. No celular, abra esta página e baixe **zu-reader-${VERSION}.apk**."
             echo "2. Abra o arquivo baixado. Se o Android pedir, permita instalar apps dessa fonte."
             echo "3. Versões novas instalam por cima da anterior; o histórico é mantido."
             echo
             echo "## Arquivos"
             echo
-            echo "- \`zu-reader-${VERSION}-teste.apk\`: para testar (assinado com a chave de teste do projeto)."
             if [ "$SIGNED" = "true" ]; then
-              echo "- \`zu-reader-${VERSION}.apk\`: release assinado com a chave de publicação."
+              echo "- \`zu-reader-${VERSION}.apk\`: para instalar e usar (release assinado com a chave de publicação)."
+              echo "- \`zu-reader-${VERSION}-debug.apk\`: versão de depuração, assinada com a chave do projeto."
             else
+              echo "- \`zu-reader-${VERSION}.apk\`: para instalar e usar (assinado com a chave do projeto)."
               echo "- \`zu-reader-${VERSION}-sem-assinatura.apk\`: release sem assinatura (não instala; ver docs/RELEASE.md)."
             fi
             echo "- \`zu-reader-${VERSION}.aab\`: pacote para a Play Store."
