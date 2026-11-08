@@ -34,6 +34,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.davicolzer.zureader.R
 import com.davicolzer.zureader.ui.components.MiniGlyph
+import com.davicolzer.zureader.ui.components.PixelOutlinedButton
 import com.davicolzer.zureader.ui.theme.ZuTheme
 import com.davicolzer.zureader.zu.GlyphReading
 import com.davicolzer.zureader.zu.ReadingMode
@@ -48,25 +49,27 @@ fun CorrectionSheet(
     mode: ReadingMode = ReadingMode.TEXT,
     onSelect: (Char) -> Unit,
     onDismiss: () -> Unit,
+    /** Tira o glifo do texto (não era letra); `null` esconde a opção. */
+    onRemove: (() -> Unit)? = null,
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
     ) {
-        CorrectionContent(glyph, rotation, onSelect, mode)
+        CorrectionContent(glyph, rotation, onSelect, mode, onRemove)
     }
 }
 
 @Composable
-fun CorrectionContent(glyph: GlyphReading, rotation: Int, onSelect: (Char) -> Unit, mode: ReadingMode = ReadingMode.TEXT) {
+fun CorrectionContent(glyph: GlyphReading, rotation: Int, onSelect: (Char) -> Unit, mode: ReadingMode = ReadingMode.TEXT, onRemove: (() -> Unit)? = null) {
     CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
-        CorrectionBody(glyph, rotation, onSelect, mode)
+        CorrectionBody(glyph, rotation, onSelect, mode, onRemove)
     }
 }
 
 @Composable
-private fun CorrectionBody(glyph: GlyphReading, rotation: Int, onSelect: (Char) -> Unit, mode: ReadingMode) {
+private fun CorrectionBody(glyph: GlyphReading, rotation: Int, onSelect: (Char) -> Unit, mode: ReadingMode, onRemove: (() -> Unit)?) {
     val gold = ZuTheme.colors.gold
     Column(
         Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 20.dp).navigationBarsPadding(),
@@ -145,6 +148,14 @@ private fun CorrectionBody(glyph: GlyphReading, rotation: Int, onSelect: (Char) 
                     repeat(KEYS_PER_ROW - row.size) { Box(Modifier.weight(1f).size(1.dp)) }
                 }
             }
+        }
+        // não era letra (mancha, folha, cenário): tira do texto
+        onRemove?.let {
+            PixelOutlinedButton(
+                stringResource(if (mode != ReadingMode.NUMBERS) R.string.correct_remove else R.string.correct_remove_number),
+                R.drawable.ic_pixel_trash,
+                onClick = it,
+            )
         }
     }
 }

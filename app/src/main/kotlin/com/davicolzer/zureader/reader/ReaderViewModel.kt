@@ -465,6 +465,24 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
+    /** Tira o glifo [index] da leitura (não era letra); se já está salva, grava. */
+    fun removeGlyph(index: Int) {
+        val current = _state.value as? ReaderUiState.Result ?: return
+        val reading = current.result.reading
+        if (index !in reading.glyphs.indices) return
+        setReading(current.result.copy(reading = reading.withoutGlyph(index)))
+    }
+
+    /** Volta a leitura para [previous] (desfazer a remoção de uma letra). */
+    fun restoreReading(previous: ImageReading) = setReading(previous)
+
+    private fun setReading(result: ImageReading) {
+        val current = _state.value as? ReaderUiState.Result ?: return
+        val updated = current.copy(result = result)
+        _state.value = updated
+        updated.savedId?.let { id -> viewModelScope.launch { history.update(id, result) } }
+    }
+
     /** Abre "Escrever à mão" com [draft] já escrito. */
     fun openWriter(draft: String = "") {
         _state.value = ReaderUiState.Write(draft)

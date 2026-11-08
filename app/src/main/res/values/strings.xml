@@ -147,6 +147,9 @@
     <string name="correct_body">Lida como %1$s. Se estiver errada, toque na letra certa.</string>
     <string name="correct_suggestions">SUGESTÕES</string>
     <string name="correct_current">atual</string>
+    <string name="correct_remove">Não é letra: remover</string>
+    <string name="correct_remove_number">Não é número: remover</string>
+    <string name="result_glyph_removed">Removida do texto</string>
     <string name="result_write_button">Escrever à mão</string>
     <string name="result_already_saved">Já salvo em %1$s</string>
     <string name="result_show_fresh">Ler mesmo assim</string>

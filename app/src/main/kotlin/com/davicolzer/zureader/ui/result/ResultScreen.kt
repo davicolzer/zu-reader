@@ -68,6 +68,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -120,6 +122,10 @@ fun ResultScreen(
     onPickAnother: () -> Unit,
     savedId: Long? = null,
     onCorrect: (index: Int, letter: Char) -> Unit = { _, _ -> },
+    /** Tira o glifo [index] do texto (não era letra). */
+    onRemoveGlyph: (index: Int) -> Unit = {},
+    /** Volta a leitura para [previous] (desfazer a remoção). */
+    onRestore: (previous: ImageReading) -> Unit = {},
     onSave: () -> Unit = {},
     onDelete: () -> Unit = {},
     /** Volta para o recorte com os cantos usados; `null` se a leitura não veio de um recorte. */
@@ -141,6 +147,8 @@ fun ResultScreen(
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val copied = stringResource(R.string.result_copied)
+    val removedMessage = stringResource(R.string.result_glyph_removed)
+    val undoLabel = stringResource(R.string.note_undo)
     val reading = result.reading
     val mode = result.mode
     val bitmap = remember(image) { image.asImageBitmap() }
@@ -311,6 +319,15 @@ fun ResultScreen(
                 rotation = reading.rotation,
                 mode = mode,
                 onSelect = { letter -> onCorrect(index, letter); editing = null },
+                onRemove = {
+                    val before = result
+                    onRemoveGlyph(index)
+                    editing = null
+                    scope.launch {
+                        val r = snackbar.showSnackbar(removedMessage, actionLabel = undoLabel, duration = SnackbarDuration.Short)
+                        if (r == SnackbarResult.ActionPerformed) onRestore(before)
+                    }
+                },
                 onDismiss = { editing = null },
             )
         }

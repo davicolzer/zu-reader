@@ -160,4 +160,18 @@ class ZuReaderTest {
             assertEquals(0, reading.rotation)
         }
     }
+
+    @Test
+    fun `remover glifo tira a letra e os espacos que sobram`() {
+        val reading = reader.read(ZuLayout.compose("OPEN THE DOOR X", maxPerLine = 6))
+        val x = reading.glyphs.size - 1
+        val without = reading.withoutGlyph(x)
+        assertEquals("OPEN THE DOOR", without.text.replace('\n', ' '))
+        assertEquals(reading.glyphs.size - 1, without.glyphs.size)
+        // letra do meio de uma palavra
+        val e = reading.withoutGlyph(2)
+        assertEquals("OPN THE DOOR X", e.text.replace('\n', ' '))
+        // a letra seguinte continua com o glifo certo
+        assertEquals('N', e.glyphs[2].letter)
+    }
 }

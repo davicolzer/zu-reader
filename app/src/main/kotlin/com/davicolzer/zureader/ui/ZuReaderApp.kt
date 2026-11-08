@@ -234,6 +234,8 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
                 onPickAnother = pickImage,
                 savedId = s.savedId,
                 onCorrect = viewModel::correct,
+                onRemoveGlyph = viewModel::removeGlyph,
+                onRestore = viewModel::restoreReading,
                 onSave = viewModel::save,
                 onDelete = viewModel::deleteCurrent,
                 onAdjustCrop = if (s.crop != null) viewModel::adjustCrop else null,
