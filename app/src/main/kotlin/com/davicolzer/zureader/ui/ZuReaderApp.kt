@@ -34,6 +34,8 @@ import com.davicolzer.zureader.ui.write.WriteScreen
 import com.davicolzer.zureader.ui.note.AnnotateScreen
 import com.davicolzer.zureader.ui.note.NoteScreen
 import com.davicolzer.zureader.ui.qr.QrScreen
+import com.davicolzer.zureader.ui.components.ModeSelector
+import com.davicolzer.zureader.ui.components.SourceDialog
 import com.davicolzer.zureader.reader.CameraPurpose
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
@@ -56,6 +58,19 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
         if (uri != null) viewModel.annotate(uri)
     }
     var chooseNoteSource by remember { mutableStateOf(false) }
+    // "Ler Zu": escolhe o modo (Auto/Escrita/Números) e de onde vem a imagem
+    var chooseZuSource by remember { mutableStateOf(false) }
+    if (chooseZuSource) {
+        SourceDialog(
+            title = R.string.zu_source_title,
+            body = R.string.zu_source_body,
+            icon = R.drawable.ic_fez_glyph,
+            onCamera = { chooseZuSource = false; viewModel.openCamera() },
+            onGallery = { chooseZuSource = false; pickImage() },
+            onDismiss = { chooseZuSource = false },
+            extra = { ModeSelector(settings.mode, viewModel::setMode) },
+        )
+    }
     // "Ler QR code": a imagem escolhida vai direto para a leitura do QR
     val qrPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) viewModel.readQr(uri)
@@ -65,6 +80,7 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
         SourceDialog(
             title = R.string.qr_source_title,
             body = R.string.qr_source_body,
+            icon = R.drawable.ic_pixel_qr,
             onCamera = { chooseQrSource = false; viewModel.openCameraForQr() },
             onGallery = { chooseQrSource = false; qrPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
             onDismiss = { chooseQrSource = false },
@@ -74,6 +90,7 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
         SourceDialog(
             title = R.string.note_source_title,
             body = R.string.note_source_body,
+            icon = R.drawable.ic_pixel_note,
             onCamera = { chooseNoteSource = false; viewModel.openCameraForNote() },
             onGallery = { chooseNoteSource = false; notePicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
             onDismiss = { chooseNoteSource = false },
@@ -82,16 +99,14 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
 
     when (val s = state) {
         ReaderUiState.Home, ReaderUiState.CouldNotOpen -> HomeScreen(
-            onTakePhoto = viewModel::openCamera,
+            onReadZu = { chooseZuSource = true },
             onOpenSettings = viewModel::openSettings,
-            onPickFromGallery = pickImage,
             errorMessage = if (s == ReaderUiState.CouldNotOpen) stringResource(R.string.error_open_image) else null,
             onErrorShown = viewModel::goHome,
             recent = recent,
             onOpenSaved = viewModel::openSaved,
             onSeeAll = viewModel::openHistory,
             mode = settings.mode,
-            onMode = viewModel::setMode,
             onWrite = { viewModel.openWriter() },
             onAnnotate = { chooseNoteSource = true },
             onReadQr = { chooseQrSource = true },
@@ -216,16 +231,4 @@ private fun ReadingProgress() {
             Text(stringResource(R.string.reading_progress), style = MaterialTheme.typography.titleSmall)
         }
     }
-}
-
-/** "Anotar foto" e "Ler QR code": tirar uma foto ou escolher uma da galeria. */
-@Composable
-private fun SourceDialog(title: Int, body: Int, onCamera: () -> Unit, onGallery: () -> Unit, onDismiss: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(title)) },
-        text = { Text(stringResource(body)) },
-        confirmButton = { TextButton(onClick = onCamera) { Text(stringResource(R.string.home_take_photo)) } },
-        dismissButton = { TextButton(onClick = onGallery) { Text(stringResource(R.string.home_pick_gallery)) } },
-    )
 }
