@@ -44,14 +44,4 @@ class CameraFramesTest {
         val g = CameraFrames.fromLuma(byteArrayOf(-1, -128), 2, 1, rowStride = 2)
         assertEquals(listOf(255, 128), g.pixels.toList())
     }
-
-    @Test
-    fun `fill center corta as sobras e centraliza`() {
-        // imagem 4:3 deitada numa tela 1:2 em pé: escala pela altura, sobra na largura
-        val m = FillCenter.of(400, 300, viewWidth = 300f, viewHeight = 600f)
-        assertEquals(2f, m.scale)
-        assertEquals(-250f, m.offsetX)
-        assertEquals(0f, m.offsetY)
-        assertEquals(150f, m.mapX(200f))
-    }
 }

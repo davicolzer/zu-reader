@@ -1,4 +1,4 @@
-package com.davicolzer.zureader
+package com.davicolzer.zureader.data
 
 import android.app.Activity
 import android.app.LocaleManager

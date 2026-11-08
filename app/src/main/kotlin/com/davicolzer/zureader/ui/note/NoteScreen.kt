@@ -19,12 +19,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -43,15 +40,19 @@ import com.davicolzer.zureader.R
 import com.davicolzer.zureader.ui.components.ZoomableImage
 import com.davicolzer.zureader.ui.components.ShareCard
 import com.davicolzer.zureader.ui.components.DetailsFields
-import com.davicolzer.zureader.ui.components.AppDialog
 import com.davicolzer.zureader.ui.components.PixelOutlinedButton
 import com.davicolzer.zureader.ui.components.PixelPrimaryButton
 import com.davicolzer.zureader.ui.theme.ZuTheme
 import java.io.File
+import kotlinx.coroutines.launch
+import com.davicolzer.zureader.ui.components.AppTopBar
+import com.davicolzer.zureader.ui.components.DeleteAction
+import com.davicolzer.zureader.ui.components.DeleteDialog
+import androidx.compose.runtime.rememberCoroutineScope
 
 /**
  * A anotação pronta (depois do "OK" no editor, ou aberta do histórico): o nome em cima, a foto
- * com os desenhos e as ações "Editar", "Compartilhar" e "Salvar". [saved] = o que está na tela é o
+ * com os desenhos, a descrição embaixo dela e as ações "Editar", "Compartilhar" e "Salvar". [saved] = o que está na tela é o
  * que está no histórico (mudar o nome pede salvar de novo). [onDelete] nulo = ainda não salva.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -68,6 +69,7 @@ fun NoteScreen(
     description: String = "",
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var confirmDelete by remember { mutableStateOf(false) }
     var name by remember(title) { mutableStateOf(title) }
     var about by remember(description) { mutableStateOf(description) }
@@ -76,22 +78,7 @@ fun NoteScreen(
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            TopAppBar(
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(painterResource(R.drawable.ic_pixel_back), stringResource(R.string.back), Modifier.size(22.dp))
-                    }
-                },
-                title = { Text(stringResource(R.string.note_screen_title), style = MaterialTheme.typography.titleLarge) },
-                actions = {
-                    if (onDelete != null) {
-                        IconButton(onClick = { confirmDelete = true }) {
-                            Icon(painterResource(R.drawable.ic_pixel_trash), stringResource(R.string.result_delete), Modifier.size(22.dp))
-                        }
-                    }
-                },
-            )
+            AppTopBar(R.string.note_screen_title, onBack) { if (onDelete != null) DeleteAction { confirmDelete = true } }
         },
     ) { padding ->
         Column(
@@ -104,8 +91,8 @@ fun NoteScreen(
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            // nome e descrição, opcionais (nome em branco = "Anotação")
-            DetailsFields(name, about, { n, d -> name = n; about = d })
+            // nome em cima da foto e descrição embaixo dela, opcionais (nome em branco = "Anotação")
+            DetailsFields(name, about, { n, d -> name = n; about = d }, showDescription = false)
             // zoom dentro do quadro (o tamanho do quadro não muda)
             ZoomableImage(
                 bitmap,
@@ -116,9 +103,10 @@ fun NoteScreen(
                     .clip(RoundedCornerShape(16.dp))
                     .background(ZuTheme.colors.ink),
             )
+            DetailsFields(name, about, { n, d -> name = n; about = d }, showName = false)
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 PixelOutlinedButton(stringResource(R.string.note_edit), R.drawable.ic_pixel_pen, onClick = onEdit, modifier = Modifier.weight(1f), compact = true)
-                PixelOutlinedButton(stringResource(R.string.note_share), R.drawable.ic_pixel_share, onClick = { ShareCard.share(context, image, name.ifBlank { null }, null, about) }, modifier = Modifier.weight(1f), compact = true)
+                PixelOutlinedButton(stringResource(R.string.note_share), R.drawable.ic_pixel_share, onClick = { scope.launch { ShareCard.share(context, image, name.ifBlank { null }, null, about) } }, modifier = Modifier.weight(1f), compact = true)
             }
             if (upToDate) {
                 PixelOutlinedButton(stringResource(R.string.note_saved), R.drawable.ic_pixel_check, onClick = {}, enabled = false)
@@ -129,13 +117,9 @@ fun NoteScreen(
     }
 
     if (confirmDelete && onDelete != null) {
-        AppDialog(
+        DeleteDialog(
             title = stringResource(R.string.note_delete_title),
             body = stringResource(R.string.note_delete_body),
-            icon = R.drawable.ic_pixel_trash,
-            iconTint = MaterialTheme.colorScheme.primary,
-            confirmLabel = stringResource(R.string.result_delete),
-            confirmIcon = R.drawable.ic_pixel_trash,
             onConfirm = { confirmDelete = false; onDelete() },
             onDismiss = { confirmDelete = false },
         )

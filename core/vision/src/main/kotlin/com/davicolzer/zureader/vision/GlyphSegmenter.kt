@@ -38,9 +38,6 @@ object GlyphSegmenter {
         return groups
     }
 
-    /** Todos os glifos, sem separar por tamanho. */
-    fun segment(components: List<PixelBox>): List<PixelBox> = segmentGroups(components).flatten()
-
     private fun segmentWithSize(pieces: List<PixelBox>, width: Int, height: Int): List<PixelBox> {
         val blockW = width / 5f
         val blockH = height / 5f

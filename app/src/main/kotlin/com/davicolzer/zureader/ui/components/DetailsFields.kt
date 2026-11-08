@@ -28,10 +28,13 @@ fun DetailsFields(
     description: String,
     onChange: (name: String, description: String) -> Unit,
     modifier: Modifier = Modifier,
-    /** Só o nome (ex.: a anotação, que já mostra a descrição em outro lugar). */
+    /** `false` = só o nome (ex.: em cima da foto, com a descrição embaixo dela). */
     showDescription: Boolean = true,
+    /** `false` = só a descrição (o nome já aparece em cima, em outro lugar da tela). */
+    showName: Boolean = true,
 ) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+      if (showName) {
         OutlinedTextField(
             name,
             { onChange(it, description) },
@@ -43,6 +46,7 @@ fun DetailsFields(
             textStyle = MaterialTheme.typography.bodyLarge,
             modifier = Modifier.fillMaxWidth(),
         )
+      }
         if (showDescription) {
             OutlinedTextField(
                 description,

@@ -75,7 +75,6 @@
     <string name="note_hint_text">Tap the photo where you want to write, or a text to change it.</string>
     <string name="note_hint_typing">Write on the photo. Tap outside or Done to finish.</string>
     <string name="note_text_placeholder">Write</string>
-    <string name="note_name_label">Name (optional)</string>
     <string name="note_default_name">Note</string>
     <string name="note_image_description">Annotated photo</string>
     <string name="note_share">Share</string>
@@ -100,7 +99,7 @@
     <string name="qr_label">QR CODE</string>
     <string name="qr_open">Open link</string>
     <string name="qr_copy">Copy the QR code text</string>
-    <string name="result_zoom_hint">Use two fingers to zoom the photo; when zoomed, drag with one finger.</string>
+    <string name="result_zoom_hint">Tap a letter to correct it, or the photo to see it full screen. Use two fingers to zoom.</string>
     <string name="result_tap_to_fix">Tap a letter, here or on the photo, to fix it.</string>
     <string name="result_empty_title">No glyphs found</string>
     <string name="result_empty_body">Adjust the crop to fit just around the Zu text, or choose another image.</string>
@@ -110,6 +109,7 @@
     <string name="result_copied">Text copied</string>
     <string name="error_open_image">Couldn\'t open that image. Try another one.</string>
     <string name="photo_description">Chosen image with the glyphs found marked</string>
+    <string name="photo_fullscreen">Open the photo full screen</string>
     <string name="close">Close</string>
     <string name="camera_flash_on">Turn flash on</string>
     <string name="camera_flash_off">Turn flash off</string>
@@ -157,7 +157,6 @@
     <string name="video_read_frame">Read Zu in this frame</string>
     <string name="video_delete_title">Delete video?</string>
     <string name="video_delete_body">The video leaves the collection.</string>
-    <string name="video_description">Video</string>
     <string name="video_record_failed">The video wasn\'t recorded. Try again.</string>
     <string name="details_name">Name (optional)</string>
     <string name="details_name_hint">E.g.: Forest tombstone</string>

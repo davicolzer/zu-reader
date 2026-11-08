@@ -1,4 +1,4 @@
-package com.davicolzer.zureader.reader
+package com.davicolzer.zureader.ui
 
 import android.app.Application
 import android.graphics.Bitmap
@@ -40,6 +40,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.withContext
+import com.davicolzer.zureader.media.ImageLoading
+import com.davicolzer.zureader.media.VideoResize
+import com.davicolzer.zureader.media.newVideoFile
 
 /** Para que a câmera foi aberta. */
 enum class CameraPurpose { READ, NOTE, QR, VIDEO }
@@ -753,7 +756,3 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 }
-
-/** Arquivo novo para um vídeo ainda não salvo (no cache do app; vai para a coleção ao salvar). */
-fun newVideoFile(context: android.content.Context): File =
-    File(File(context.cacheDir, "videos").apply { mkdirs() }, "video-${System.currentTimeMillis()}.mp4")

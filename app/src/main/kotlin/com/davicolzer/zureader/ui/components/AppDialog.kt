@@ -60,3 +60,16 @@ fun AppDialog(
         }
     }
 }
+
+/** Confirmação antes de apagar algo salvo: lixeira vermelha e "Apagar" / "Cancelar". */
+@Composable
+fun DeleteDialog(title: String, body: String, onConfirm: () -> Unit, onDismiss: () -> Unit) = AppDialog(
+    title = title,
+    body = body,
+    icon = R.drawable.ic_pixel_trash,
+    iconTint = MaterialTheme.colorScheme.primary,
+    confirmLabel = stringResource(R.string.result_delete),
+    confirmIcon = R.drawable.ic_pixel_trash,
+    onConfirm = onConfirm,
+    onDismiss = onDismiss,
+)

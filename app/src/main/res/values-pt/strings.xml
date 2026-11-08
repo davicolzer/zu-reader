@@ -76,7 +76,6 @@
     <string name="note_hint_text">Toque na foto onde quer escrever, ou num texto para mudar.</string>
     <string name="note_hint_typing">Escreva na foto. Toque fora ou em Concluir para terminar.</string>
     <string name="note_text_placeholder">Escreva</string>
-    <string name="note_name_label">Nome (opcional)</string>
     <string name="note_default_name">Anotação</string>
     <string name="note_image_description">Foto anotada</string>
     <string name="note_share">Compartilhar</string>
@@ -101,7 +100,7 @@
     <string name="qr_label">QR CODE</string>
     <string name="qr_open">Abrir link</string>
     <string name="qr_copy">Copiar o texto do QR code</string>
-    <string name="result_zoom_hint">Use dois dedos para ampliar a foto; ampliada, arraste com um dedo.</string>
+    <string name="result_zoom_hint">Toque numa letra para corrigir, ou na foto para ver em tela cheia. Use dois dedos para ampliar.</string>
     <string name="result_tap_to_fix">Toque numa letra, aqui ou na foto, para corrigir.</string>
     <string name="result_empty_title">Nenhum glifo encontrado</string>
     <string name="result_empty_body">Ajuste o recorte para ficar só em volta do texto Zu, ou escolha outra imagem.</string>
@@ -111,6 +110,7 @@
     <string name="result_copied">Texto copiado</string>
     <string name="error_open_image">Não foi possível abrir essa imagem. Tente outra.</string>
     <string name="photo_description">Imagem escolhida com os glifos encontrados marcados</string>
+    <string name="photo_fullscreen">Abrir a foto em tela cheia</string>
     <string name="close">Fechar</string>
     <string name="camera_flash_on">Ligar flash</string>
     <string name="camera_flash_off">Desligar flash</string>
@@ -158,7 +158,6 @@
     <string name="video_read_frame">Ler Zu neste quadro</string>
     <string name="video_delete_title">Apagar vídeo?</string>
     <string name="video_delete_body">O vídeo sai da coleção.</string>
-    <string name="video_description">Vídeo</string>
     <string name="video_record_failed">O vídeo não foi gravado. Tente de novo.</string>
     <string name="details_name">Nome (opcional)</string>
     <string name="details_name_hint">Ex.: Lápide da floresta</string>

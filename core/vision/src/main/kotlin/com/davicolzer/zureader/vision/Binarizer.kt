@@ -113,53 +113,6 @@ object Binarizer {
     }
 
     /**
-     * Preenche o miolo de contornos fechados (letreiros de neon desenham só a borda do glifo).
-     * Uma região de fundo fechada que encosta numa única mancha de tinta vira tinta; uma que
-     * encosta em várias (ex.: o espaço dentro da moldura de uma placa, com letras dentro) fica.
-     */
-    fun fillHoles(mask: BooleanArray, width: Int, height: Int): BooleanArray {
-        val n = mask.size
-        val ink = IntArray(n) { -1 }
-        val stack = IntArray(n)
-        var labels = 0
-        // manchas de tinta (vizinhança de 8)
-        for (start in 0 until n) {
-            if (!mask[start] || ink[start] >= 0) continue
-            var top = 0; stack[top++] = start; ink[start] = labels
-            while (top > 0) {
-                val i = stack[--top]; val x = i % width; val y = i / width
-                for (dy in -1..1) for (dx in -1..1) {
-                    val nx = x + dx; val ny = y + dy
-                    if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue
-                    val j = ny * width + nx
-                    if (mask[j] && ink[j] < 0) { ink[j] = labels; stack[top++] = j }
-                }
-            }
-            labels++
-        }
-        val out = mask.copyOf()
-        val seen = BooleanArray(n)
-        val region = IntArray(n)
-        // regiões de fundo (vizinhança de 4)
-        for (start in 0 until n) {
-            if (mask[start] || seen[start]) continue
-            var top = 0; stack[top++] = start; seen[start] = true
-            var size = 0; var border = false; var touched = -1; var many = false
-            while (top > 0) {
-                val i = stack[--top]; region[size++] = i
-                val x = i % width; val y = i / width
-                if (x == 0 || y == 0 || x == width - 1 || y == height - 1) border = true
-                if (x > 0) { val j = i - 1; if (mask[j]) { if (touched < 0) touched = ink[j] else if (touched != ink[j]) many = true } else if (!seen[j]) { seen[j] = true; stack[top++] = j } }
-                if (x < width - 1) { val j = i + 1; if (mask[j]) { if (touched < 0) touched = ink[j] else if (touched != ink[j]) many = true } else if (!seen[j]) { seen[j] = true; stack[top++] = j } }
-                if (y > 0) { val j = i - width; if (mask[j]) { if (touched < 0) touched = ink[j] else if (touched != ink[j]) many = true } else if (!seen[j]) { seen[j] = true; stack[top++] = j } }
-                if (y < height - 1) { val j = i + width; if (mask[j]) { if (touched < 0) touched = ink[j] else if (touched != ink[j]) many = true } else if (!seen[j]) { seen[j] = true; stack[top++] = j } }
-            }
-            if (!border && !many && touched >= 0) for (k in 0 until size) out[region[k]] = true
-        }
-        return out
-    }
-
-    /**
      * Letreiros de neon: cada glifo é o contorno da sua área de tinta, e glifos com buraco têm um
      * contorno por fora e outro por dentro. Pinta pela profundidade: o fundo de fora tem
      * profundidade 0; cruzar um contorno soma 1. Profundidade ímpar = dentro da tinta (pinta);

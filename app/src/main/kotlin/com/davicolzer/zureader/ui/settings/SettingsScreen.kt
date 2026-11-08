@@ -16,14 +16,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -43,12 +40,13 @@ import com.davicolzer.zureader.R
 import androidx.compose.foundation.clickable
 import androidx.compose.material3.Surface
 import androidx.compose.ui.window.Dialog
-import com.davicolzer.zureader.AppLanguage
+import com.davicolzer.zureader.data.AppLanguage
 import com.davicolzer.zureader.ui.components.AppDialog
 import com.davicolzer.zureader.data.Settings
 import com.davicolzer.zureader.data.ThemeMode
 import com.davicolzer.zureader.ui.components.PixelOutlinedButton
 import com.davicolzer.zureader.zu.ReadingDirection
+import com.davicolzer.zureader.ui.components.AppTopBar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -71,15 +69,7 @@ fun SettingsScreen(
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            TopAppBar(
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(painterResource(R.drawable.ic_pixel_back), stringResource(R.string.back), Modifier.size(22.dp))
-                    }
-                },
-                title = { Text(stringResource(R.string.settings_title), style = MaterialTheme.typography.titleLarge) },
-            )
+            AppTopBar(R.string.settings_title, onBack)
         },
     ) { padding ->
         Column(

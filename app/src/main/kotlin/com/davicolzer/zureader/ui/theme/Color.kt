@@ -17,6 +17,10 @@ val Paper = Color(0xFFFFF6E5)      // texto principal
 val Muted = Color(0xFFA9A3C9)      // texto secundário
 val Ink = Color(0xFF14122A)        // fundo mais escuro (miniaturas, câmera)
 
+// Sempre escuros, nos dois temas: atrás do cubo, na câmera e na foto em tela cheia
+val Backdrop = Color(0xFF0B0A18)   // o "céu" atrás do cubo, fundo da tela cheia
+val Scrim = Color(0xCC0B0A18)      // fundo dos botões e frases sobre a câmera ou a foto
+
 // Claro
 val LightBackground = Color(0xFFF7F3EC)  // papel
 val LightSurface = Color(0xFFECE6F2)

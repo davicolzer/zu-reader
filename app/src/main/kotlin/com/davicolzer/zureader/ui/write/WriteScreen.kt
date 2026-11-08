@@ -1,5 +1,10 @@
 package com.davicolzer.zureader.ui.write
 
+import com.davicolzer.zureader.ui.components.cubeTurnSpec
+import com.davicolzer.zureader.ui.components.cubeFace
+import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.animation.AnimatedContent
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -29,8 +34,6 @@ import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -57,18 +60,10 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.semantics.heading
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.calculateCentroid
-import androidx.compose.foundation.gestures.calculatePan
-import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.positionChange
 import com.davicolzer.zureader.vision.Point
 import com.davicolzer.zureader.vision.Viewport
 import com.davicolzer.zureader.R
@@ -82,6 +77,8 @@ import com.davicolzer.zureader.zu.ZuAlphabet
 import com.davicolzer.zureader.zu.ZuGlyph
 import com.davicolzer.zureader.zu.ZuMixed
 import com.davicolzer.zureader.zu.ZuNumerals
+import com.davicolzer.zureader.ui.components.AppTopBar
+import com.davicolzer.zureader.ui.components.detectZoomGestures
 
 /**
  * Escrever à mão, tudo numa tela só (sem rolagem). Em cima, a mensagem em Zu (colunas, como no
@@ -111,22 +108,17 @@ fun WriteScreen(
     var fullScreen by rememberSaveable { mutableStateOf(startFullScreen) }
     // K/Q e U/V tocados pelo glifo: a letra vem do contexto do inglês e muda enquanto o usuário digita
     val message = ZuWriter.normalize(SharedLetters.resolve(text))
-    if (fullScreen && message.isNotEmpty()) {
-        FullMessage(message, direction, onClose = { fullScreen = false })
-    }
-
+    // a mensagem em tela cheia é outra tela: entra girando o cubo, e fechar gira de volta
+    AnimatedContent(fullScreen && message.isNotEmpty(), transitionSpec = { cubeTurnSpec() }, label = "mensagem") { full ->
+      Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).cubeFace(this, forward = full)) {
+        if (full) {
+            FullMessage(message, direction, onClose = { fullScreen = false })
+            return@Box
+        }
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            TopAppBar(
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(painterResource(R.drawable.ic_pixel_back), stringResource(R.string.back), Modifier.size(22.dp))
-                    }
-                },
-                title = { Text(stringResource(R.string.write_title), style = MaterialTheme.typography.titleLarge) },
-            )
+            AppTopBar(R.string.write_title, onBack)
         },
     ) { padding ->
       BoxWithConstraints(Modifier.fillMaxSize().padding(padding).consumeWindowInsets(padding).navigationBarsPadding()) {
@@ -239,6 +231,8 @@ fun WriteScreen(
         }
       }
     }
+      }
+    }
 }
 
 /**
@@ -324,15 +318,15 @@ private fun <T> KeyGrid(layout: KeyboardLayout, keyHeight: androidx.compose.ui.u
     }
 }
 
-/** A mensagem inteira em tela cheia (modal): todas as colunas e o texto todo; fechar volta a escrever. */
+/** A mensagem inteira em tela cheia (uma tela própria): todas as colunas e o texto todo; fechar volta a escrever. */
 @Composable
 private fun FullMessage(message: String, direction: ReadingDirection, onClose: () -> Unit) {
-    Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+    BackHandler(onBack = onClose)
       Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background, contentColor = MaterialTheme.colorScheme.onBackground) {
         Column(
             Modifier
                 .fillMaxSize()
-                .navigationBarsPadding()
+                .safeDrawingPadding()
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
@@ -367,7 +361,6 @@ private fun FullMessage(message: String, direction: ReadingDirection, onClose: (
             )
         }
       }
-    }
 }
 
 /**
@@ -396,23 +389,7 @@ private fun ZoomableZu(message: String, direction: ReadingDirection, modifier: M
                 .fillMaxSize()
                 .clipToBounds()
                 .pointerInput(message, viewW, viewH) {
-                    awaitEachGesture {
-                        awaitFirstDown(requireUnconsumed = false)
-                        while (true) {
-                            val event = awaitPointerEvent()
-                            val pressed = event.changes.filter { it.pressed }
-                            if (pressed.isEmpty()) break
-                            if (pressed.size >= 2) {
-                                val c = event.calculateCentroid()
-                                val pan = event.calculatePan()
-                                view = view.zoomedAt(c.x, c.y, event.calculateZoom()).panned(pan.x, pan.y)
-                            } else if (view.zoom > 1f) {
-                                val d = pressed.first().positionChange()
-                                view = view.panned(d.x, d.y)
-                            }
-                            event.changes.forEach { it.consume() }
-                        }
-                    }
+                    detectZoomGestures({ view }, { view = it }, consumeAll = true)
                 },
         ) {
             val cell = 2 * half * UNIT * view.scale / 5

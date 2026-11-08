@@ -28,8 +28,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -49,7 +47,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.davicolzer.zureader.R
-import com.davicolzer.zureader.ui.components.AppDialog
 import com.davicolzer.zureader.data.HistoryItem
 import com.davicolzer.zureader.data.SavedKind
 import com.davicolzer.zureader.ui.components.Thumbnail
@@ -57,6 +54,9 @@ import com.davicolzer.zureader.ui.theme.ZuTheme
 import com.davicolzer.zureader.zu.ReadingMode
 import java.text.DateFormat
 import java.util.Date
+import com.davicolzer.zureader.ui.components.AppTopBar
+import com.davicolzer.zureader.ui.components.BarAction
+import com.davicolzer.zureader.ui.components.DeleteDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -76,27 +76,15 @@ fun HistoryScreen(
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            TopAppBar(
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(painterResource(R.drawable.ic_pixel_back), stringResource(R.string.back), Modifier.size(22.dp))
-                    }
-                },
-                title = { Text(stringResource(R.string.history_title), style = MaterialTheme.typography.titleLarge) },
-                actions = {
-                    if (items.isNotEmpty()) {
-                        // mostra o outro jeito de ver: em lista, o botão é "mosaico", e vice-versa
-                        IconButton(onClick = { onGridChange(!grid) }) {
-                            Icon(
-                                painterResource(if (grid) R.drawable.ic_pixel_list else R.drawable.ic_pixel_grid),
-                                stringResource(if (grid) R.string.history_show_list else R.string.history_show_grid),
-                                Modifier.size(22.dp),
-                            )
-                        }
-                    }
-                },
-            )
+            AppTopBar(R.string.history_title, onBack) {
+                if (items.isNotEmpty()) {
+                    // mostra o outro jeito de ver: em lista, o botão é "mosaico", e vice-versa
+                    BarAction(
+                        if (grid) R.drawable.ic_pixel_list else R.drawable.ic_pixel_grid,
+                        stringResource(if (grid) R.string.history_show_list else R.string.history_show_grid),
+                    ) { onGridChange(!grid) }
+                }
+            }
         },
     ) { padding ->
         if (items.isEmpty()) {
@@ -144,13 +132,9 @@ fun HistoryScreen(
     }
 
     deleting?.let { item ->
-        AppDialog(
+        DeleteDialog(
             title = stringResource(R.string.history_delete_title),
             body = stringResource(R.string.history_delete_body, listTitle(item)),
-            icon = R.drawable.ic_pixel_trash,
-            iconTint = MaterialTheme.colorScheme.primary,
-            confirmLabel = stringResource(R.string.result_delete),
-            confirmIcon = R.drawable.ic_pixel_trash,
             onConfirm = { deleting = null; onDelete(item.id) },
             onDismiss = { deleting = null },
         )
