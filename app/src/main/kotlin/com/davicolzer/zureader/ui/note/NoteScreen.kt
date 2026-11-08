@@ -51,7 +51,7 @@ import java.io.File
 
 /**
  * A anotação pronta (depois do "OK" no editor, ou aberta do histórico): o nome em cima, a foto
- * com os desenhos e as ações "Editar", "Compartilhar" e "Salvar". [saved] = o que está na tela é o
+ * com os desenhos, a descrição embaixo dela e as ações "Editar", "Compartilhar" e "Salvar". [saved] = o que está na tela é o
  * que está no histórico (mudar o nome pede salvar de novo). [onDelete] nulo = ainda não salva.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -104,8 +104,8 @@ fun NoteScreen(
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            // nome e descrição, opcionais (nome em branco = "Anotação")
-            DetailsFields(name, about, { n, d -> name = n; about = d })
+            // nome em cima da foto e descrição embaixo dela, opcionais (nome em branco = "Anotação")
+            DetailsFields(name, about, { n, d -> name = n; about = d }, showDescription = false)
             // zoom dentro do quadro (o tamanho do quadro não muda)
             ZoomableImage(
                 bitmap,
@@ -116,6 +116,7 @@ fun NoteScreen(
                     .clip(RoundedCornerShape(16.dp))
                     .background(ZuTheme.colors.ink),
             )
+            DetailsFields(name, about, { n, d -> name = n; about = d }, showName = false)
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 PixelOutlinedButton(stringResource(R.string.note_edit), R.drawable.ic_pixel_pen, onClick = onEdit, modifier = Modifier.weight(1f), compact = true)
                 PixelOutlinedButton(stringResource(R.string.note_share), R.drawable.ic_pixel_share, onClick = { ShareCard.share(context, image, name.ifBlank { null }, null, about) }, modifier = Modifier.weight(1f), compact = true)

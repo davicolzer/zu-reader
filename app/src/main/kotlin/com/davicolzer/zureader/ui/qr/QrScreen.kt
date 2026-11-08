@@ -132,6 +132,8 @@ fun QrScreen(
                     .padding(horizontal = 20.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
+                // nome em cima da foto (de onde veio); a descrição fica embaixo do texto do QR
+                if (code != null) DetailsFields(name, description, onDetails, showDescription = false)
                 image?.let { bitmap ->
                     val shown = remember(bitmap) { bitmap.asImageBitmap() }
                     // zoom dentro do quadro (o tamanho do quadro não muda)
@@ -178,8 +180,7 @@ fun QrScreen(
                             runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(link))) }
                         })
                     }
-                    // nome (de onde veio) e descrição: o texto do QR continua separado
-                    DetailsFields(name, description, onDetails)
+                    DetailsFields(name, description, onDetails, showName = false)
                     if (savedId == null) {
                         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             if (image != null) {
