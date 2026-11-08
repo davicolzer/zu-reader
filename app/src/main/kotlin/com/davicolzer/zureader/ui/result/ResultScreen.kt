@@ -7,9 +7,7 @@ import androidx.compose.foundation.gestures.calculatePan
 import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.input.pointer.positionChange
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.runtime.SideEffect
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.unit.IntOffset
@@ -68,6 +66,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -100,6 +100,9 @@ import androidx.compose.ui.text.font.FontFamily
 import android.net.Uri
 import com.davicolzer.zureader.vision.QrCode
 import com.davicolzer.zureader.R
+import com.davicolzer.zureader.ui.components.ActionTile
+import com.davicolzer.zureader.ui.components.ShareCard
+import com.davicolzer.zureader.ui.components.DetailsFields
 import com.davicolzer.zureader.ui.components.AppDialog
 import com.davicolzer.zureader.ui.components.MiniGlyph
 import com.davicolzer.zureader.ui.components.PixelOutlinedButton
@@ -120,6 +123,10 @@ fun ResultScreen(
     onPickAnother: () -> Unit,
     savedId: Long? = null,
     onCorrect: (index: Int, letter: Char) -> Unit = { _, _ -> },
+    /** Tira o glifo [index] do texto (não era letra). */
+    onRemoveGlyph: (index: Int) -> Unit = {},
+    /** Volta a leitura para [previous] (desfazer a remoção). */
+    onRestore: (previous: ImageReading) -> Unit = {},
     onSave: () -> Unit = {},
     onDelete: () -> Unit = {},
     /** Volta para o recorte com os cantos usados; `null` se a leitura não veio de um recorte. */
@@ -133,6 +140,10 @@ fun ResultScreen(
     alreadySavedAt: Long? = null,
     /** "Ler mesmo assim": mostra a leitura que acabou de ser feita, no lugar do item salvo. */
     onReadAnyway: (() -> Unit)? = null,
+    /** Nome (de onde veio) e descrição, opcionais; [onDetails] grava as mudanças. */
+    name: String = "",
+    description: String = "",
+    onDetails: (name: String, description: String) -> Unit = { _, _ -> },
 ) {
     var editing by remember { mutableStateOf<Int?>(null) }
     var confirmDelete by remember { mutableStateOf(false) }
@@ -141,6 +152,8 @@ fun ResultScreen(
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val copied = stringResource(R.string.result_copied)
+    val removedMessage = stringResource(R.string.result_glyph_removed)
+    val undoLabel = stringResource(R.string.note_undo)
     val reading = result.reading
     val mode = result.mode
     val bitmap = remember(image) { image.asImageBitmap() }
@@ -170,7 +183,8 @@ fun ResultScreen(
                         scope.launch { snackbar.showSnackbar(copied) }
                     }
                     ActionTile(R.drawable.ic_pixel_share, stringResource(R.string.result_share), Modifier.weight(1f)) {
-                        shareText(context, shareable(result, typedReading))
+                        // a foto com um rodapé (nome, texto, descrição) e o mesmo texto na mensagem
+                        ShareCard.share(context, image, name, shareable(result, typedReading), description)
                     }
                     if (savedId == null) {
                         ActionTile(R.drawable.ic_pixel_save, stringResource(R.string.result_save), Modifier.weight(1f), primary = true) {
@@ -236,7 +250,8 @@ fun ResultScreen(
             }
 
             if (typed) {
-                TypedSection(typedImage!!, typedReading!!, onWriteByHand)
+                TypedSection(typedImage, typedReading, onWriteByHand)
+                DetailsFields(name, description, onDetails, showDescription = false)
                 return@Column
             }
 
@@ -287,7 +302,8 @@ fun ResultScreen(
                 )
                 // K/Q e U/V são o mesmo glifo: avisa quando aparecem
                 val pairs = if (mode == ReadingMode.NUMBERS) emptyList() else reading.glyphs
-                    .mapNotNull { g -> ZuAlphabet.twin(g.letter)?.let { listOf(g.letter, it).sorted().joinToString(" e ") } }
+                    .mapNotNull { g -> ZuAlphabet.twin(g.letter)?.let { listOf(g.letter, it).sorted() } }
+                    .map { (a, b) -> stringResource(R.string.letters_pair, a.toString(), b.toString()) }
                     .distinct().sorted()
                 if (pairs.isNotEmpty()) {
                     Text(
@@ -297,6 +313,9 @@ fun ResultScreen(
                     )
                 }
             }
+
+            // nome (de onde veio), para reconhecer o item depois; a tradução já faz o papel de descrição
+            DetailsFields(name, description, onDetails, showDescription = false)
 
             // separado das ações de salvar: uma saída para quando a foto não ajudou
             onWriteByHand?.let { WriteByHandCard(it) }
@@ -311,6 +330,15 @@ fun ResultScreen(
                 rotation = reading.rotation,
                 mode = mode,
                 onSelect = { letter -> onCorrect(index, letter); editing = null },
+                onRemove = {
+                    val before = result
+                    onRemoveGlyph(index)
+                    editing = null
+                    scope.launch {
+                        val r = snackbar.showSnackbar(removedMessage, actionLabel = undoLabel, duration = SnackbarDuration.Short)
+                        if (r == SnackbarResult.ActionPerformed) onRestore(before)
+                    }
+                },
                 onDismiss = { editing = null },
             )
         }
@@ -337,9 +365,6 @@ fun ResultScreen(
 /** Altura da foto sem zoom. */
 private val PHOTO_MAX_HEIGHT = 320.dp
 
-/** Parte da altura da tela que a foto ocupa quando ampliada. */
-private const val ZOOMED_SHARE = 0.7f
-
 @Composable
 private fun PhotoWithBoxes(bitmap: ImageBitmap, result: ImageReading, selected: Int?, onTapGlyph: (Int) -> Unit) {
     val teal = ZuTheme.colors.teal
@@ -350,16 +375,13 @@ private fun PhotoWithBoxes(bitmap: ImageBitmap, result: ImageReading, selected: 
     val measurer = rememberTextMeasurer()
     val labelStyle = MaterialTheme.typography.titleSmall
     val glyphs = result.reading.glyphs
-    // A área usa a largura toda. Sem zoom, tem a altura da foto (até 320 dp); ao ampliar, cresce
-    // para boa parte da tela, para o zoom ter espaço, mantendo no centro o ponto que se olhava.
+    // A área usa a largura toda e a altura da foto (até 320 dp), e não muda com o zoom: ampliar
+    // acontece dentro do quadro (dois dedos ampliam e arrastam; ampliada, um dedo arrasta).
     var stored by remember(result) { mutableStateOf<Viewport?>(null) }
-    val zoomed = (stored?.zoom ?: 1f) > 1.01f
-    val screenHeight = LocalConfiguration.current.screenHeightDp.dp
     BoxWithConstraints(Modifier.fillMaxWidth()) {
         val aspect = result.width / result.height.toFloat()
         val fullWidth = maxWidth
-        val normalHeight = minOf(PHOTO_MAX_HEIGHT, fullWidth / aspect)
-        val areaHeight by animateDpAsState(if (zoomed) maxOf(normalHeight, screenHeight * ZOOMED_SHARE) else normalHeight, label = "photo")
+        val areaHeight = minOf(PHOTO_MAX_HEIGHT, fullWidth / aspect)
         Box(
             Modifier
                 .fillMaxWidth()
@@ -532,43 +554,6 @@ private fun GlyphStrip(glyphs: List<GlyphReading>, rotation: Int, mode: ReadingM
 }
 
 @Composable
-private fun ActionTile(
-    @DrawableRes icon: Int,
-    label: String,
-    modifier: Modifier = Modifier,
-    primary: Boolean = false,
-    enabled: Boolean = true,
-    onClick: () -> Unit,
-) {
-    val background = if (primary) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainer
-    val content = when {
-        !enabled -> ZuTheme.colors.teal
-        primary -> MaterialTheme.colorScheme.onPrimary
-        else -> MaterialTheme.colorScheme.onSurface
-    }
-    Column(
-        modifier = modifier
-            .fillMaxHeight()
-            .clip(RoundedCornerShape(12.dp))
-            .background(background)
-            .clickable(enabled = enabled, onClick = onClick)
-            .padding(vertical = 12.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        Icon(painterResource(icon), contentDescription = null, tint = content, modifier = Modifier.size(20.dp))
-        // encolhe para caber numa linha em vez de quebrar a palavra
-        BasicText(
-            label,
-            style = MaterialTheme.typography.labelMedium.copy(color = content),
-            maxLines = 1,
-            autoSize = TextAutoSize.StepBased(minFontSize = 9.sp, maxFontSize = MaterialTheme.typography.labelMedium.fontSize),
-            modifier = Modifier.padding(horizontal = 6.dp),
-        )
-    }
-}
-
-@Composable
 private fun EmptyResult(onPickAnother: () -> Unit, onAdjustCrop: (() -> Unit)?) {
     Column(
         modifier = Modifier
@@ -714,9 +699,4 @@ private fun openLink(context: Context, link: String) {
 private fun copyText(context: Context, text: String) {
     val clipboard = context.getSystemService(ClipboardManager::class.java)
     clipboard.setPrimaryClip(ClipData.newPlainText("Zu", text))
-}
-
-private fun shareText(context: Context, text: String) {
-    val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text)
-    context.startActivity(Intent.createChooser(send, null))
 }

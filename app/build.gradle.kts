@@ -16,7 +16,7 @@ android {
         // Número da build = quantidade de commits (o CI informa em ZU_BUILD_NUMBER). Sempre cresce,
         // em qualquer fluxo, para o Android aceitar a atualização por cima da versão anterior.
         versionCode = providers.environmentVariable("ZU_BUILD_NUMBER").orNull?.toIntOrNull() ?: 1
-        versionName = "0.5.0"
+        versionName = "1.0.0-beta"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -64,6 +64,13 @@ android {
         compose = true
         buildConfig = true
     }
+
+    // o idioma é escolhido dentro do app: o AAB precisa levar todas as traduções
+    bundle {
+        language {
+            enableSplit = false
+        }
+    }
 }
 
 room {
@@ -82,6 +89,11 @@ dependencies {
     implementation(libs.androidx.camera.camera2)
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.view)
+    implementation(libs.androidx.camera.video)
+    // vídeo maior que 720p é convertido para 720p antes de guardar
+    implementation(libs.androidx.media3.transformer)
+    implementation(libs.androidx.media3.effect)
+    implementation(libs.androidx.media3.common)
 
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)

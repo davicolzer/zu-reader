@@ -45,6 +45,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.davicolzer.zureader.R
@@ -178,6 +179,7 @@ private val SavedKind.filterLabel: Int
         SavedKind.WRITTEN -> R.string.history_kind_written
         SavedKind.QR -> R.string.history_kind_qr
         SavedKind.NOTE -> R.string.history_kind_note
+        SavedKind.VIDEO -> R.string.history_kind_video
     }
 
 private val SavedKind.badge: Int
@@ -186,6 +188,7 @@ private val SavedKind.badge: Int
         SavedKind.WRITTEN -> R.string.history_badge_written
         SavedKind.QR -> R.string.history_badge_qr
         SavedKind.NOTE -> R.string.history_note_badge
+        SavedKind.VIDEO -> R.string.history_badge_video
     }
 
 private val SavedKind.icon: Int
@@ -194,6 +197,7 @@ private val SavedKind.icon: Int
         SavedKind.WRITTEN -> R.drawable.ic_pixel_keyboard
         SavedKind.QR -> R.drawable.ic_pixel_qr
         SavedKind.NOTE -> R.drawable.ic_pixel_note
+        SavedKind.VIDEO -> R.drawable.ic_pixel_video
     }
 
 @Composable
@@ -202,6 +206,7 @@ private fun SavedKind.color(): Color = when (this) {
     SavedKind.WRITTEN -> MaterialTheme.colorScheme.tertiary
     SavedKind.QR -> MaterialTheme.colorScheme.onSurfaceVariant
     SavedKind.NOTE -> ZuTheme.colors.gold
+    SavedKind.VIDEO -> MaterialTheme.colorScheme.primary
 }
 
 /** Quadrado do mosaico: a foto grande, o ícone do tipo num canto e o texto numa linha embaixo. */
@@ -223,7 +228,7 @@ private fun HistoryTile(item: HistoryItem, onOpen: (Long) -> Unit, onDelete: (Hi
                     .padding(6.dp)
                     .align(Alignment.TopStart)
                     .clip(RoundedCornerShape(6.dp))
-                    .background(Color(0xCC0B0A18))
+                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.88f))
                     .padding(4.dp),
             ) {
                 Icon(painterResource(item.kind.icon), stringResource(item.kind.badge), Modifier.size(14.dp), tint = item.kind.color())
@@ -241,10 +246,10 @@ private fun HistoryTile(item: HistoryItem, onOpen: (Long) -> Unit, onDelete: (Hi
                 Box(
                     Modifier
                         .clip(RoundedCornerShape(6.dp))
-                        .background(Color(0xCC0B0A18))
+                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.88f))
                         .padding(4.dp),
                 ) {
-                    Icon(painterResource(R.drawable.ic_pixel_trash), null, Modifier.size(14.dp), tint = Color.White)
+                    Icon(painterResource(R.drawable.ic_pixel_trash), null, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurface)
                 }
             }
         }
@@ -258,11 +263,18 @@ private fun HistoryTile(item: HistoryItem, onOpen: (Long) -> Unit, onDelete: (Hi
     }
 }
 
-/** O texto que representa o item na lista e no mosaico. */
+/** O texto que representa o item na lista e no mosaico: o nome, se tiver; senão, o conteúdo. */
 @Composable
-private fun listTitle(item: HistoryItem): String = when (item.kind) {
+private fun listTitle(item: HistoryItem): String = item.name.takeIf { it.isNotBlank() }
+    ?: contentText(item).takeIf { it.isNotBlank() }
+    ?: stringResource(if (item.kind == SavedKind.VIDEO) R.string.video_default_name else R.string.note_default_name)
+
+/** O conteúdo do item: a tradução, o texto do QR ou o nome da anotação. */
+@Composable
+private fun contentText(item: HistoryItem): String = when (item.kind) {
     SavedKind.QR -> item.text.removePrefix("QR: ")
     SavedKind.NOTE -> item.text.ifBlank { stringResource(R.string.note_default_name) }
+    SavedKind.VIDEO -> item.description
     else -> ReadingMode.of(item.text.firstOrNull { !it.isWhitespace() } ?: 'A').display(item.text).replace('\n', ' ').ifBlank { "—" }
 }
 
@@ -285,7 +297,17 @@ fun HistoryRow(item: HistoryItem, onOpen: (Long) -> Unit, onDelete: ((HistoryIte
                 Icon(painterResource(item.kind.icon), null, Modifier.size(12.dp), tint = item.kind.color())
                 Text(stringResource(item.kind.badge), style = MaterialTheme.typography.labelSmall, color = item.kind.color())
             }
-            if (item.kind == SavedKind.QR) {
+            // com nome: o nome em destaque e o texto (tradução, QR) embaixo, menor
+            if (item.name.isNotBlank() && !item.isNote) {
+                Text(item.name, style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                if (contentText(item).isNotBlank()) Text(
+                    contentText(item),
+                    style = if (item.kind == SavedKind.QR) MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace) else MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            } else if (item.kind == SavedKind.QR) {
                 // QR: o conteúdo como está (pode ser link ou comando), sem a fonte de pixel
                 Text(
                     item.text.removePrefix("QR: "),
@@ -293,11 +315,21 @@ fun HistoryRow(item: HistoryItem, onOpen: (Long) -> Unit, onDelete: ((HistoryIte
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
+            } else if (item.kind == SavedKind.VIDEO) {
+                // vídeo sem nome: "Vídeo" e a descrição, se houver
+                Text(
+                    stringResource(R.string.video_default_name),
+                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                    maxLines = 1,
+                )
+                if (item.description.isNotBlank()) {
+                    Text(item.description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
             } else if (item.isNote) {
                 // foto anotada: o nome dado pelo usuário
                 Text(
-                    item.text.ifBlank { stringResource(R.string.note_default_name) },
-                    style = MaterialTheme.typography.titleSmall,
+                    item.name.ifBlank { item.text }.ifBlank { stringResource(R.string.note_default_name) },
+                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )

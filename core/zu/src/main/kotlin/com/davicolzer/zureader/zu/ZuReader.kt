@@ -47,6 +47,25 @@ data class ZuReading(
         return copy(text = newText, glyphs = updated)
     }
 
+    /**
+     * Tira o glifo [index] (não era texto: mancha, folha, pedaço do cenário). A letra sai do texto;
+     * palavras que ficam vazias somem, com os espaços e quebras de linha que sobram.
+     */
+    fun withoutGlyph(index: Int): ZuReading {
+        require(index in glyphs.indices) { "Glifo $index não existe (há ${glyphs.size})" }
+        var g = 0
+        val marked = buildString {
+            for (ch in text) {
+                if (ch == ' ' || ch == '\n') append(ch) else if (g++ != index) append(ch)
+            }
+        }
+        val clean = marked.split('\n')
+            .map { line -> line.split(' ').filter { it.isNotEmpty() }.joinToString(" ") }
+            .filter { it.isNotEmpty() }
+            .joinToString("\n")
+        return copy(text = clean, glyphs = glyphs.filterIndexed { i, _ -> i != index })
+    }
+
     companion object {
         val EMPTY = ZuReading("", emptyList(), 0, ReadingDirection.VERTICAL_RIGHT_TO_LEFT, 0)
     }

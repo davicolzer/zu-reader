@@ -40,6 +40,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
@@ -51,6 +53,11 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import com.davicolzer.zureader.R
+import com.davicolzer.zureader.ui.components.ZoomableImage
+import androidx.compose.foundation.layout.IntrinsicSize
+import com.davicolzer.zureader.ui.components.ActionTile
+import com.davicolzer.zureader.ui.components.ShareCard
+import com.davicolzer.zureader.ui.components.DetailsFields
 import com.davicolzer.zureader.ui.components.AppDialog
 import com.davicolzer.zureader.ui.components.PixelOutlinedButton
 import com.davicolzer.zureader.ui.components.PixelPrimaryButton
@@ -74,6 +81,10 @@ fun QrScreen(
     onCrop: () -> Unit = {},
     onSave: () -> Unit = {},
     onDelete: () -> Unit = {},
+    /** Nome (de onde veio) e descrição, opcionais; [onDetails] grava as mudanças. */
+    name: String = "",
+    description: String = "",
+    onDetails: (name: String, description: String) -> Unit = { _, _ -> },
 ) {
     val context = LocalContext.current
     val snackbar = remember { SnackbarHostState() }
@@ -109,84 +120,103 @@ fun QrScreen(
                 .padding(padding)
                 .consumeWindowInsets(padding)
                 .navigationBarsPadding()
-                .padding(horizontal = 20.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+                .imePadding(),
         ) {
-            image?.let { bitmap ->
-                val shown = remember(bitmap) { bitmap.asImageBitmap() }
-                Image(
-                    shown,
-                    contentDescription = stringResource(R.string.qr_image_description),
-                    contentScale = ContentScale.Fit,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 180.dp)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(ZuTheme.colors.ink),
-                )
-            }
-            // o conteúdo rola se for longo; os botões ficam sempre à vista embaixo
+            // tudo rola junto (imagem, conteúdo, nome e descrição, ações extras);
+            // Copiar, Compartilhar e Salvar ficam fixos embaixo
             Column(
                 Modifier
                     .fillMaxWidth()
                     .weight(1f)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(ZuTheme.colors.ink)
                     .verticalScroll(rememberScrollState())
-                    .padding(18.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                    .padding(horizontal = 20.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                if (code == null) {
-                    Text(stringResource(R.string.qr_not_found_title), style = MaterialTheme.typography.titleMedium, color = ZuTheme.colors.gold)
-                    Text(stringResource(R.string.qr_not_found_body), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                } else {
-                    Text(
-                        stringResource(if (code.link != null) R.string.qr_kind_link else R.string.qr_kind_text),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.semantics { heading() },
+                image?.let { bitmap ->
+                    val shown = remember(bitmap) { bitmap.asImageBitmap() }
+                    // zoom dentro do quadro (o tamanho do quadro não muda)
+                    ZoomableImage(
+                        shown,
+                        stringResource(R.string.qr_image_description),
+                        Modifier
+                            .fillMaxWidth()
+                            .height(200.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(ZuTheme.colors.ink),
                     )
-                    SelectionContainer {
+                }
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(ZuTheme.colors.ink)
+                        .padding(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    if (code == null) {
+                        Text(stringResource(R.string.qr_not_found_title), style = MaterialTheme.typography.titleMedium, color = ZuTheme.colors.gold)
+                        Text(stringResource(R.string.qr_not_found_body), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    } else {
                         Text(
-                            code.text,
-                            style = MaterialTheme.typography.headlineSmall.copy(fontFamily = FontFamily.Monospace),
-                            color = MaterialTheme.colorScheme.onBackground,
+                            stringResource(if (code.link != null) R.string.qr_kind_link else R.string.qr_kind_text),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.semantics { heading() },
                         )
+                        SelectionContainer {
+                            Text(
+                                code.text,
+                                style = MaterialTheme.typography.headlineSmall.copy(fontFamily = FontFamily.Monospace),
+                                color = MaterialTheme.colorScheme.onBackground,
+                            )
+                        }
                     }
+                }
+                if (code != null) {
+                    code.link?.let { link ->
+                        PixelOutlinedButton(stringResource(R.string.qr_open), R.drawable.ic_pixel_link, onClick = {
+                            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(link))) }
+                        })
+                    }
+                    // nome (de onde veio) e descrição: o texto do QR continua separado
+                    DetailsFields(name, description, onDetails)
+                    if (savedId == null) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            if (image != null) {
+                                PixelOutlinedButton(stringResource(R.string.qr_crop), R.drawable.ic_pixel_crop, onClick = onCrop, modifier = Modifier.weight(1f), compact = true)
+                            }
+                            PixelOutlinedButton(stringResource(R.string.qr_another_short), R.drawable.ic_pixel_qr, onClick = onReadAnother, modifier = Modifier.weight(1f), compact = true)
+                        }
+                    } else {
+                        PixelOutlinedButton(stringResource(R.string.qr_read_another), R.drawable.ic_pixel_qr, onClick = onReadAnother)
+                    }
+                } else {
+                    PixelPrimaryButton(stringResource(R.string.qr_read_another), R.drawable.ic_pixel_qr, onClick = onReadAnother)
                 }
             }
             if (code != null) {
-                code.link?.let { link ->
-                    PixelOutlinedButton(stringResource(R.string.qr_open), R.drawable.ic_pixel_link, onClick = {
-                        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(link))) }
-                    })
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    PixelOutlinedButton(stringResource(R.string.result_copy), R.drawable.ic_pixel_copy, onClick = {
+                // alturas iguais mesmo com fonte grande
+                Row(
+                    Modifier.fillMaxWidth().height(IntrinsicSize.Min).padding(horizontal = 20.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    ActionTile(R.drawable.ic_pixel_copy, stringResource(R.string.result_copy), Modifier.weight(1f)) {
                         copy(context, code.text)
                         scope.launch { snackbar.showSnackbar(copied) }
-                    }, modifier = Modifier.weight(1f), compact = true)
-                    PixelOutlinedButton(stringResource(R.string.result_share), R.drawable.ic_pixel_share, onClick = {
-                        val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, code.text)
-                        context.startActivity(Intent.createChooser(send, null))
-                    }, modifier = Modifier.weight(1f), compact = true)
-                }
-                if (savedId == null) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        if (image != null) {
-                            PixelOutlinedButton(stringResource(R.string.qr_crop), R.drawable.ic_pixel_crop, onClick = onCrop, modifier = Modifier.weight(1f), compact = true)
-                        }
-                        PixelOutlinedButton(stringResource(R.string.qr_another_short), R.drawable.ic_pixel_qr, onClick = onReadAnother, modifier = Modifier.weight(1f), compact = true)
                     }
-                    PixelPrimaryButton(stringResource(R.string.result_save), R.drawable.ic_pixel_save, onClick = {
-                        onSave()
-                        scope.launch { snackbar.showSnackbar(saved) }
-                    })
-                } else {
-                    PixelOutlinedButton(stringResource(R.string.qr_read_another), R.drawable.ic_pixel_qr, onClick = onReadAnother)
+                    ActionTile(R.drawable.ic_pixel_share, stringResource(R.string.result_share), Modifier.weight(1f)) {
+                        // a imagem do QR com um rodapé (nome, conteúdo, descrição) e o texto na mensagem
+                        ShareCard.share(context, image, name, code.text, description)
+                    }
+                    if (savedId == null) {
+                        ActionTile(R.drawable.ic_pixel_save, stringResource(R.string.result_save), Modifier.weight(1f), primary = true) {
+                            onSave()
+                            scope.launch { snackbar.showSnackbar(saved) }
+                        }
+                    } else {
+                        ActionTile(R.drawable.ic_pixel_check, stringResource(R.string.result_saved), Modifier.weight(1f), enabled = false) {}
+                    }
                 }
-            } else {
-                PixelPrimaryButton(stringResource(R.string.qr_read_another), R.drawable.ic_pixel_qr, onClick = onReadAnother)
             }
         }
     }
