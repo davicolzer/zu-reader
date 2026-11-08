@@ -38,7 +38,7 @@ class ZuNumeralsTest {
 
     @Test
     fun `le numeros em colunas, sem modelo do ingles`() {
-        val reading = reader.read(ZuLayout.compose("3#7 12 0", glyphs = ZuNumerals, maxPerLine = 4), rotation = null)
+        val reading = reader.read(ZuLayout.compose("3#7 12 0", glyphs = ZuNumerals, maxPerLine = 4))
         assertEquals("3#7 12 0", reading.text)
         assertEquals(0, reading.rotation)
     }

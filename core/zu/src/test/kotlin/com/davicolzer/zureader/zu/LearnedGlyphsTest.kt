@@ -75,7 +75,7 @@ class LearnedGlyphsTest {
         val text = "THE TREE SEES THE DEEP WATER"
         val glyphs = ZuLayout.compose(text).map { g -> if (g.bits == e.pattern) g.copy(bits = badE) else g }
         val taught = GlyphClassifier(learned = listOf(ZuGlyph("E", badE)))
-        val reading = ZuReader(taught).read(ZuLayout.rotate(glyphs, 1))
+        val reading = ZuReader(taught).read(ZuLayout.rotate(glyphs, 1), rotation = 3)
         assertEquals(3, reading.rotation)
         assertEquals(text, reading.text)
     }

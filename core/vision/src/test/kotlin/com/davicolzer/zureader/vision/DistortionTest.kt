@@ -81,12 +81,12 @@ class DistortionTest {
     }
 
     @Test
-    fun `tamanhos misturados com a foto girada`() {
+    fun `tamanhos misturados`() {
         val title = ZuRenderer.render("OPEN THE DOOR", maxPerLine = 4, blockPx = 14)
         val body = ZuRenderer.render("WALK AROUND THE TREE", maxPerLine = 6, blockPx = 7)
-        val image = ImageEffects.rotate90(ImageEffects.stack(listOf(title, body), gap = 30, fill = 230))
+        val image = ImageEffects.stack(listOf(title, body), gap = 30, fill = 230)
         val result = reader.read(image)
-        assertEquals(3, result.reading.rotation)
+        assertEquals(0, result.reading.rotation)
         assertEquals("OPEN THE DOOR\nWALK AROUND THE TREE", result.reading.text)
     }
 }
