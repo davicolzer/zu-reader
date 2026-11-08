@@ -253,7 +253,7 @@ fun ResultScreen(
 
             if (typed) {
                 TypedSection(typedImage!!, typedReading!!, onWriteByHand)
-                DetailsFields(name, description, onDetails)
+                DetailsFields(name, description, onDetails, showDescription = false)
                 return@Column
             }
 
@@ -316,8 +316,8 @@ fun ResultScreen(
                 }
             }
 
-            // nome (de onde veio) e descrição: para reconhecer o item depois
-            DetailsFields(name, description, onDetails)
+            // nome (de onde veio), para reconhecer o item depois; a tradução já faz o papel de descrição
+            DetailsFields(name, description, onDetails, showDescription = false)
 
             // separado das ações de salvar: uma saída para quando a foto não ajudou
             onWriteByHand?.let { WriteByHandCard(it) }

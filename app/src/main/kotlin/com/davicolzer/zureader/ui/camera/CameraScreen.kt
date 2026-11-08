@@ -37,6 +37,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -130,10 +131,19 @@ private fun CameraContent(
     }
     // A foto sai em pé conforme o celular é segurado, mesmo com a rotação da tela travada:
     // o sensor de movimento diz a posição e a câmera grava a foto nessa orientação.
+    // quanto girar textos e ícones para ficarem em pé para quem segura o celular deitado
+    var turn by remember { mutableIntStateOf(0) }
     DisposableEffect(imageCapture) {
         val listener = object : OrientationEventListener(context) {
             override fun onOrientationChanged(degrees: Int) {
                 if (degrees == ORIENTATION_UNKNOWN) return
+                // celular deitado para a direita (topo à direita) → conteúdo gira −90°; para a esquerda → +90°
+                turn = when (degrees) {
+                    in 60 until 120 -> -90
+                    in 240 until 300 -> 90
+                    in 0 until 30, in 330..360, in 150 until 210 -> 0
+                    else -> turn
+                }
                 imageCapture.targetRotation = when (degrees) {
                     in 45 until 135 -> Surface.ROTATION_270
                     in 135 until 225 -> Surface.ROTATION_180
@@ -192,6 +202,7 @@ private fun CameraContent(
         AndroidView(factory = { previewView }, modifier = Modifier.fillMaxSize())
         CameraOverlay(
             quality = quality,
+            turn = turn,
             flashOn = flashOn,
             capturing = capturing,
             onClose = onClose,
