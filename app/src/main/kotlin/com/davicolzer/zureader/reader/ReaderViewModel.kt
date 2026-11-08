@@ -11,7 +11,6 @@ import com.davicolzer.zureader.ZuReaderApplication
 import com.davicolzer.zureader.data.HistoryItem
 import com.davicolzer.zureader.data.Settings
 import com.davicolzer.zureader.data.ThemeMode
-import com.davicolzer.zureader.data.backup.DriveApi
 import com.davicolzer.zureader.ui.note.Mark
 import com.davicolzer.zureader.ui.note.cropMarks
 import com.davicolzer.zureader.ui.note.scaled
@@ -573,126 +572,6 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
                 _state.value = now.copy(savedId = id, image = ImageLoading.hd(now.image), crop = null)
                 if (now.result != current.result) history.update(id, now.result)
                 if (now.name != current.name || now.description != current.description) history.updateDetails(id, now.name, now.description)
-            }
-        }
-    }
-
-    /** Andamento do backup no Google Drive (Configurações). */
-    sealed interface BackupStatus {
-        data object Idle : BackupStatus
-        data class Working(val uploading: Boolean) : BackupStatus
-        data object Done : BackupStatus
-        /** Há um backup no Drive, salvo em [savedAt]: pede confirmação para restaurar. */
-        data class ConfirmRestore(val token: String, val backup: DriveApi.Backup) : BackupStatus
-        data object NoRemoteBackup : BackupStatus
-        data object Failed : BackupStatus
-        /** Restaurado: o app precisa reabrir para usar a coleção nova. */
-        data object Restored : BackupStatus
-    }
-
-    private val _backup = MutableStateFlow<BackupStatus>(BackupStatus.Idle)
-    val backup: StateFlow<BackupStatus> = _backup.asStateFlow()
-
-    fun clearBackupStatus() {
-        _backup.value = BackupStatus.Idle
-    }
-
-    /** "Fazer backup agora": monta o backup e envia para o Drive (com o acesso [token] da conta). */
-    fun backupNow(token: String) {
-        if (_backup.value is BackupStatus.Working) return
-        _backup.value = BackupStatus.Working(uploading = true)
-        viewModelScope.launch {
-            _backup.value = try {
-                withContext(Dispatchers.IO) {
-                    val file = app.backup.create()
-                    val drive = DriveApi(token)
-                    drive.upload(file, drive.find())
-                    file.delete()
-                }
-                app.settings.setLastBackup(System.currentTimeMillis())
-                BackupStatus.Done
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                BackupStatus.Failed
-            }
-        }
-    }
-
-    /** "Restaurar do Drive": procura o backup e pede confirmação (mostrando a data dele). */
-    fun findBackupToRestore(token: String) {
-        if (_backup.value is BackupStatus.Working) return
-        _backup.value = BackupStatus.Working(uploading = false)
-        viewModelScope.launch {
-            _backup.value = try {
-                val found = withContext(Dispatchers.IO) { DriveApi(token).find() }
-                if (found == null) BackupStatus.NoRemoteBackup else BackupStatus.ConfirmRestore(token, found)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                BackupStatus.Failed
-            }
-        }
-    }
-
-    /** "Salvar cópia num arquivo": grava o backup no arquivo escolhido pela pessoa ([uri]). */
-    fun exportBackup(uri: Uri) {
-        if (_backup.value is BackupStatus.Working) return
-        _backup.value = BackupStatus.Working(uploading = true)
-        viewModelScope.launch {
-            _backup.value = try {
-                withContext(Dispatchers.IO) {
-                    val file = app.backup.create()
-                    getApplication<Application>().contentResolver.openOutputStream(uri)?.use { out -> file.inputStream().use { it.copyTo(out) } }
-                        ?: throw IllegalStateException("Arquivo inválido")
-                    file.delete()
-                }
-                BackupStatus.Done
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                BackupStatus.Failed
-            }
-        }
-    }
-
-    /** "Restaurar de um arquivo": confere o arquivo escolhido e troca a coleção por ele. */
-    fun importBackup(uri: Uri) {
-        if (_backup.value is BackupStatus.Working) return
-        _backup.value = BackupStatus.Working(uploading = false)
-        viewModelScope.launch {
-            _backup.value = try {
-                withContext(Dispatchers.IO) {
-                    val zip = File(getApplication<Application>().cacheDir, "backup/${DriveApi.FILE_NAME}").apply { parentFile?.mkdirs() }
-                    getApplication<Application>().contentResolver.openInputStream(uri)?.use { input -> zip.outputStream().use { input.copyTo(it) } }
-                        ?: throw IllegalStateException("Arquivo inválido")
-                    app.backup.restore(zip)
-                }
-                BackupStatus.Restored
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                BackupStatus.Failed
-            }
-        }
-    }
-
-    /** Confirmado: baixa o backup e troca a coleção deste celular por ele. */
-    fun restoreBackup() {
-        val confirm = _backup.value as? BackupStatus.ConfirmRestore ?: return
-        _backup.value = BackupStatus.Working(uploading = false)
-        viewModelScope.launch {
-            _backup.value = try {
-                withContext(Dispatchers.IO) {
-                    val zip = File(getApplication<Application>().cacheDir, "backup/${DriveApi.FILE_NAME}").apply { parentFile?.mkdirs() }
-                    DriveApi(confirm.token).download(confirm.backup, zip)
-                    app.backup.restore(zip)
-                }
-                BackupStatus.Restored
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                BackupStatus.Failed
             }
         }
     }

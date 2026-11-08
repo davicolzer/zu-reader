@@ -94,8 +94,6 @@ dependencies {
     implementation(libs.androidx.media3.transformer)
     implementation(libs.androidx.media3.effect)
     implementation(libs.androidx.media3.common)
-    // backup no Google Drive: autorização da conta Google (só o acesso à pasta de dados do app)
-    implementation(libs.play.services.auth)
 
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)

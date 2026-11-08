@@ -100,7 +100,7 @@ interface LearnedGlyphDao {
 
 @Database(
     entities = [ReadingEntity::class, LearnedGlyphEntity::class],
-    version = ZuDatabase.VERSION,
+    version = 5,
     exportSchema = true,
     autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3)],
 )
@@ -109,9 +109,6 @@ abstract class ZuDatabase : RoomDatabase() {
     abstract fun learnedGlyphs(): LearnedGlyphDao
 
     companion object {
-        /** Versão do banco (também gravada no backup, para não restaurar um backup mais novo). */
-        const val VERSION = 5
-
         fun create(context: Context): ZuDatabase =
             Room.databaseBuilder(context, ZuDatabase::class.java, "zu-reader.db").addMigrations(MIGRATION_3_4, MIGRATION_4_5).build()
 
