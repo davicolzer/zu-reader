@@ -21,6 +21,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.davicolzer.zureader.BuildConfig
 import com.davicolzer.zureader.R
+import com.davicolzer.zureader.ui.components.AppDialog
+import com.davicolzer.zureader.ui.settings.rememberDriveAccess
+import com.davicolzer.zureader.ui.settings.BackupUi
+import androidx.compose.runtime.LaunchedEffect
+import android.content.Intent
 import com.davicolzer.zureader.ui.components.PixelLoader
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.togetherWith
@@ -59,6 +64,56 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val learned by viewModel.learned.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    // backup no Google Drive: acesso pela conta do celular, andamento e confirmação de restaurar
+    val backupStatus by viewModel.backup.collectAsStateWithLifecycle()
+    val authFailed = stringResource(R.string.backup_auth_failed)
+    var backupMessage by remember { mutableStateOf<String?>(null) }
+    val driveAccess = rememberDriveAccess(onFailed = { backupMessage = authFailed })
+    // cópia num arquivo: a tela do Android para salvar ou escolher o arquivo
+    val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
+        if (uri != null) viewModel.exportBackup(uri)
+    }
+    var importUri by remember { mutableStateOf<android.net.Uri?>(null) }
+    val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> importUri = uri }
+    importUri?.let { uri ->
+        AppDialog(
+            title = stringResource(R.string.backup_restore_title),
+            body = stringResource(R.string.backup_import_body),
+            icon = R.drawable.ic_pixel_cloud_down,
+            confirmLabel = stringResource(R.string.backup_restore_confirm),
+            confirmIcon = R.drawable.ic_pixel_cloud_down,
+            onConfirm = { importUri = null; viewModel.importBackup(uri) },
+            onDismiss = { importUri = null },
+        )
+    }
+    val backupMessages = mapOf(
+        ReaderViewModel.BackupStatus.Done to stringResource(R.string.backup_done),
+        ReaderViewModel.BackupStatus.NoRemoteBackup to stringResource(R.string.backup_none_remote),
+        ReaderViewModel.BackupStatus.Failed to stringResource(R.string.backup_failed),
+    )
+    LaunchedEffect(backupStatus) {
+        backupMessages[backupStatus]?.let { backupMessage = it; viewModel.clearBackupStatus() }
+        // restaurado: o app reabre para usar a coleção trazida do Drive
+        if (backupStatus == ReaderViewModel.BackupStatus.Restored) {
+            context.packageManager.getLaunchIntentForPackage(context.packageName)?.let { intent ->
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                context.startActivity(intent)
+            }
+            Runtime.getRuntime().exit(0)
+        }
+    }
+    (backupStatus as? ReaderViewModel.BackupStatus.ConfirmRestore)?.let { confirm ->
+        val date = java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.MEDIUM, java.text.DateFormat.SHORT).format(java.util.Date(confirm.backup.modifiedAt))
+        AppDialog(
+            title = stringResource(R.string.backup_restore_title),
+            body = stringResource(R.string.backup_restore_body, date),
+            icon = R.drawable.ic_pixel_cloud_down,
+            confirmLabel = stringResource(R.string.backup_restore_confirm),
+            confirmIcon = R.drawable.ic_pixel_cloud_down,
+            onConfirm = viewModel::restoreBackup,
+            onDismiss = viewModel::clearBackupStatus,
+        )
+    }
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) viewModel.read(uri)
     }
@@ -268,6 +323,15 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
                     onForgetLearned = viewModel::forgetLearned,
                     onBack = viewModel::goHome,
                     language = remember { AppLanguage.current(context) },
+                backup = BackupUi(
+                    lastBackupAt = settings.lastBackupAt,
+                    working = (backupStatus as? ReaderViewModel.BackupStatus.Working)?.uploading,
+                    message = backupMessage,
+                    onBackup = { backupMessage = null; driveAccess { token -> viewModel.backupNow(token) } },
+                    onRestore = { backupMessage = null; driveAccess { token -> viewModel.findBackupToRestore(token) } },
+                    onExport = { backupMessage = null; exportLauncher.launch("zu-reader-backup.zip") },
+                    onImport = { backupMessage = null; importLauncher.launch(arrayOf("application/zip", "application/octet-stream")) },
+                ),
                     // a tela é recriada no idioma novo e volta para as configurações
                     onLanguage = { language -> (context as? Activity)?.let { AppLanguage.set(it, language) } },
                 )

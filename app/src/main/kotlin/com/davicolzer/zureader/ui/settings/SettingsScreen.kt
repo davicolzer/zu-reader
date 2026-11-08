@@ -40,6 +40,8 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.davicolzer.zureader.R
+import com.davicolzer.zureader.ui.theme.ZuTheme
+import com.davicolzer.zureader.ui.components.PixelLoader
 import androidx.compose.foundation.clickable
 import androidx.compose.material3.Surface
 import androidx.compose.ui.window.Dialog
@@ -65,6 +67,8 @@ fun SettingsScreen(
     onLanguage: (AppLanguage) -> Unit = {},
     /** Abre já com a escolha de idioma (prévias). */
     startChoosingLanguage: Boolean = false,
+    /** Backup no Google Drive: andamento, último backup feito aqui e as ações. */
+    backup: BackupUi = BackupUi(),
 ) {
     var confirmForget by remember { mutableStateOf(false) }
     var choosingLanguage by remember { mutableStateOf(startChoosingLanguage) }
@@ -121,6 +125,9 @@ fun SettingsScreen(
                     )
                 }
             }
+            Section(stringResource(R.string.settings_backup)) {
+                BackupSection(backup)
+            }
             Section(stringResource(R.string.settings_language)) {
                 // botão de idioma: mostra o atual e abre a escolha
                 Row(
@@ -164,6 +171,50 @@ fun SettingsScreen(
                 }
             }
         }
+    }
+}
+
+/** O que a seção de backup mostra e faz (o acesso ao Drive é pedido em [onBackup]/[onRestore]). */
+data class BackupUi(
+    val lastBackupAt: Long = 0,
+    /** null = parado; true = enviando; false = trazendo. */
+    val working: Boolean? = null,
+    val message: String? = null,
+    val onBackup: () -> Unit = {},
+    val onRestore: () -> Unit = {},
+    /** Cópia num arquivo (sem conta): salvar onde a pessoa quiser e restaurar de um arquivo. */
+    val onExport: () -> Unit = {},
+    val onImport: () -> Unit = {},
+)
+
+@Composable
+private fun BackupSection(backup: BackupUi) {
+    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(stringResource(R.string.backup_body), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        val last = backup.lastBackupAt
+        Text(
+            if (last > 0) {
+                stringResource(R.string.backup_last, java.text.DateFormat.getDateTimeInstance(java.text.DateFormat.MEDIUM, java.text.DateFormat.SHORT).format(java.util.Date(last)))
+            } else {
+                stringResource(R.string.backup_never)
+            },
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        when (val working = backup.working) {
+            null -> {
+                PixelOutlinedButton(stringResource(R.string.backup_now), R.drawable.ic_pixel_cloud_up, onClick = backup.onBackup)
+                PixelOutlinedButton(stringResource(R.string.backup_restore), R.drawable.ic_pixel_cloud_down, onClick = backup.onRestore)
+                // alternativa sem conta: uma cópia num arquivo, guardado onde a pessoa quiser
+                Text(stringResource(R.string.backup_file_body), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                PixelOutlinedButton(stringResource(R.string.backup_export), R.drawable.ic_pixel_save, onClick = backup.onExport)
+                PixelOutlinedButton(stringResource(R.string.backup_import), R.drawable.ic_pixel_gallery, onClick = backup.onImport)
+            }
+            else -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                PixelLoader(pixel = 10.dp, gap = 6.dp)
+                Text(stringResource(if (working) R.string.backup_working_up else R.string.backup_working_down), style = MaterialTheme.typography.bodyMedium)
+            }
+        }
+        backup.message?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = ZuTheme.colors.gold) }
     }
 }
 

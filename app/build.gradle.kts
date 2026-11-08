@@ -16,7 +16,7 @@ android {
         // Número da build = quantidade de commits (o CI informa em ZU_BUILD_NUMBER). Sempre cresce,
         // em qualquer fluxo, para o Android aceitar a atualização por cima da versão anterior.
         versionCode = providers.environmentVariable("ZU_BUILD_NUMBER").orNull?.toIntOrNull() ?: 1
-        versionName = "0.5.0"
+        versionName = "1.0.0-beta"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -94,6 +94,8 @@ dependencies {
     implementation(libs.androidx.media3.transformer)
     implementation(libs.androidx.media3.effect)
     implementation(libs.androidx.media3.common)
+    // backup no Google Drive: autorização da conta Google (só o acesso à pasta de dados do app)
+    implementation(libs.play.services.auth)
 
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
