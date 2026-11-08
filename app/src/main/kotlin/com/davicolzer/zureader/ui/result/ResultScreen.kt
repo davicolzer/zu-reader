@@ -1,5 +1,8 @@
 package com.davicolzer.zureader.ui.result
 
+import androidx.compose.ui.semantics.onClick
+import com.davicolzer.zureader.ui.components.LocalFullscreen
+import com.davicolzer.zureader.ui.components.ExpandHint
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.calculateCentroid
@@ -366,7 +369,15 @@ fun ResultScreen(
 private val PHOTO_MAX_HEIGHT = 320.dp
 
 @Composable
-private fun PhotoWithBoxes(bitmap: ImageBitmap, result: ImageReading, selected: Int?, onTapGlyph: (Int) -> Unit) {
+private fun PhotoWithBoxes(
+    bitmap: ImageBitmap,
+    result: ImageReading,
+    selected: Int?,
+    /** Toque num glifo (corrigir); `null` = os glifos não são tocáveis. */
+    onTapGlyph: ((Int) -> Unit)?,
+    /** `true` = já está em tela cheia (ocupa a tela toda); `false` = no quadro, e um toque fora dos glifos abre a tela cheia. */
+    fill: Boolean = false,
+) {
     val teal = ZuTheme.colors.teal
     val gold = ZuTheme.colors.gold
     val labelText = MaterialTheme.colorScheme.background
@@ -378,17 +389,27 @@ private fun PhotoWithBoxes(bitmap: ImageBitmap, result: ImageReading, selected: 
     // A área usa a largura toda e a altura da foto (até 320 dp), e não muda com o zoom: ampliar
     // acontece dentro do quadro (dois dedos ampliam e arrastam; ampliada, um dedo arrasta).
     var stored by remember(result) { mutableStateOf<Viewport?>(null) }
-    BoxWithConstraints(Modifier.fillMaxWidth()) {
+    val openFullscreen = LocalFullscreen.current
+    // tela cheia: a mesma foto com as letras; tocar num glifo fecha a tela cheia e abre a correção
+    val open = {
+        openFullscreen { close ->
+            PhotoWithBoxes(bitmap, result, selected, onTapGlyph?.let { tap -> { i: Int -> close(); tap(i) } }, fill = true)
+        }
+    }
+    val openLabel = stringResource(R.string.photo_fullscreen)
+    BoxWithConstraints(if (fill) Modifier.fillMaxSize() else Modifier.fillMaxWidth()) {
         val aspect = result.width / result.height.toFloat()
         val fullWidth = maxWidth
-        val areaHeight = minOf(PHOTO_MAX_HEIGHT, fullWidth / aspect)
+        val areaHeight = if (fill) maxHeight else minOf(PHOTO_MAX_HEIGHT, fullWidth / aspect)
         Box(
             Modifier
                 .fillMaxWidth()
                 .height(areaHeight)
-                .clip(RoundedCornerShape(16.dp))
-                .background(ZuTheme.colors.ink)
-                .semantics { contentDescription = description },
+                .then(if (fill) Modifier else Modifier.clip(RoundedCornerShape(16.dp)).background(ZuTheme.colors.ink))
+                .semantics {
+                    contentDescription = description
+                    if (!fill) onClick(openLabel) { open(); true }
+                },
         ) {
             val density = LocalDensity.current
             val viewW = with(density) { fullWidth.toPx() }
@@ -434,14 +455,17 @@ private fun PhotoWithBoxes(bitmap: ImageBitmap, result: ImageReading, selected: 
                                 }
                             }
                             if (multi || moved > slop) return@awaitEachGesture
+                            // fora de um glifo, no quadro: abre a tela cheia
+                            val outside = { if (!fill) open() }
+                            if (onTapGlyph == null) return@awaitEachGesture outside()
                             val p = (stored ?: fitted).toImage(down.position.x, down.position.y)
                             // o glifo cuja caixa contém o toque (ou o mais perto, até meio glifo de distância)
                             val nearest = glyphs.indices.minByOrNull { k ->
                                 val g = glyphs[k].source
                                 kotlin.math.hypot(g.x - p.x, g.y - p.y)
-                            } ?: return@awaitEachGesture
+                            } ?: return@awaitEachGesture outside()
                             val g = glyphs[nearest].source
-                            if (kotlin.math.hypot(g.x - p.x, g.y - p.y) <= g.size) onTapGlyph(nearest)
+                            if (kotlin.math.hypot(g.x - p.x, g.y - p.y) <= g.size) onTapGlyph(nearest) else outside()
                         }
                     },
             ) {
@@ -487,6 +511,7 @@ private fun PhotoWithBoxes(bitmap: ImageBitmap, result: ImageReading, selected: 
                     }
                 }
             }
+            if (!fill) ExpandHint(Modifier.align(Alignment.TopEnd))
         }
     }
 }
@@ -654,7 +679,7 @@ private fun TypedSection(image: Bitmap, typed: ImageReading, onWriteByHand: (() 
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.semantics { heading() },
         )
-        PhotoWithBoxes(bitmap, typed, selected = null, onTapGlyph = {})
+        PhotoWithBoxes(bitmap, typed, selected = null, onTapGlyph = null)
     }
     onWriteByHand?.let { PixelOutlinedButton(stringResource(R.string.result_typed_edit), R.drawable.ic_pixel_keyboard, it) }
 }

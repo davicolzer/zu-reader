@@ -14,6 +14,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.davicolzer.zureader.data.Settings
 import com.davicolzer.zureader.data.ThemeMode
 import com.davicolzer.zureader.ui.ZuReaderApp
+import com.davicolzer.zureader.ui.components.FullscreenHost
 import com.davicolzer.zureader.ui.theme.ZuReaderTheme
 
 class MainActivity : ComponentActivity() {
@@ -43,7 +44,7 @@ class MainActivity : ComponentActivity() {
                 onDispose {}
             }
             ZuReaderTheme(darkTheme = dark) {
-                ZuReaderApp()
+                FullscreenHost { ZuReaderApp() }
             }
         }
     }

@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.background
-import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -26,6 +25,7 @@ import com.davicolzer.zureader.BuildConfig
 import com.davicolzer.zureader.R
 import com.davicolzer.zureader.ui.components.PixelLoader
 import androidx.compose.animation.AnimatedContent
+import com.davicolzer.zureader.ui.components.CubeBackdrop
 import com.davicolzer.zureader.ui.components.cubeFace
 import com.davicolzer.zureader.ui.components.cubeTurnSpec
 import com.davicolzer.zureader.ui.video.VideoScreen
@@ -339,8 +339,6 @@ private fun ReadingProgress() {
     }
 }
 
-/** O que fica atrás do cubo enquanto ele gira (o "céu" escuro do jogo, nos dois temas). */
-private val CubeBackdrop = Color(0xFF0B0A18)
 
 /** Qual tela é: o aviso "não deu para abrir" aparece na própria tela de início. */
 private fun screenKey(s: ReaderUiState): Any = if (s == ReaderUiState.CouldNotOpen) ReaderUiState.Home::class else s::class

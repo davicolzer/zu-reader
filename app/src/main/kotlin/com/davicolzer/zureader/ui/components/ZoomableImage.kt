@@ -15,6 +15,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import com.davicolzer.zureader.R
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
@@ -30,12 +34,25 @@ import kotlin.math.roundToInt
 /**
  * Foto com zoom **dentro do quadro**: o tamanho do quadro vem do [modifier] e não muda ao
  * ampliar. Dois dedos ampliam (até 8×) e arrastam; ampliada, um dedo também arrasta (sem zoom,
- * o arrasto de um dedo fica para a rolagem da tela); dois toques voltam ao tamanho inteiro.
+ * o arrasto de um dedo fica para a rolagem da tela).
+ *
+ * [fullscreen]: um toque abre a foto inteira em tela cheia, e um ícone no canto mostra
+ * isso. Na tela cheia ([fullscreen] = `false`), dois toques voltam ao tamanho inteiro.
  */
 @Composable
-fun ZoomableImage(bitmap: ImageBitmap, contentDescription: String?, modifier: Modifier = Modifier) {
+fun ZoomableImage(bitmap: ImageBitmap, contentDescription: String?, modifier: Modifier = Modifier, fullscreen: Boolean = true) {
     var stored by remember(bitmap) { mutableStateOf<Viewport?>(null) }
-    BoxWithConstraints(modifier.clipToBounds().semantics { contentDescription?.let { this.contentDescription = it } }) {
+    val openFullscreen = LocalFullscreen.current
+    val open = {
+        openFullscreen { _ -> ZoomableImage(bitmap, contentDescription, Modifier.fillMaxSize(), fullscreen = false) }
+    }
+    val openLabel = stringResource(R.string.photo_fullscreen)
+    BoxWithConstraints(
+        modifier.clipToBounds().semantics {
+            contentDescription?.let { this.contentDescription = it }
+            if (fullscreen) onClick(openLabel) { open(); true }
+        },
+    ) {
         val density = LocalDensity.current
         val viewW = with(density) { maxWidth.toPx() }
         val viewH = with(density) { maxHeight.toPx() }
@@ -76,8 +93,10 @@ fun ZoomableImage(bitmap: ImageBitmap, contentDescription: String?, modifier: Mo
                                 }
                             }
                         }
-                        // dois toques rápidos: volta à foto inteira
-                        if (!multi && moved < viewConfiguration.touchSlop) {
+                        // um toque: tela cheia; na tela cheia, dois toques rápidos voltam à foto inteira
+                        if (fullscreen && !multi && moved < viewConfiguration.touchSlop) {
+                            open()
+                        } else if (!multi && moved < viewConfiguration.touchSlop) {
                             val now = down.uptimeMillis
                             if (now - lastTap < viewConfiguration.doubleTapTimeoutMillis) {
                                 stored = Viewport.fit(viewW, viewH, bitmap.width, bitmap.height)
@@ -96,5 +115,6 @@ fun ZoomableImage(bitmap: ImageBitmap, contentDescription: String?, modifier: Mo
                 dstSize = IntSize((bitmap.width * view.scale).roundToInt(), (bitmap.height * view.scale).roundToInt()),
             )
         }
+        if (fullscreen) ExpandHint(Modifier.align(Alignment.TopEnd))
     }
 }

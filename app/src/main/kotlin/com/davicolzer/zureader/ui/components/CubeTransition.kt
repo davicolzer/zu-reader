@@ -48,9 +48,15 @@ fun Modifier.cubeFace(scope: AnimatedVisibilityScope, forward: Boolean): Modifie
             EnterExitState.PostExit -> if (forward) -1f else 1f
         }
     }
+    return cubeAt { position }
+}
+
+/** O cubo parado numa posição (0 = de frente; 1 / −1 = nas laterais), lida a cada quadro. */
+@Composable
+fun Modifier.cubeAt(position: () -> Float): Modifier {
     val density = LocalDensity.current.density
     return graphicsLayer {
-        val p = position
+        val p = position()
         // a face gira pela aresta que encosta na outra face
         transformOrigin = TransformOrigin(if (p < 0f) 1f else 0f, 0.5f)
         rotationY = 90f * p
@@ -58,7 +64,7 @@ fun Modifier.cubeFace(scope: AnimatedVisibilityScope, forward: Boolean): Modifie
         cameraDistance = 12f * density
     }.drawWithContent {
         drawContent()
-        val p = abs(position)
+        val p = abs(position())
         if (p > 0f) drawRect(Color.Black, alpha = 0.5f * p)
     }
 }
