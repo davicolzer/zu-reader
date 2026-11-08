@@ -13,6 +13,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -112,9 +117,14 @@ fun CameraOverlay(
             }
         }
 
-        Column(Modifier.fillMaxSize().safeDrawingPadding()) {
+        // o fundo escuro de baixo vai até a borda da tela (atrás da barra de navegação);
+        // só os botões e as frases respeitam as barras do sistema
+        Column(Modifier.fillMaxSize()) {
             Row(
-                Modifier.fillMaxWidth().padding(16.dp),
+                Modifier
+                    .fillMaxWidth()
+                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal))
+                    .padding(16.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 RoundControl(R.drawable.ic_pixel_close, stringResource(R.string.close), onClose, spin)
@@ -152,6 +162,7 @@ fun CameraOverlay(
                 Modifier
                     .fillMaxWidth()
                     .background(Brush.verticalGradient(0f to Color.Transparent, 0.35f to Scrim, 1f to Color(0xFF0B0A18)))
+                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal))
                     .padding(top = 28.dp, bottom = 20.dp, start = 24.dp, end = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(14.dp),
