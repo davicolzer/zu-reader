@@ -10,6 +10,8 @@ import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
+import android.view.OrientationEventListener
+import android.view.Surface
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
@@ -47,21 +49,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.davicolzer.zureader.vision.ModeChoice
 import com.davicolzer.zureader.R
 import com.davicolzer.zureader.reader.CameraPurpose
 import com.davicolzer.zureader.reader.QrAnalyzer
 import com.davicolzer.zureader.vision.QrCode
 import com.davicolzer.zureader.reader.ImageLoading
-import com.davicolzer.zureader.reader.LiveAnalyzer
-import com.davicolzer.zureader.reader.LiveFrame
+import com.davicolzer.zureader.reader.QualityAnalyzer
+import com.davicolzer.zureader.vision.PhotoQuality
 import com.davicolzer.zureader.ui.components.PixelOutlinedButton
 import com.davicolzer.zureader.ui.components.PixelPrimaryButton
 import com.davicolzer.zureader.zu.ReadingDirection
-import com.davicolzer.zureader.zu.ReadingMode
-import com.davicolzer.zureader.zu.ZuGlyph
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import java.util.concurrent.Executors
 
@@ -74,7 +71,6 @@ fun CameraScreen(
     /** Para que a câmera foi aberta: ler glifos (caixas ao vivo), anotar uma foto ou ler um QR code (ao vivo). */
     purpose: CameraPurpose = CameraPurpose.READ,
     onQrFound: (QrCode, Bitmap?) -> Unit = { _, _ -> },
-    learned: List<ZuGlyph> = emptyList(),
 ) {
     val context = LocalContext.current
     var granted by remember { mutableStateOf(hasCameraPermission(context)) }
@@ -82,7 +78,7 @@ fun CameraScreen(
     LaunchedEffect(Unit) { if (!granted) launcher.launch(Manifest.permission.CAMERA) }
 
     if (granted) {
-        CameraContent(onCaptured, onPickFromGallery, onClose, direction, learned, purpose, onQrFound)
+        CameraContent(onCaptured, onPickFromGallery, onClose, direction, purpose, onQrFound)
     } else {
         PermissionNeeded(
             onAllow = { launcher.launch(Manifest.permission.CAMERA) },
@@ -105,7 +101,6 @@ private fun CameraContent(
     onPickFromGallery: () -> Unit,
     onClose: () -> Unit,
     direction: ReadingDirection,
-    learned: List<ZuGlyph>,
     purpose: CameraPurpose,
     onQrFound: (QrCode, Bitmap?) -> Unit,
 ) {
@@ -116,8 +111,7 @@ private fun CameraContent(
     val captureFailed = stringResource(R.string.camera_capture_failed)
     val unavailable = stringResource(R.string.camera_unavailable)
 
-    val live = remember { MutableStateFlow<LiveFrame?>(null) }
-    val frame by live.collectAsStateWithLifecycle()
+    var quality by remember { mutableStateOf<PhotoQuality?>(null) }
     var flashOn by rememberSaveable { mutableStateOf(false) }
     var capturing by remember { mutableStateOf(false) }
 
@@ -134,11 +128,28 @@ private fun CameraContent(
             .setResolutionSelector(resolution)
             .build()
     }
+    // A foto sai em pé conforme o celular é segurado, mesmo com a rotação da tela travada:
+    // o sensor de movimento diz a posição e a câmera grava a foto nessa orientação.
+    DisposableEffect(imageCapture) {
+        val listener = object : OrientationEventListener(context) {
+            override fun onOrientationChanged(degrees: Int) {
+                if (degrees == ORIENTATION_UNKNOWN) return
+                imageCapture.targetRotation = when (degrees) {
+                    in 45 until 135 -> Surface.ROTATION_270
+                    in 135 until 225 -> Surface.ROTATION_180
+                    in 225 until 315 -> Surface.ROTATION_90
+                    else -> Surface.ROTATION_0
+                }
+            }
+        }
+        if (listener.canDetectOrientation()) listener.enable()
+        onDispose { listener.disable() }
+    }
     LaunchedEffect(flashOn) {
         imageCapture.flashMode = if (flashOn) ImageCapture.FLASH_MODE_ON else ImageCapture.FLASH_MODE_OFF
     }
 
-    DisposableEffect(lifecycleOwner, direction, learned, purpose) {
+    DisposableEffect(lifecycleOwner, purpose) {
         val analysisExecutor = Executors.newSingleThreadExecutor()
         val future = ProcessCameraProvider.getInstance(context)
         var provider: ProcessCameraProvider? = null
@@ -159,9 +170,10 @@ private fun CameraContent(
                             takePhoto(context, imageCapture, onDone = { photo -> onQrFound(code, photo) }, onError = { onQrFound(code, null) })
                         }
                     }
+                    // ler Zu: só diz se o visor está bom para fotografar (a leitura é feita na foto)
+                    CameraPurpose.READ -> QualityAnalyzer { q -> main.execute { quality = q } }
                     // anotar: a câmera só fotografa, não precisa analisar
                     CameraPurpose.NOTE -> null
-                    CameraPurpose.READ -> LiveAnalyzer(direction, learned, ModeChoice.AUTO) { live.value = it }
                 }
                 analyzer?.let { analysis.setAnalyzer(analysisExecutor, it) }
                 cameraProvider.unbindAll()
@@ -179,7 +191,7 @@ private fun CameraContent(
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceContainerLowest)) {
         AndroidView(factory = { previewView }, modifier = Modifier.fillMaxSize())
         CameraOverlay(
-            frame = frame,
+            quality = quality,
             flashOn = flashOn,
             capturing = capturing,
             onClose = onClose,

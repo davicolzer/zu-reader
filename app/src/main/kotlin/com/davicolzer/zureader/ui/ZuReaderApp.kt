@@ -166,7 +166,6 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
                     onQrFound = viewModel::onQrFound,
                     onClose = viewModel::goHome,
                     direction = settings.direction,
-                    learned = learned,
                 )
             }
         }

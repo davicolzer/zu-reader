@@ -106,15 +106,12 @@
     <string name="camera_flash_on">Ligar flash</string>
     <string name="camera_flash_off">Desligar flash</string>
     <string name="camera_shutter">Tirar foto</string>
-    <string name="camera_aim">Aponte para o texto Zu</string>
-    <string name="camera_hold">Segure firme e toque para fotografar</string>
+    <string name="camera_aim">Enquadre o texto Zu nos cantos</string>
+    <string name="camera_quality_good">Boa! Pode fotografar</string>
+    <string name="camera_quality_fair">Quase lá: segure firme</string>
+    <string name="camera_quality_poor">Ruim: foque e segure parado</string>
     <string name="camera_order">Leitura: de cima para baixo, da direita para a esquerda</string>
     <string name="camera_order_horizontal">Leitura: da esquerda para a direita, de cima para baixo</string>
-    <plurals name="camera_glyph_count">
-        <item quantity="one">%1$d glifo</item>
-        <item quantity="many">%1$d glifos</item>
-        <item quantity="other">%1$d glifos</item>
-    </plurals>
     <string name="camera_permission_title">A câmera está bloqueada</string>
     <string name="camera_permission_body">O Zu Reader usa a câmera só para fotografar o texto. Nada sai do seu celular.</string>
     <string name="camera_permission_allow">Permitir câmera</string>
