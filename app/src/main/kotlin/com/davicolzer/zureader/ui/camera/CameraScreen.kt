@@ -56,6 +56,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -145,7 +146,13 @@ private fun CameraContent(
     }
 
     val previewView = remember {
-        PreviewView(context).apply { scaleType = PreviewView.ScaleType.FILL_CENTER }
+        // TextureView (COMPATIBLE): o preview é desenhado junto com a tela e acompanha o tamanho
+        // dela até a borda de baixo (o SurfaceView padrão podia ficar com o tamanho da primeira
+        // medida, deixando uma faixa vazia embaixo, e não acompanha a transição de telas)
+        PreviewView(context).apply {
+            implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+            scaleType = PreviewView.ScaleType.FILL_CENTER
+        }
     }
     // Mesma proporção (4:3) no preview e na análise: as caixas caem no lugar certo.
     val resolution = remember {
@@ -240,7 +247,7 @@ private fun CameraContent(
     }
 
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceContainerLowest)) {
-        AndroidView(factory = { previewView }, modifier = Modifier.fillMaxSize())
+        AndroidView(factory = { previewView }, modifier = Modifier.fillMaxSize().clipToBounds())
         CameraOverlay(
             quality = quality,
             turn = turn,

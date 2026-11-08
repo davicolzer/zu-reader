@@ -228,7 +228,7 @@ private fun HistoryTile(item: HistoryItem, onOpen: (Long) -> Unit, onDelete: (Hi
                     .padding(6.dp)
                     .align(Alignment.TopStart)
                     .clip(RoundedCornerShape(6.dp))
-                    .background(Color(0xCC0B0A18))
+                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.88f))
                     .padding(4.dp),
             ) {
                 Icon(painterResource(item.kind.icon), stringResource(item.kind.badge), Modifier.size(14.dp), tint = item.kind.color())
@@ -246,10 +246,10 @@ private fun HistoryTile(item: HistoryItem, onOpen: (Long) -> Unit, onDelete: (Hi
                 Box(
                     Modifier
                         .clip(RoundedCornerShape(6.dp))
-                        .background(Color(0xCC0B0A18))
+                        .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.88f))
                         .padding(4.dp),
                 ) {
-                    Icon(painterResource(R.drawable.ic_pixel_trash), null, Modifier.size(14.dp), tint = Color.White)
+                    Icon(painterResource(R.drawable.ic_pixel_trash), null, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurface)
                 }
             }
         }
