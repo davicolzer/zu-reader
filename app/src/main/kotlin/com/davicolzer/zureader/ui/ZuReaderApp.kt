@@ -7,6 +7,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.Color
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -22,12 +25,11 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.davicolzer.zureader.BuildConfig
 import com.davicolzer.zureader.R
 import com.davicolzer.zureader.ui.components.PixelLoader
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.togetherWith
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.fadeIn
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import com.davicolzer.zureader.ui.components.cubeFace
 import com.davicolzer.zureader.ui.video.VideoScreen
 import androidx.compose.ui.platform.LocalContext
 import com.davicolzer.zureader.AppLanguage
@@ -125,16 +127,21 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
         )
     }
 
-    // troca de tela com transição: a nova entra com um leve deslize e aparece; a antiga some
+    // troca de tela = o cubo gira (como a troca de perspectiva do jogo); indo para dentro do app
+    // gira para um lado, voltando gira para o outro
+    val turn = remember { CubeTurn(state) }
+    val forward = turn.update(state)
     AnimatedContent(
         targetState = state,
-        // a mesma tela atualizando (ex.: correção de uma letra) não anima; só a troca de tela
+        modifier = Modifier.background(CubeBackdrop),
+        // a mesma tela atualizando (ex.: correção de uma letra) não gira; só a troca de tela
         contentKey = { it::class },
         transitionSpec = {
-            (fadeIn(tween(220, delayMillis = 60)) + slideInHorizontally(tween(260)) { it / 14 }) togetherWith fadeOut(tween(140))
+            (EnterTransition.None togetherWith ExitTransition.KeepUntilTransitionsFinished).using(null)
         },
         label = "telas",
     ) { target ->
+      Box(Modifier.fillMaxSize().cubeFace(this, forward)) {
         when (val s = target) {
             ReaderUiState.Home, ReaderUiState.CouldNotOpen -> HomeScreen(
                 onReadZu = { chooseZuSource = true },
@@ -318,6 +325,7 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
                 )
             }
         }
+      }
     }
 }
 
@@ -331,5 +339,28 @@ private fun ReadingProgress() {
             PixelLoader()
             Text(stringResource(R.string.reading_progress), style = MaterialTheme.typography.titleSmall)
         }
+    }
+}
+
+/** O que fica atrás do cubo enquanto ele gira (o "céu" escuro do jogo, nos dois temas). */
+private val CubeBackdrop = Color(0xFF0B0A18)
+
+/** Lembra a última tela para saber se a troca vai para dentro do app (frente) ou volta. */
+private class CubeTurn(private var last: ReaderUiState) {
+    private var forward = true
+
+    fun update(state: ReaderUiState): Boolean {
+        if (state::class != last::class) forward = depth(state) >= depth(last)
+        last = state
+        return forward
+    }
+
+    /** Quão "dentro" do app a tela está: o início é 0; voltar = ir para uma tela mais rasa. */
+    private fun depth(s: ReaderUiState): Int = when (s) {
+        ReaderUiState.Home, ReaderUiState.CouldNotOpen -> 0
+        ReaderUiState.History, ReaderUiState.Settings, is ReaderUiState.Camera -> 1
+        is ReaderUiState.Crop, ReaderUiState.Reading, is ReaderUiState.Annotate, is ReaderUiState.Video -> 2
+        is ReaderUiState.Write -> if (s.from != null) 4 else 2
+        else -> 3
     }
 }
