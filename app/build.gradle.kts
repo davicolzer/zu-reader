@@ -64,6 +64,13 @@ android {
         compose = true
         buildConfig = true
     }
+
+    // o idioma é escolhido dentro do app: o AAB precisa levar todas as traduções
+    bundle {
+        language {
+            enableSplit = false
+        }
+    }
 }
 
 room {

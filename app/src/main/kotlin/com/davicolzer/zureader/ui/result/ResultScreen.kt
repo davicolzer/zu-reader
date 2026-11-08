@@ -295,7 +295,8 @@ fun ResultScreen(
                 )
                 // K/Q e U/V são o mesmo glifo: avisa quando aparecem
                 val pairs = if (mode == ReadingMode.NUMBERS) emptyList() else reading.glyphs
-                    .mapNotNull { g -> ZuAlphabet.twin(g.letter)?.let { listOf(g.letter, it).sorted().joinToString(" e ") } }
+                    .mapNotNull { g -> ZuAlphabet.twin(g.letter)?.let { listOf(g.letter, it).sorted() } }
+                    .map { (a, b) -> stringResource(R.string.letters_pair, a.toString(), b.toString()) }
                     .distinct().sorted()
                 if (pairs.isNotEmpty()) {
                     Text(

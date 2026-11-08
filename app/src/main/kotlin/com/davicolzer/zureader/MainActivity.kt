@@ -1,5 +1,6 @@
 package com.davicolzer.zureader
 
+import android.content.Context
 import android.graphics.Color
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -16,6 +17,11 @@ import com.davicolzer.zureader.ui.ZuReaderApp
 import com.davicolzer.zureader.ui.theme.ZuReaderTheme
 
 class MainActivity : ComponentActivity() {
+    // idioma escolhido no app (antes do Android 13; depois, o sistema aplica sozinho)
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(AppLanguage.wrap(newBase))
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val settingsFlow = (application as ZuReaderApplication).settings.settings

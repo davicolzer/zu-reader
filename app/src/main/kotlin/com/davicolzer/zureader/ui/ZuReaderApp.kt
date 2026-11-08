@@ -21,6 +21,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.davicolzer.zureader.BuildConfig
 import com.davicolzer.zureader.R
+import androidx.compose.ui.platform.LocalContext
+import com.davicolzer.zureader.AppLanguage
+import android.app.Activity
 import com.davicolzer.zureader.reader.ReaderUiState
 import com.davicolzer.zureader.reader.ReaderViewModel
 import com.davicolzer.zureader.ui.camera.CameraScreen
@@ -47,6 +50,7 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
     val recent by viewModel.recent.collectAsStateWithLifecycle()
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val learned by viewModel.learned.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) viewModel.read(uri)
     }
@@ -205,6 +209,9 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
                 learnedCount = learned.size,
                 onForgetLearned = viewModel::forgetLearned,
                 onBack = viewModel::goHome,
+                language = remember { AppLanguage.current(context) },
+                // a tela é recriada no idioma novo e volta para as configurações
+                onLanguage = { language -> (context as? Activity)?.let { AppLanguage.set(it, language) } },
             )
         }
         is ReaderUiState.Crop -> {

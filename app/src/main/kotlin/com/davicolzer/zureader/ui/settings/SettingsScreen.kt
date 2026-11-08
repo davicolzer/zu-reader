@@ -40,6 +40,10 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.davicolzer.zureader.R
+import androidx.compose.foundation.clickable
+import androidx.compose.material3.Surface
+import androidx.compose.ui.window.Dialog
+import com.davicolzer.zureader.AppLanguage
 import com.davicolzer.zureader.ui.components.AppDialog
 import com.davicolzer.zureader.data.Settings
 import com.davicolzer.zureader.data.ThemeMode
@@ -56,8 +60,14 @@ fun SettingsScreen(
     onBack: () -> Unit,
     learnedCount: Int = 0,
     onForgetLearned: () -> Unit = {},
+    /** Idioma atual do app e a troca (detectar, português ou inglês). */
+    language: AppLanguage = AppLanguage.AUTO,
+    onLanguage: (AppLanguage) -> Unit = {},
+    /** Abre já com a escolha de idioma (prévias). */
+    startChoosingLanguage: Boolean = false,
 ) {
     var confirmForget by remember { mutableStateOf(false) }
+    var choosingLanguage by remember { mutableStateOf(startChoosingLanguage) }
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
@@ -111,10 +121,36 @@ fun SettingsScreen(
                     )
                 }
             }
+            Section(stringResource(R.string.settings_language)) {
+                // botão de idioma: mostra o atual e abre a escolha
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 56.dp)
+                        .clickable(role = Role.Button) { choosingLanguage = true }
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Icon(painterResource(R.drawable.ic_pixel_language), null, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.tertiary)
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(stringResource(R.string.settings_language_title), style = MaterialTheme.typography.bodyLarge)
+                        Text(languageName(language), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Icon(painterResource(R.drawable.ic_pixel_chevron), null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
             Section(stringResource(R.string.settings_appearance)) {
                 Option(stringResource(R.string.settings_theme_system), null, settings.theme == ThemeMode.SYSTEM) { onTheme(ThemeMode.SYSTEM) }
                 Option(stringResource(R.string.settings_theme_light), null, settings.theme == ThemeMode.LIGHT) { onTheme(ThemeMode.LIGHT) }
                 Option(stringResource(R.string.settings_theme_dark), null, settings.theme == ThemeMode.DARK) { onTheme(ThemeMode.DARK) }
+            }
+            if (choosingLanguage) {
+                LanguageDialog(
+                    current = language,
+                    onPick = { choosingLanguage = false; if (it != language) onLanguage(it) },
+                    onDismiss = { choosingLanguage = false },
+                )
             }
             if (confirmForget) {
                 ForgetDialog(onConfirm = { confirmForget = false; onForgetLearned() }, onDismiss = { confirmForget = false })
@@ -126,6 +162,39 @@ fun SettingsScreen(
                     Text(stringResource(R.string.settings_offline), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(stringResource(R.string.settings_credits), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun languageName(language: AppLanguage): String = stringResource(
+    when (language) {
+        AppLanguage.AUTO -> R.string.language_auto
+        AppLanguage.PORTUGUESE -> R.string.language_portuguese
+        AppLanguage.ENGLISH -> R.string.language_english
+    },
+)
+
+/** Escolha do idioma: detectar automaticamente ou um dos idiomas do app. Tocar aplica e fecha. */
+@Composable
+private fun LanguageDialog(current: AppLanguage, onPick: (AppLanguage) -> Unit, onDismiss: () -> Unit) {
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = RoundedCornerShape(24.dp),
+            color = MaterialTheme.colorScheme.surfaceContainer,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Icon(painterResource(R.drawable.ic_pixel_language), null, Modifier.size(28.dp), tint = MaterialTheme.colorScheme.tertiary)
+                Text(stringResource(R.string.settings_language_title), style = MaterialTheme.typography.titleLarge, modifier = Modifier.semantics { heading() })
+                Column(Modifier.selectableGroup()) {
+                    Option(stringResource(R.string.language_auto), stringResource(R.string.language_auto_body), current == AppLanguage.AUTO) { onPick(AppLanguage.AUTO) }
+                    Option(stringResource(R.string.language_portuguese), null, current == AppLanguage.PORTUGUESE) { onPick(AppLanguage.PORTUGUESE) }
+                    Option(stringResource(R.string.language_english), null, current == AppLanguage.ENGLISH) { onPick(AppLanguage.ENGLISH) }
+                }
+                PixelOutlinedButton(stringResource(R.string.cancel), R.drawable.ic_pixel_close, onClick = onDismiss)
             }
         }
     }
