@@ -1,6 +1,11 @@
 package com.davicolzer.zureader.ui.components
 
+import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloat
@@ -17,6 +22,13 @@ import kotlin.math.abs
 
 /** Duração do giro do cubo na troca de tela. */
 const val CUBE_TURN_MS = 480
+
+/**
+ * Para usar com [cubeFace] num `AnimatedContent`: sem efeito próprio (o giro é feito por
+ * [cubeFace]) e a tela que sai fica até o giro acabar.
+ */
+fun <S> AnimatedContentTransitionScope<S>.cubeTurnSpec(): ContentTransform =
+    (EnterTransition.None togetherWith ExitTransition.KeepUntilTransitionsFinished).using(null)
 
 /**
  * Cada tela é uma face de um cubo: na troca, o cubo gira e a nova tela vem da face ao lado, como a

@@ -1,5 +1,10 @@
 package com.davicolzer.zureader.ui.write
 
+import com.davicolzer.zureader.ui.components.cubeTurnSpec
+import com.davicolzer.zureader.ui.components.cubeFace
+import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.animation.AnimatedContent
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -57,8 +62,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.semantics.heading
@@ -111,10 +114,13 @@ fun WriteScreen(
     var fullScreen by rememberSaveable { mutableStateOf(startFullScreen) }
     // K/Q e U/V tocados pelo glifo: a letra vem do contexto do inglês e muda enquanto o usuário digita
     val message = ZuWriter.normalize(SharedLetters.resolve(text))
-    if (fullScreen && message.isNotEmpty()) {
-        FullMessage(message, direction, onClose = { fullScreen = false })
-    }
-
+    // a mensagem em tela cheia é outra tela: entra girando o cubo, e fechar gira de volta
+    AnimatedContent(fullScreen && message.isNotEmpty(), transitionSpec = { cubeTurnSpec() }, label = "mensagem") { full ->
+      Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).cubeFace(this, forward = full)) {
+        if (full) {
+            FullMessage(message, direction, onClose = { fullScreen = false })
+            return@Box
+        }
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
@@ -239,6 +245,8 @@ fun WriteScreen(
         }
       }
     }
+      }
+    }
 }
 
 /**
@@ -324,15 +332,15 @@ private fun <T> KeyGrid(layout: KeyboardLayout, keyHeight: androidx.compose.ui.u
     }
 }
 
-/** A mensagem inteira em tela cheia (modal): todas as colunas e o texto todo; fechar volta a escrever. */
+/** A mensagem inteira em tela cheia (uma tela própria): todas as colunas e o texto todo; fechar volta a escrever. */
 @Composable
 private fun FullMessage(message: String, direction: ReadingDirection, onClose: () -> Unit) {
-    Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+    BackHandler(onBack = onClose)
       Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background, contentColor = MaterialTheme.colorScheme.onBackground) {
         Column(
             Modifier
                 .fillMaxSize()
-                .navigationBarsPadding()
+                .safeDrawingPadding()
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
@@ -367,7 +375,6 @@ private fun FullMessage(message: String, direction: ReadingDirection, onClose: (
             )
         }
       }
-    }
 }
 
 /**

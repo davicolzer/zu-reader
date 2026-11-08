@@ -25,11 +25,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.davicolzer.zureader.BuildConfig
 import com.davicolzer.zureader.R
 import com.davicolzer.zureader.ui.components.PixelLoader
-import androidx.compose.animation.togetherWith
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
 import com.davicolzer.zureader.ui.components.cubeFace
+import com.davicolzer.zureader.ui.components.cubeTurnSpec
 import com.davicolzer.zureader.ui.video.VideoScreen
 import androidx.compose.ui.platform.LocalContext
 import com.davicolzer.zureader.AppLanguage
@@ -134,11 +132,10 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
     AnimatedContent(
         targetState = state,
         modifier = Modifier.background(CubeBackdrop),
-        // a mesma tela atualizando (ex.: correção de uma letra) não gira; só a troca de tela
-        contentKey = { it::class },
-        transitionSpec = {
-            (EnterTransition.None togetherWith ExitTransition.KeepUntilTransitionsFinished).using(null)
-        },
+        // a mesma tela atualizando (ex.: correção de uma letra, o aviso no início) não gira;
+        // só a troca de tela
+        contentKey = { screenKey(it) },
+        transitionSpec = { cubeTurnSpec() },
         label = "telas",
     ) { target ->
       Box(Modifier.fillMaxSize().cubeFace(this, forward)) {
@@ -345,12 +342,15 @@ private fun ReadingProgress() {
 /** O que fica atrás do cubo enquanto ele gira (o "céu" escuro do jogo, nos dois temas). */
 private val CubeBackdrop = Color(0xFF0B0A18)
 
+/** Qual tela é: o aviso "não deu para abrir" aparece na própria tela de início. */
+private fun screenKey(s: ReaderUiState): Any = if (s == ReaderUiState.CouldNotOpen) ReaderUiState.Home::class else s::class
+
 /** Lembra a última tela para saber se a troca vai para dentro do app (frente) ou volta. */
 private class CubeTurn(private var last: ReaderUiState) {
     private var forward = true
 
     fun update(state: ReaderUiState): Boolean {
-        if (state::class != last::class) forward = depth(state) >= depth(last)
+        if (screenKey(state) != screenKey(last)) forward = depth(state) >= depth(last)
         last = state
         return forward
     }
