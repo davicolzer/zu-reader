@@ -53,8 +53,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -63,6 +61,8 @@ import androidx.compose.ui.semantics.role
 import com.davicolzer.zureader.ui.correct.CorrectionSheet
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.TextButton
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -100,6 +100,7 @@ import androidx.compose.ui.text.font.FontFamily
 import android.net.Uri
 import com.davicolzer.zureader.vision.QrCode
 import com.davicolzer.zureader.R
+import com.davicolzer.zureader.ui.components.AppDialog
 import com.davicolzer.zureader.ui.components.MiniGlyph
 import com.davicolzer.zureader.ui.components.PixelOutlinedButton
 import com.davicolzer.zureader.ui.components.PixelPrimaryButton
@@ -123,6 +124,15 @@ fun ResultScreen(
     onDelete: () -> Unit = {},
     /** Volta para o recorte com os cantos usados; `null` se a leitura não veio de um recorte. */
     onAdjustCrop: (() -> Unit)? = null,
+    /** Texto escrito à mão para esta foto, desenhado em Zu (imagem e leitura); `null` se não há. */
+    typedImage: Bitmap? = null,
+    typedReading: ImageReading? = null,
+    /** Abre o teclado de glifos para escrever o texto da foto; `null` esconde a opção. */
+    onWriteByHand: (() -> Unit)? = null,
+    /** Não nulo = o texto lido já estava na coleção e este é o item salvo (quando foi salvo). */
+    alreadySavedAt: Long? = null,
+    /** "Ler mesmo assim": mostra a leitura que acabou de ser feita, no lugar do item salvo. */
+    onReadAnyway: (() -> Unit)? = null,
 ) {
     var editing by remember { mutableStateOf<Int?>(null) }
     var confirmDelete by remember { mutableStateOf(false) }
@@ -134,6 +144,12 @@ fun ResultScreen(
     val reading = result.reading
     val mode = result.mode
     val bitmap = remember(image) { image.asImageBitmap() }
+    val typed = typedReading != null && typedImage != null
+    var noteClosed by remember(alreadySavedAt) { mutableStateOf(false) }
+    // com texto escrito à mão, ele é o que vale: a foto aparece sem as letras lidas por cima
+    val photoResult = remember(result, typed) {
+        if (typed) result.copy(reading = result.reading.copy(glyphs = emptyList())) else result
+    }
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
@@ -150,11 +166,11 @@ fun ResultScreen(
                 // alturas iguais mesmo com fonte grande
                 Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     ActionTile(R.drawable.ic_pixel_copy, stringResource(R.string.result_copy), Modifier.weight(1f)) {
-                        copyText(context, shareable(result))
+                        copyText(context, shareable(result, typedReading))
                         scope.launch { snackbar.showSnackbar(copied) }
                     }
                     ActionTile(R.drawable.ic_pixel_share, stringResource(R.string.result_share), Modifier.weight(1f)) {
-                        shareText(context, shareable(result))
+                        shareText(context, shareable(result, typedReading))
                     }
                     if (savedId == null) {
                         ActionTile(R.drawable.ic_pixel_save, stringResource(R.string.result_save), Modifier.weight(1f), primary = true) {
@@ -194,15 +210,17 @@ fun ResultScreen(
                 .padding(horizontal = 20.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            PhotoWithBoxes(bitmap, result, selected = editing, onTapGlyph = { editing = it })
-            if (reading.glyphs.isNotEmpty()) {
+            if (!noteClosed) alreadySavedAt?.let { at -> AlreadySavedNote(at, onReadAnyway, onClose = { noteClosed = true }) }
+            PhotoWithBoxes(bitmap, photoResult, selected = editing, onTapGlyph = { editing = it })
+            if (reading.glyphs.isNotEmpty() && !typed) {
                 Text(
                     stringResource(R.string.result_zoom_hint),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            if (onAdjustCrop != null && reading.glyphs.isNotEmpty()) {
+            // ajustar o recorte lê de novo a foto: não oferece quando o texto foi escrito à mão
+            if (onAdjustCrop != null && reading.glyphs.isNotEmpty() && !typed) {
                 PixelOutlinedButton(stringResource(R.string.result_adjust_crop), R.drawable.ic_pixel_crop, onAdjustCrop)
             }
 
@@ -217,9 +235,15 @@ fun ResultScreen(
                 )
             }
 
+            if (typed) {
+                TypedSection(typedImage!!, typedReading!!, onWriteByHand)
+                return@Column
+            }
+
             if (reading.glyphs.isEmpty()) {
                 // só o QR code: nada de glifos para mostrar
                 if (result.qr == null) EmptyResult(onPickAnother, onAdjustCrop)
+                onWriteByHand?.let { WriteByHandCard(it) }
                 return@Column
             }
 
@@ -274,6 +298,9 @@ fun ResultScreen(
                 }
             }
 
+            // separado das ações de salvar: uma saída para quando a foto não ajudou
+            onWriteByHand?.let { WriteByHandCard(it) }
+
         }
     }
 
@@ -290,19 +317,15 @@ fun ResultScreen(
     }
 
     if (confirmDelete) {
-        AlertDialog(
-            onDismissRequest = { confirmDelete = false },
-            title = { Text(stringResource(R.string.result_delete_title)) },
-            text = { Text(stringResource(R.string.result_delete_body)) },
-            confirmButton = {
-                TextButton(onClick = { confirmDelete = false; onDelete() }) {
-                    Text(stringResource(R.string.result_delete), color = MaterialTheme.colorScheme.error)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { confirmDelete = false }) { Text(stringResource(R.string.cancel)) }
-            },
-            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        AppDialog(
+            title = stringResource(R.string.result_delete_title),
+            body = stringResource(R.string.result_delete_body),
+            icon = R.drawable.ic_pixel_trash,
+            iconTint = MaterialTheme.colorScheme.primary,
+            confirmLabel = stringResource(R.string.result_delete),
+            confirmIcon = R.drawable.ic_pixel_trash,
+            onConfirm = { confirmDelete = false; onDelete() },
+            onDismiss = { confirmDelete = false },
         )
     }
 }
@@ -567,12 +590,89 @@ private fun EmptyResult(onPickAnother: () -> Unit, onAdjustCrop: (() -> Unit)?) 
     Box(Modifier.height(8.dp))
 }
 
-/** Texto para copiar e compartilhar: o lido em Zu e, se houver, o do QR code. */
-private fun shareable(result: ImageReading): String =
-    listOfNotNull(
-        result.mode.display(result.reading.text).takeIf { it.isNotBlank() },
+/** Texto para copiar e compartilhar: o escrito à mão (ou o lido em Zu) e, se houver, o do QR code. */
+private fun shareable(result: ImageReading, typed: ImageReading? = null): String {
+    val text = typed ?: result
+    return listOfNotNull(
+        text.mode.display(text.reading.text).takeIf { it.isNotBlank() },
         result.qr?.text,
     ).joinToString("\n\n")
+}
+
+/**
+ * Aviso discreto no topo: o texto lido já estava na coleção, então abriu o salvo. "Ler mesmo
+ * assim" mostra a leitura feita agora (dá para salvar como outro item); o X fecha o aviso.
+ */
+@Composable
+private fun AlreadySavedNote(savedAt: Long, onReadAnyway: (() -> Unit)?, onClose: () -> Unit) {
+    val date = remember(savedAt) {
+        java.text.DateFormat.getDateInstance(java.text.DateFormat.SHORT).format(java.util.Date(savedAt))
+    }
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .padding(start = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Icon(painterResource(R.drawable.ic_pixel_check), null, Modifier.size(14.dp), tint = ZuTheme.colors.teal)
+        Text(
+            stringResource(R.string.result_already_saved, date),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f),
+        )
+        onReadAnyway?.let {
+            TextButton(onClick = it, contentPadding = PaddingValues(horizontal = 8.dp)) {
+                Text(stringResource(R.string.result_show_fresh), style = MaterialTheme.typography.labelMedium, color = ZuTheme.colors.teal)
+            }
+        }
+        IconButton(onClick = onClose, modifier = Modifier.size(40.dp)) {
+            Icon(painterResource(R.drawable.ic_pixel_close), stringResource(R.string.close), Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+/** Botão para escrever o texto da foto à mão, olhando os glifos (o teclado abre com o que foi lido). */
+@Composable
+private fun WriteByHandCard(onWrite: () -> Unit) {
+    PixelOutlinedButton(stringResource(R.string.result_write_button), R.drawable.ic_pixel_keyboard, onWrite)
+}
+
+/**
+ * O texto escrito à mão para a foto: o texto em inglês e os glifos escritos (com a letra de cada
+ * um), e o botão para mudar a escrita.
+ */
+@Composable
+private fun TypedSection(image: Bitmap, typed: ImageReading, onWriteByHand: (() -> Unit)?) {
+    val bitmap = remember(image) { image.asImageBitmap() }
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(
+            stringResource(R.string.result_typed_label),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.semantics { heading() },
+        )
+        ReadText(typed.reading.text, typed.reading.glyphs, typed.mode)
+        Text(
+            stringResource(R.string.result_typed_note),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            stringResource(R.string.result_typed_glyphs_label),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.semantics { heading() },
+        )
+        PhotoWithBoxes(bitmap, typed, selected = null, onTapGlyph = {})
+    }
+    onWriteByHand?.let { PixelOutlinedButton(stringResource(R.string.result_typed_edit), R.drawable.ic_pixel_keyboard, it) }
+}
 
 /** Cartão do QR code: o texto inteiro, legível e selecionável; se for link, botão para abrir. */
 @Composable

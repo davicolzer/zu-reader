@@ -32,12 +32,11 @@ import com.davicolzer.zureader.ui.theme.ZuReaderTheme
 import com.davicolzer.zureader.ui.result.ResultScreen
 import com.davicolzer.zureader.ui.write.WriteScreen
 import com.davicolzer.zureader.ui.note.AnnotateScreen
+import com.davicolzer.zureader.ui.note.renderMarks
 import com.davicolzer.zureader.ui.note.NoteScreen
 import com.davicolzer.zureader.ui.qr.QrScreen
 import com.davicolzer.zureader.ui.components.SourceDialog
 import com.davicolzer.zureader.reader.CameraPurpose
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -135,20 +134,47 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
         }
         is ReaderUiState.Annotate -> {
             BackHandler(onBack = viewModel::leaveAnnotate)
-            AnnotateScreen(image = s.image, title = s.title, onSave = viewModel::saveNote, onBack = viewModel::leaveAnnotate)
+            AnnotateScreen(
+                image = s.image,
+                marks = s.marks,
+                onDone = viewModel::finishAnnotating,
+                onCrop = viewModel::cropAnnotation,
+                onBack = viewModel::leaveAnnotate,
+            )
+        }
+        is ReaderUiState.AnnotateCrop -> {
+            BackHandler(onBack = viewModel::leaveAnnotationCrop)
+            // mostra a foto com os desenhos; o recorte vale para a foto e para eles
+            val shown = remember(s) { renderMarks(s.editing.image, s.editing.marks) }
+            CropScreen(
+                image = shown,
+                suggestion = com.davicolzer.zureader.vision.Quad.inset(shown.width, shown.height, 0.05f),
+                onConfirm = { viewModel.confirmAnnotationCrop(it) },
+                onUseWhole = { viewModel.confirmAnnotationCrop(null) },
+                onRetake = viewModel::leaveAnnotationCrop,
+                confirmLabel = R.string.qr_crop_confirm,
+            )
         }
         is ReaderUiState.Note -> {
-            BackHandler(onBack = viewModel::openHistory)
-            NoteScreen(image = s.image, title = s.title, onBack = viewModel::openHistory, onEdit = viewModel::editNote, onDelete = viewModel::deleteNote)
+            BackHandler(onBack = viewModel::leaveNote)
+            NoteScreen(
+                image = s.image,
+                title = s.title,
+                saved = s.saved,
+                onBack = viewModel::leaveNote,
+                onEdit = viewModel::editNote,
+                onSave = viewModel::saveNote,
+                onDelete = if (s.id != null) viewModel::deleteNote else null,
+            )
         }
         is ReaderUiState.Write -> {
-            BackHandler(onBack = viewModel::goHome)
-            WriteScreen(draft = s.draft, direction = settings.direction, onDone = viewModel::finishWriting, onBack = viewModel::goHome)
+            BackHandler(onBack = viewModel::leaveWriter)
+            WriteScreen(draft = s.draft, direction = settings.direction, onDone = viewModel::finishWriting, onBack = viewModel::leaveWriter)
         }
         ReaderUiState.History -> {
             val all by viewModel.allHistory.collectAsStateWithLifecycle()
             BackHandler(onBack = viewModel::goHome)
-            HistoryScreen(all, onOpen = viewModel::openSaved, onBack = viewModel::goHome)
+            HistoryScreen(all, onOpen = viewModel::openSaved, onBack = viewModel::goHome, grid = settings.historyGrid, onGridChange = viewModel::setHistoryGrid, onDelete = viewModel::deleteSaved)
         }
         is ReaderUiState.Camera -> {
             BackHandler(onBack = viewModel::goHome)
@@ -194,6 +220,8 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
         ReaderUiState.Reading -> ReadingProgress()
         is ReaderUiState.Result -> {
             val back: () -> Unit = when {
+                // aberto porque o texto já estava salvo: voltar é sair da leitura, não ir à coleção
+                s.fresh != null -> viewModel::goHome
                 s.savedId != null -> viewModel::openHistory
                 s.written != null -> { { viewModel.openWriter(s.written) } }
                 else -> viewModel::goHome
@@ -209,6 +237,12 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
                 onSave = viewModel::save,
                 onDelete = viewModel::deleteCurrent,
                 onAdjustCrop = if (s.crop != null) viewModel::adjustCrop else null,
+                alreadySavedAt = s.savedAt.takeIf { s.fresh != null },
+                onReadAnyway = if (s.fresh != null) viewModel::readAnyway else null,
+                typedImage = s.typed?.image,
+                typedReading = s.typed?.reading,
+                // escrever à mão vale para leituras de foto (o resultado de "Escrever à mão" já é escrito)
+                onWriteByHand = if (s.written == null) viewModel::writeForPhoto else null,
             )
         }
     }

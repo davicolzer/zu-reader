@@ -29,6 +29,9 @@ jobs:
       - name: Testes de visão (imagens, fotos reais, câmera, recorte, histórico)
         run: ./gradlew :core:vision:test --warning-mode all
 
+      - name: Testes do app (anotações)
+        run: ./gradlew :app:testDebugUnitTest --warning-mode all
+
       - name: Lint do app
         run: ./gradlew :app:lintDebug --warning-mode all
 

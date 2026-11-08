@@ -7,6 +7,7 @@ import android.graphics.ImageDecoder
 import android.graphics.Matrix
 import android.net.Uri
 import android.os.Build
+import com.davicolzer.zureader.data.SaveSize
 import com.davicolzer.zureader.vision.RgbImage
 import kotlin.math.max
 import kotlin.math.roundToInt
@@ -49,6 +50,12 @@ object ImageLoading {
             postRotate(rotationDegrees.toFloat())
         }
         return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+    }
+
+    /** [bitmap] no máximo em HD ([SaveSize]): maior é reduzido mantendo a proporção; HD ou menor fica igual. */
+    fun hd(bitmap: Bitmap): Bitmap {
+        val (w, h) = SaveSize.fit(bitmap.width, bitmap.height)
+        return if (w == bitmap.width && h == bitmap.height) bitmap else Bitmap.createScaledBitmap(bitmap, w, h, true)
     }
 
     fun toRgb(bitmap: Bitmap): RgbImage {
