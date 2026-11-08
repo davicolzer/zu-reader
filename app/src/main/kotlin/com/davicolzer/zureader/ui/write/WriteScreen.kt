@@ -39,6 +39,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
@@ -149,12 +150,12 @@ fun WriteScreen(
                     .padding(12.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                ZuPreview(message, direction, Modifier.fillMaxWidth().weight(1f))
+                ZuPreview(message, direction, Modifier.fillMaxWidth().weight(1f), pending = pendingBreak(text))
                 // sem nada escrito, a dica usa a área toda (cabe em tela pequena)
                 if (message.isNotEmpty()) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            englishLine(message, text.endsWith('\n')),
+                            englishLine(message, pendingBreak(text)),
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onBackground,
                             maxLines = 1,
@@ -229,9 +230,23 @@ fun WriteScreen(
     }
 }
 
+/**
+ * Espaço ou nova coluna no fim do que foi digitado (ainda sem o próximo glifo): a prévia já mostra
+ * o vão e o cursor onde o próximo glifo vai entrar. `null` se o texto não termina assim.
+ */
+private fun pendingBreak(text: String): Char? = when {
+    text.endsWith('\n') -> '\n'
+    text.endsWith(' ') -> ' '
+    else -> null
+}
+
 /** O texto em inglês com cursor; mensagem longa mostra o final (onde o usuário está digitando). */
-private fun englishLine(message: String, endsWithBreak: Boolean): String {
-    val full = ReadingMode.MIXED.display(message).replace("\n", " | ") + (if (endsWithBreak) " | " else "")
+private fun englishLine(message: String, pending: Char?): String {
+    val full = ReadingMode.MIXED.display(message).replace("\n", " | ") + when (pending) {
+        '\n' -> " | "
+        ' ' -> " "
+        else -> ""
+    }
     return (if (full.length > ENGLISH_MAX) "…" + full.takeLast(ENGLISH_MAX) else full) + "_"
 }
 
@@ -410,8 +425,20 @@ private const val UNIT = 10f
  * todas, aparecem as mais recentes.
  */
 @Composable
-private fun ZuPreview(message: String, direction: ReadingDirection, modifier: Modifier, showAll: Boolean = false) {
+private fun ZuPreview(
+    message: String,
+    direction: ReadingDirection,
+    modifier: Modifier,
+    showAll: Boolean = false,
+    /** Espaço ou nova coluna digitados por último: mostra o cursor onde o próximo glifo vai entrar. */
+    pending: Char? = null,
+) {
     val glyphs = remember(message, direction) { ZuWriter.layout(message, direction) }
+    // onde o próximo glifo entraria: o mesmo texto com o espaço (ou a coluna nova) e mais uma letra
+    val cursor = remember(message, direction, pending) {
+        if (pending == null || message.isEmpty()) null
+        else ZuWriter.layout(message + pending + "A", direction).lastOrNull()
+    }
     val ink = MaterialTheme.colorScheme.onBackground
     val last = ZuTheme.colors.gold
     Box(modifier, contentAlignment = Alignment.Center) {
@@ -427,10 +454,11 @@ private fun ZuPreview(message: String, direction: ReadingDirection, modifier: Mo
         } else {
             Canvas(Modifier.fillMaxSize().clipToBounds()) {
                 val half = glyphs.first().size / 2
-                val minX = glyphs.minOf { it.x } - half
-                val maxX = glyphs.maxOf { it.x } + half
-                val minY = glyphs.minOf { it.y } - half
-                val maxY = glyphs.maxOf { it.y } + half
+                val all = glyphs + listOfNotNull(cursor)
+                val minX = all.minOf { it.x } - half
+                val maxX = all.maxOf { it.x } + half
+                val minY = all.minOf { it.y } - half
+                val maxY = all.maxOf { it.y } + half
                 // tamanho: cabe tudo se der; se não, a coluna (ou linha) inteira continua cabendo e
                 // as colunas mais recentes ficam à vista; nunca maior que PREVIEW_MAX_GLYPH
                 val fitAll = minOf(size.width / (maxX - minX), size.height / (maxY - minY))
@@ -445,7 +473,7 @@ private fun ZuPreview(message: String, direction: ReadingDirection, modifier: Mo
                 // Segue o cursor: se não couber, o último glifo fica junto da borda para onde a
                 // mensagem cresce (colunas novas à esquerda; linhas novas embaixo), e o resto
                 // mostra o que veio logo antes
-                val newest = glyphs.last()
+                val newest = cursor ?: glyphs.last()
                 val glyphPx = 2 * half * scale
                 val edge = 2.dp.toPx()
                 val vertical = direction == ReadingDirection.VERTICAL_RIGHT_TO_LEFT
@@ -465,10 +493,17 @@ private fun ZuPreview(message: String, direction: ReadingDirection, modifier: Mo
                     val top = offY + (g.y - half - minY) * scale
                     // fora o modo "tudo", só glifos inteiros: uma coluna cortada ao meio confunde
                     if (!showAll && (left < -0.5f || top < -0.5f || left + 2 * half * scale > size.width + 0.5f || top + 2 * half * scale > size.height + 0.5f)) return@forEachIndexed
-                    val color = if (i == glyphs.lastIndex) last else ink
+                    val color = if (i == glyphs.lastIndex && cursor == null) last else ink
                     for (r in 0 until 5) for (c in 0 until 5) if (g.bits[r, c]) {
                         drawRect(color, Offset(left + c * cell, top + r * cell), Size(cell + 0.5f, cell + 0.5f))
                     }
+                }
+                // cursor: contorno dourado no lugar do próximo glifo (o vão do espaço fica visível)
+                cursor?.let { c ->
+                    val left = offX + (c.x - half - minX) * scale
+                    val top = offY + (c.y - half - minY) * scale
+                    val side = 2 * half * scale
+                    drawRect(last, Offset(left, top), Size(side, side), style = Stroke(width = maxOf(2f, cell / 2.5f)))
                 }
             }
         }
