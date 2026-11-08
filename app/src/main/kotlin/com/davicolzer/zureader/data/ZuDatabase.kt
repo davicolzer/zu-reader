@@ -38,10 +38,17 @@ data class ReadingEntity(
     }
 }
 
+/** Só o id e o texto de um item salvo. */
+data class SavedText(val id: Long, val text: String)
+
 @Dao
 interface ReadingDao {
     @Query("SELECT * FROM readings ORDER BY createdAt DESC LIMIT :limit")
     fun observeRecent(limit: Int): Flow<List<ReadingEntity>>
+
+    /** Id e texto dos itens de [kinds], do mais novo para o mais antigo (para achar texto repetido). */
+    @Query("SELECT id, text FROM readings WHERE kind IN (:kinds) ORDER BY createdAt DESC")
+    suspend fun texts(kinds: List<String>): List<SavedText>
 
     @Query("SELECT * FROM readings WHERE id = :id")
     suspend fun get(id: Long): ReadingEntity?

@@ -108,6 +108,12 @@ sealed interface ReaderUiState {
         val written: String? = null,
         /** Texto que o usuário escreveu à mão para esta foto, desenhado em Zu ([result].typed). */
         val typed: TypedView? = null,
+        /**
+         * O texto lido agora já estava na coleção: este é o item salvo, aberto no lugar da leitura
+         * nova; [fresh] guarda a leitura nova (para ver mesmo assim) e [savedAt] quando foi salvo.
+         */
+        val fresh: Result? = null,
+        val savedAt: Long? = null,
     ) : ReaderUiState
     data object History : ReaderUiState
     data object Settings : ReaderUiState
@@ -362,7 +368,7 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         work {
             withContext(Dispatchers.Default) {
                 val rectified = crop.rgb.rectify(quad)
-                ReaderUiState.Result(ImageLoading.toBitmap(rectified), readAll(rectified, whole = crop.rgb), crop = crop.copy(suggestion = quad))
+                orSaved(ReaderUiState.Result(ImageLoading.toBitmap(rectified), readAll(rectified, whole = crop.rgb), crop = crop.copy(suggestion = quad)))
             }
         }
     }
@@ -372,7 +378,7 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         work {
             withContext(Dispatchers.Default) {
                 val whole = Quad.inset(crop.rgb.width, crop.rgb.height, 0f)
-                ReaderUiState.Result(crop.image, readAll(crop.rgb), crop = crop.copy(suggestion = whole))
+                orSaved(ReaderUiState.Result(crop.image, readAll(crop.rgb), crop = crop.copy(suggestion = whole)))
             }
         }
     }
@@ -385,6 +391,32 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         val qr = async { QrReader.read(image) ?: whole?.let(QrReader::read) }
         val glyphs = imageReader.read(image)
         glyphs.copy(qr = qr.await())
+    }
+
+    /**
+     * Se o texto lido já está na coleção, abre o item salvo no lugar da leitura nova (que fica
+     * guardada em [ReaderUiState.Result.fresh] para ver mesmo assim).
+     */
+    private suspend fun orSaved(read: ReaderUiState.Result): ReaderUiState.Result {
+        val id = history.findSameText(read.result.reading.text) ?: return read
+        val saved = history.load(id) ?: return read
+        return ReaderUiState.Result(
+            saved.image,
+            saved.result,
+            saved.id,
+            typed = saved.result.typed?.let { typedView(it) },
+            fresh = read,
+            savedAt = saved.createdAt,
+        )
+    }
+
+    /**
+     * "Ler mesmo assim": mesmo com o texto já na coleção, mostra a leitura feita agora como uma
+     * leitura nova (com "Salvar" para guardar como outro item, se quiser).
+     */
+    fun readAnyway() {
+        val fresh = (_state.value as? ReaderUiState.Result)?.fresh ?: return
+        _state.value = fresh
     }
 
     /** Volta da leitura para o recorte, com os cantos que foram usados. */

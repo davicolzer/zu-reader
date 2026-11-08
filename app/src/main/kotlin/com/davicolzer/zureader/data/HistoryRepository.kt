@@ -40,7 +40,7 @@ data class HistoryItem(val id: Long, val text: String, val createdAt: Long, val 
 data class SavedNote(val id: Long, val image: Bitmap, val title: String, val original: Bitmap, val marks: List<Mark>)
 
 /** Leitura salva, pronta para abrir na tela de resultado. */
-data class SavedReading(val id: Long, val image: Bitmap, val result: ImageReading)
+data class SavedReading(val id: Long, val image: Bitmap, val result: ImageReading, val createdAt: Long = 0)
 
 /** Leituras salvas: dados no banco e imagens em arquivos na pasta do app. */
 class HistoryRepository(private val dao: ReadingDao, filesDir: File) {
@@ -135,7 +135,17 @@ class HistoryRepository(private val dao: ReadingDao, filesDir: File) {
     suspend fun load(id: Long): SavedReading? = withContext(Dispatchers.IO) {
         val row = dao.get(id) ?: return@withContext null
         val image = BitmapFactory.decodeFile(File(imagesDir, row.imageFile).path) ?: return@withContext null
-        SavedReading(row.id, image, ReadingCodec.decode(row.data))
+        SavedReading(row.id, image, ReadingCodec.decode(row.data), row.createdAt)
+    }
+
+    /**
+     * Leitura ou escrita já salva com o mesmo texto que [text] ([SameText]); a mais parecida,
+     * e a mais nova no empate. `null` se não há.
+     */
+    suspend fun findSameText(text: String): Long? = withContext(Dispatchers.IO) {
+        if (SameText.key(text).isEmpty()) return@withContext null
+        val saved = dao.texts(listOf(ReadingEntity.KIND_READING, ReadingEntity.KIND_WRITTEN))
+        SameText.best(text, saved) { it.text }?.id
     }
 
     suspend fun delete(id: Long) = withContext(Dispatchers.IO) {

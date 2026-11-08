@@ -220,6 +220,8 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
         ReaderUiState.Reading -> ReadingProgress()
         is ReaderUiState.Result -> {
             val back: () -> Unit = when {
+                // aberto porque o texto já estava salvo: voltar é sair da leitura, não ir à coleção
+                s.fresh != null -> viewModel::goHome
                 s.savedId != null -> viewModel::openHistory
                 s.written != null -> { { viewModel.openWriter(s.written) } }
                 else -> viewModel::goHome
@@ -235,6 +237,8 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
                 onSave = viewModel::save,
                 onDelete = viewModel::deleteCurrent,
                 onAdjustCrop = if (s.crop != null) viewModel::adjustCrop else null,
+                alreadySavedAt = s.savedAt.takeIf { s.fresh != null },
+                onReadAnyway = if (s.fresh != null) viewModel::readAnyway else null,
                 typedImage = s.typed?.image,
                 typedReading = s.typed?.reading,
                 // escrever à mão vale para leituras de foto (o resultado de "Escrever à mão" já é escrito)

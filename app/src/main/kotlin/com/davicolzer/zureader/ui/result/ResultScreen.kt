@@ -61,6 +61,9 @@ import androidx.compose.ui.semantics.role
 import com.davicolzer.zureader.ui.correct.CorrectionSheet
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -127,6 +130,10 @@ fun ResultScreen(
     typedReading: ImageReading? = null,
     /** Abre o teclado de glifos para escrever o texto da foto; `null` esconde a opção. */
     onWriteByHand: (() -> Unit)? = null,
+    /** Não nulo = o texto lido já estava na coleção e este é o item salvo (quando foi salvo). */
+    alreadySavedAt: Long? = null,
+    /** "Ler mesmo assim": mostra a leitura que acabou de ser feita, no lugar do item salvo. */
+    onReadAnyway: (() -> Unit)? = null,
 ) {
     var editing by remember { mutableStateOf<Int?>(null) }
     var confirmDelete by remember { mutableStateOf(false) }
@@ -139,6 +146,7 @@ fun ResultScreen(
     val mode = result.mode
     val bitmap = remember(image) { image.asImageBitmap() }
     val typed = typedReading != null && typedImage != null
+    var noteClosed by remember(alreadySavedAt) { mutableStateOf(false) }
     // com texto escrito à mão, ele é o que vale: a foto aparece sem as letras lidas por cima
     val photoResult = remember(result, typed) {
         if (typed) result.copy(reading = result.reading.copy(glyphs = emptyList())) else result
@@ -203,6 +211,7 @@ fun ResultScreen(
                 .padding(horizontal = 20.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
+            if (!noteClosed) alreadySavedAt?.let { at -> AlreadySavedNote(at, onReadAnyway, onClose = { noteClosed = true }) }
             PhotoWithBoxes(bitmap, photoResult, selected = editing, onTapGlyph = { editing = it })
             if (reading.glyphs.isNotEmpty() && !typed) {
                 Text(
@@ -589,6 +598,42 @@ private fun shareable(result: ImageReading, typed: ImageReading? = null): String
         text.mode.display(text.reading.text).takeIf { it.isNotBlank() },
         result.qr?.text,
     ).joinToString("\n\n")
+}
+
+/**
+ * Aviso discreto no topo: o texto lido já estava na coleção, então abriu o salvo. "Ler mesmo
+ * assim" mostra a leitura feita agora (dá para salvar como outro item); o X fecha o aviso.
+ */
+@Composable
+private fun AlreadySavedNote(savedAt: Long, onReadAnyway: (() -> Unit)?, onClose: () -> Unit) {
+    val date = remember(savedAt) {
+        java.text.DateFormat.getDateInstance(java.text.DateFormat.SHORT).format(java.util.Date(savedAt))
+    }
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .padding(start = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Icon(painterResource(R.drawable.ic_pixel_check), null, Modifier.size(14.dp), tint = ZuTheme.colors.teal)
+        Text(
+            stringResource(R.string.result_already_saved, date),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f),
+        )
+        onReadAnyway?.let {
+            TextButton(onClick = it, contentPadding = PaddingValues(horizontal = 8.dp)) {
+                Text(stringResource(R.string.result_show_fresh), style = MaterialTheme.typography.labelMedium, color = ZuTheme.colors.teal)
+            }
+        }
+        IconButton(onClick = onClose, modifier = Modifier.size(40.dp)) {
+            Icon(painterResource(R.drawable.ic_pixel_close), stringResource(R.string.close), Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
 }
 
 /** Botão para escrever o texto da foto à mão, olhando os glifos (o teclado abre com o que foi lido). */

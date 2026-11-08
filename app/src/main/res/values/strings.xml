@@ -148,6 +148,8 @@
     <string name="correct_suggestions">SUGESTÕES</string>
     <string name="correct_current">atual</string>
     <string name="result_write_button">Escrever à mão</string>
+    <string name="result_already_saved">Já salvo em %1$s</string>
+    <string name="result_show_fresh">Ler mesmo assim</string>
     <string name="result_typed_label">ESCRITO À MÃO · INGLÊS</string>
     <string name="result_typed_note">Você escreveu este texto para a foto. Ele vale no lugar da leitura e fica salvo junto com a foto.</string>
     <string name="result_typed_glyphs_label">GLIFOS ESCRITOS</string>
