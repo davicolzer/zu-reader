@@ -265,14 +265,16 @@ private fun HistoryTile(item: HistoryItem, onOpen: (Long) -> Unit, onDelete: (Hi
 
 /** O texto que representa o item na lista e no mosaico: o nome, se tiver; senão, o conteúdo. */
 @Composable
-private fun listTitle(item: HistoryItem): String = item.name.takeIf { it.isNotBlank() } ?: contentText(item)
+private fun listTitle(item: HistoryItem): String = item.name.takeIf { it.isNotBlank() }
+    ?: contentText(item).takeIf { it.isNotBlank() }
+    ?: stringResource(if (item.kind == SavedKind.VIDEO) R.string.video_default_name else R.string.note_default_name)
 
 /** O conteúdo do item: a tradução, o texto do QR ou o nome da anotação. */
 @Composable
 private fun contentText(item: HistoryItem): String = when (item.kind) {
     SavedKind.QR -> item.text.removePrefix("QR: ")
     SavedKind.NOTE -> item.text.ifBlank { stringResource(R.string.note_default_name) }
-    SavedKind.VIDEO -> item.description.ifBlank { stringResource(R.string.video_default_name) }
+    SavedKind.VIDEO -> item.description
     else -> ReadingMode.of(item.text.firstOrNull { !it.isWhitespace() } ?: 'A').display(item.text).replace('\n', ' ').ifBlank { "—" }
 }
 
@@ -298,7 +300,7 @@ fun HistoryRow(item: HistoryItem, onOpen: (Long) -> Unit, onDelete: ((HistoryIte
             // com nome: o nome em destaque e o texto (tradução, QR) embaixo, menor
             if (item.name.isNotBlank() && !item.isNote) {
                 Text(item.name, style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(
+                if (contentText(item).isNotBlank()) Text(
                     contentText(item),
                     style = if (item.kind == SavedKind.QR) MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace) else MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,

@@ -165,6 +165,8 @@ private fun CameraContent(
         val listener = object : OrientationEventListener(context) {
             override fun onOrientationChanged(degrees: Int) {
                 if (degrees == ORIENTATION_UNKNOWN) return
+                // gravando vídeo: a posição fica travada como estava ao começar (nem vídeo nem tela giram)
+                if (recording != null) return
                 // celular deitado para a direita (topo à direita) → conteúdo gira −90°; para a esquerda → +90°
                 turn = when (degrees) {
                     in 60 until 120 -> -90
@@ -179,8 +181,8 @@ private fun CameraContent(
                     else -> Surface.ROTATION_0
                 }
                 imageCapture.targetRotation = rotation
-                // o vídeo também sai em pé (só vale antes de começar a gravar)
-                if (recording == null) videoCapture.targetRotation = rotation
+                // o vídeo também sai em pé (escolhido antes de começar a gravar)
+                videoCapture.targetRotation = rotation
             }
         }
         if (listener.canDetectOrientation()) listener.enable()

@@ -90,6 +90,10 @@ dependencies {
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.view)
     implementation(libs.androidx.camera.video)
+    // vídeo maior que 720p é convertido para 720p antes de guardar
+    implementation(libs.androidx.media3.transformer)
+    implementation(libs.androidx.media3.effect)
+    implementation(libs.androidx.media3.common)
 
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)

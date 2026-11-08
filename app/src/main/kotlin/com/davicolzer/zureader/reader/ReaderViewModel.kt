@@ -103,7 +103,8 @@ sealed interface ReaderUiState {
         val description: String = "",
     ) : ReaderUiState
     /** Recorte de uma foto ([fromCamera]) ou de uma imagem da galeria, com os cantos sugeridos. */
-    data class Crop(val image: Bitmap, val rgb: RgbImage, val suggestion: Quad, val fromCamera: Boolean) : ReaderUiState
+    /** Recorte da imagem antes de ler; [video] = o quadro veio de um vídeo (voltar abre o vídeo de novo). */
+    data class Crop(val image: Bitmap, val rgb: RgbImage, val suggestion: Quad, val fromCamera: Boolean, val video: Video? = null) : ReaderUiState
     data object Reading : ReaderUiState
 
     /**
@@ -206,20 +207,24 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         _state.value = ReaderUiState.Camera(CameraPurpose.VIDEO)
     }
 
-    /** O vídeo terminou de gravar (arquivo no cache): abre para ver, nomear e salvar. */
-    fun onVideoRecorded(file: File) {
-        _state.value = ReaderUiState.Video(file)
+    /** O vídeo terminou de gravar (arquivo no cache): limita a 720p e abre para ver, nomear e salvar. */
+    @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+    fun onVideoRecorded(file: File) = work {
+        ReaderUiState.Video(VideoResize.limit(getApplication(), file))
     }
 
     /** "Gravar vídeo" pela galeria: copia o vídeo para o cache do app e abre. */
+    @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
     fun pickVideo(uri: Uri) = work {
-        withContext(Dispatchers.IO) {
+        val copy = withContext(Dispatchers.IO) {
             val file = newVideoFile(getApplication())
             getApplication<Application>().contentResolver.openInputStream(uri)?.use { input ->
                 file.outputStream().use { input.copyTo(it) }
             } ?: throw IllegalArgumentException("Vídeo inválido: $uri")
-            ReaderUiState.Video(file)
+            file
         }
+        // maior que 720p: converte e guarda só o convertido
+        ReaderUiState.Video(VideoResize.limit(getApplication(), copy))
     }
 
     /** Salva o vídeo aberto na coleção (com a miniatura do primeiro quadro, em HD). */
@@ -263,7 +268,7 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         work {
             val frame = withContext(Dispatchers.IO) { videoFrame(video.file, positionMs) }
                 ?: throw IllegalStateException("Quadro não encontrado")
-            prepareCrop(frame, fromCamera = false)
+            prepareCrop(frame, fromCamera = false).copy(video = video)
         }
     }
 
@@ -518,10 +523,16 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         _state.value = crop
     }
 
+    /** Sai do resultado de um quadro de vídeo: volta para o vídeo. */
+    fun backToVideo() {
+        val video = (_state.value as? ReaderUiState.Result)?.crop?.video ?: return
+        _state.value = video
+    }
+
     /** Sai do recorte: volta para a câmera se a imagem veio dela, senão para o início. */
     fun leaveCrop() {
         val crop = _state.value as? ReaderUiState.Crop ?: return
-        _state.value = if (crop.fromCamera) ReaderUiState.Camera() else ReaderUiState.Home
+        _state.value = crop.video ?: if (crop.fromCamera) ReaderUiState.Camera() else ReaderUiState.Home
     }
 
     /**

@@ -9,7 +9,7 @@
     <string name="coming_soon">Disponível em breve</string>
     <string name="fan_notice">Projeto de fã, sem vínculo com a Polytron.</string>
     <string name="back">Voltar</string>
-    <string name="reading_progress">Lendo os glifos…</string>
+    <string name="reading_progress">Carregando…</string>
     <string name="result_title">RESULTADO</string>
     <string name="result_text_label">TEXTO LIDO · INGLÊS</string>
     <string name="result_glyphs_label">LETRA A LETRA</string>
@@ -172,8 +172,8 @@
     <string name="correct_body">Lida como %1$s. Se estiver errada, toque na letra certa.</string>
     <string name="correct_suggestions">SUGESTÕES</string>
     <string name="correct_current">atual</string>
-    <string name="correct_remove">Não é letra: remover</string>
-    <string name="correct_remove_number">Não é número: remover</string>
+    <string name="correct_remove">Não é letra</string>
+    <string name="correct_remove_number">Não é número</string>
     <string name="result_glyph_removed">Removida do texto</string>
     <string name="result_write_button">Escrever à mão</string>
     <string name="result_already_saved">Já salvo em %1$s</string>

@@ -21,6 +21,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.davicolzer.zureader.BuildConfig
 import com.davicolzer.zureader.R
+import com.davicolzer.zureader.ui.components.PixelLoader
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.AnimatedContent
 import com.davicolzer.zureader.ui.video.VideoScreen
 import androidx.compose.ui.platform.LocalContext
 import com.davicolzer.zureader.AppLanguage
@@ -118,185 +125,198 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
         )
     }
 
-    when (val s = state) {
-        ReaderUiState.Home, ReaderUiState.CouldNotOpen -> HomeScreen(
-            onReadZu = { chooseZuSource = true },
-            onOpenSettings = viewModel::openSettings,
-            errorMessage = if (s == ReaderUiState.CouldNotOpen) stringResource(R.string.error_open_image) else null,
-            onErrorShown = viewModel::goHome,
-            recent = recent,
-            onOpenSaved = viewModel::openSaved,
-            onSeeAll = viewModel::openHistory,
-            onWrite = { viewModel.openWriter() },
-            onAnnotate = { chooseNoteSource = true },
-            onReadQr = { chooseQrSource = true },
-            onRecordVideo = { chooseVideoSource = true },
-        )
-        is ReaderUiState.Video -> {
-            BackHandler(onBack = viewModel::leaveVideo)
-            VideoScreen(
-                file = s.file,
-                saved = s.id != null,
-                name = s.name,
-                description = s.description,
-                onDetails = viewModel::setDetails,
-                onSave = viewModel::saveVideo,
-                onBack = viewModel::leaveVideo,
-                onReadFrame = viewModel::readVideoFrame,
-                onDelete = if (s.id != null) viewModel::deleteVideo else null,
+    // troca de tela com transição: a nova entra com um leve deslize e aparece; a antiga some
+    AnimatedContent(
+        targetState = state,
+        // a mesma tela atualizando (ex.: correção de uma letra) não anima; só a troca de tela
+        contentKey = { it::class },
+        transitionSpec = {
+            (fadeIn(tween(220, delayMillis = 60)) + slideInHorizontally(tween(260)) { it / 14 }) togetherWith fadeOut(tween(140))
+        },
+        label = "telas",
+    ) { target ->
+        when (val s = target) {
+            ReaderUiState.Home, ReaderUiState.CouldNotOpen -> HomeScreen(
+                onReadZu = { chooseZuSource = true },
+                onOpenSettings = viewModel::openSettings,
+                errorMessage = if (s == ReaderUiState.CouldNotOpen) stringResource(R.string.error_open_image) else null,
+                onErrorShown = viewModel::goHome,
+                recent = recent,
+                onOpenSaved = viewModel::openSaved,
+                onSeeAll = viewModel::openHistory,
+                onWrite = { viewModel.openWriter() },
+                onAnnotate = { chooseNoteSource = true },
+                onReadQr = { chooseQrSource = true },
+                onRecordVideo = { chooseVideoSource = true },
             )
-        }
-        is ReaderUiState.QrResult -> {
-            val back = if (s.savedId != null) viewModel::openHistory else viewModel::goHome
-            BackHandler(onBack = back)
-            QrScreen(
-                code = s.code,
-                onReadAnother = { chooseQrSource = true },
-                onBack = back,
-                image = s.image,
-                savedId = s.savedId,
-                onCrop = viewModel::cropQr,
-                onSave = viewModel::saveQr,
-                onDelete = viewModel::deleteQr,
-                name = s.name,
-                description = s.description,
-                onDetails = viewModel::setDetails,
-            )
-        }
-        is ReaderUiState.QrCrop -> {
-            BackHandler(onBack = viewModel::leaveQrCrop)
-            CropScreen(
-                image = s.image,
-                suggestion = com.davicolzer.zureader.vision.Quad.inset(s.image.width, s.image.height, 0.05f),
-                onConfirm = { viewModel.confirmQrCrop(it) },
-                onUseWhole = { viewModel.confirmQrCrop(null) },
-                onRetake = viewModel::leaveQrCrop,
-                confirmLabel = R.string.qr_crop_confirm,
-            )
-        }
-        is ReaderUiState.Annotate -> {
-            BackHandler(onBack = viewModel::leaveAnnotate)
-            AnnotateScreen(
-                image = s.image,
-                marks = s.marks,
-                onDone = viewModel::finishAnnotating,
-                onCrop = viewModel::cropAnnotation,
-                onBack = viewModel::leaveAnnotate,
-            )
-        }
-        is ReaderUiState.AnnotateCrop -> {
-            BackHandler(onBack = viewModel::leaveAnnotationCrop)
-            // mostra a foto com os desenhos; o recorte vale para a foto e para eles
-            val shown = remember(s) { renderMarks(s.editing.image, s.editing.marks) }
-            CropScreen(
-                image = shown,
-                suggestion = com.davicolzer.zureader.vision.Quad.inset(shown.width, shown.height, 0.05f),
-                onConfirm = { viewModel.confirmAnnotationCrop(it) },
-                onUseWhole = { viewModel.confirmAnnotationCrop(null) },
-                onRetake = viewModel::leaveAnnotationCrop,
-                confirmLabel = R.string.qr_crop_confirm,
-            )
-        }
-        is ReaderUiState.Note -> {
-            BackHandler(onBack = viewModel::leaveNote)
-            NoteScreen(
-                image = s.image,
-                title = s.title,
-                saved = s.saved,
-                onBack = viewModel::leaveNote,
-                onEdit = viewModel::editNote,
-                onSave = viewModel::saveNote,
-                onDelete = if (s.id != null) viewModel::deleteNote else null,
-                description = s.description,
-            )
-        }
-        is ReaderUiState.Write -> {
-            BackHandler(onBack = viewModel::leaveWriter)
-            WriteScreen(draft = s.draft, direction = settings.direction, onDone = viewModel::finishWriting, onBack = viewModel::leaveWriter)
-        }
-        ReaderUiState.History -> {
-            val all by viewModel.allHistory.collectAsStateWithLifecycle()
-            BackHandler(onBack = viewModel::goHome)
-            HistoryScreen(all, onOpen = viewModel::openSaved, onBack = viewModel::goHome, grid = settings.historyGrid, onGridChange = viewModel::setHistoryGrid, onDelete = viewModel::deleteSaved)
-        }
-        is ReaderUiState.Camera -> {
-            BackHandler(onBack = viewModel::goHome)
-            // a câmera é sempre escura, independente do tema
-            ZuReaderTheme(darkTheme = true) {
-                CameraScreen(
-                    onCaptured = viewModel::onCaptured,
-                    // a galeria segue o propósito da câmera
-                    onPickFromGallery = when (s.purpose) {
-                        CameraPurpose.NOTE -> { { notePicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) } }
-                        CameraPurpose.QR -> { { qrPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) } }
-                        CameraPurpose.READ -> pickImage
-                        CameraPurpose.VIDEO -> pickVideo
-                    },
-                    onVideoRecorded = viewModel::onVideoRecorded,
-                    purpose = s.purpose,
-                    onQrFound = viewModel::onQrFound,
-                    onClose = viewModel::goHome,
-                    direction = settings.direction,
+            is ReaderUiState.Video -> {
+                BackHandler(onBack = viewModel::leaveVideo)
+                VideoScreen(
+                    file = s.file,
+                    saved = s.id != null,
+                    name = s.name,
+                    description = s.description,
+                    onDetails = viewModel::setDetails,
+                    onSave = viewModel::saveVideo,
+                    onBack = viewModel::leaveVideo,
+                    onReadFrame = viewModel::readVideoFrame,
+                    onDelete = if (s.id != null) viewModel::deleteVideo else null,
                 )
             }
-        }
-        ReaderUiState.Settings -> {
-            BackHandler(onBack = viewModel::goHome)
-            SettingsScreen(
-                settings = settings,
-                versionName = "${BuildConfig.VERSION_NAME} (build ${BuildConfig.VERSION_CODE})",
-                onDirection = viewModel::setDirection,
-                onTheme = viewModel::setTheme,
-                learnedCount = learned.size,
-                onForgetLearned = viewModel::forgetLearned,
-                onBack = viewModel::goHome,
-                language = remember { AppLanguage.current(context) },
-                // a tela é recriada no idioma novo e volta para as configurações
-                onLanguage = { language -> (context as? Activity)?.let { AppLanguage.set(it, language) } },
-            )
-        }
-        is ReaderUiState.Crop -> {
-            BackHandler(onBack = viewModel::leaveCrop)
-            CropScreen(
-                image = s.image,
-                suggestion = s.suggestion,
-                onConfirm = viewModel::confirmCrop,
-                onUseWhole = viewModel::useWholePhoto,
-                onRetake = viewModel::leaveCrop,
-            )
-        }
-        ReaderUiState.Reading -> ReadingProgress()
-        is ReaderUiState.Result -> {
-            val back: () -> Unit = when {
-                // aberto porque o texto já estava salvo: voltar é sair da leitura, não ir à coleção
-                s.fresh != null -> viewModel::goHome
-                s.savedId != null -> viewModel::openHistory
-                s.written != null -> { { viewModel.openWriter(s.written) } }
-                else -> viewModel::goHome
+            is ReaderUiState.QrResult -> {
+                val back = if (s.savedId != null) viewModel::openHistory else viewModel::goHome
+                BackHandler(onBack = back)
+                QrScreen(
+                    code = s.code,
+                    onReadAnother = { chooseQrSource = true },
+                    onBack = back,
+                    image = s.image,
+                    savedId = s.savedId,
+                    onCrop = viewModel::cropQr,
+                    onSave = viewModel::saveQr,
+                    onDelete = viewModel::deleteQr,
+                    name = s.name,
+                    description = s.description,
+                    onDetails = viewModel::setDetails,
+                )
             }
-            BackHandler(onBack = back)
-            ResultScreen(
-                image = s.image,
-                result = s.result,
-                onBack = back,
-                onPickAnother = pickImage,
-                savedId = s.savedId,
-                onCorrect = viewModel::correct,
-                onRemoveGlyph = viewModel::removeGlyph,
-                onRestore = viewModel::restoreReading,
-                onSave = viewModel::save,
-                onDelete = viewModel::deleteCurrent,
-                onAdjustCrop = if (s.crop != null) viewModel::adjustCrop else null,
-                alreadySavedAt = s.savedAt.takeIf { s.fresh != null },
-                onReadAnyway = if (s.fresh != null) viewModel::readAnyway else null,
-                name = s.name,
-                description = s.description,
-                onDetails = viewModel::setDetails,
-                typedImage = s.typed?.image,
-                typedReading = s.typed?.reading,
-                // escrever à mão vale para leituras de foto (o resultado de "Escrever à mão" já é escrito)
-                onWriteByHand = if (s.written == null) viewModel::writeForPhoto else null,
-            )
+            is ReaderUiState.QrCrop -> {
+                BackHandler(onBack = viewModel::leaveQrCrop)
+                CropScreen(
+                    image = s.image,
+                    suggestion = com.davicolzer.zureader.vision.Quad.inset(s.image.width, s.image.height, 0.05f),
+                    onConfirm = { viewModel.confirmQrCrop(it) },
+                    onUseWhole = { viewModel.confirmQrCrop(null) },
+                    onRetake = viewModel::leaveQrCrop,
+                    confirmLabel = R.string.qr_crop_confirm,
+                )
+            }
+            is ReaderUiState.Annotate -> {
+                BackHandler(onBack = viewModel::leaveAnnotate)
+                AnnotateScreen(
+                    image = s.image,
+                    marks = s.marks,
+                    onDone = viewModel::finishAnnotating,
+                    onCrop = viewModel::cropAnnotation,
+                    onBack = viewModel::leaveAnnotate,
+                )
+            }
+            is ReaderUiState.AnnotateCrop -> {
+                BackHandler(onBack = viewModel::leaveAnnotationCrop)
+                // mostra a foto com os desenhos; o recorte vale para a foto e para eles
+                val shown = remember(s) { renderMarks(s.editing.image, s.editing.marks) }
+                CropScreen(
+                    image = shown,
+                    suggestion = com.davicolzer.zureader.vision.Quad.inset(shown.width, shown.height, 0.05f),
+                    onConfirm = { viewModel.confirmAnnotationCrop(it) },
+                    onUseWhole = { viewModel.confirmAnnotationCrop(null) },
+                    onRetake = viewModel::leaveAnnotationCrop,
+                    confirmLabel = R.string.qr_crop_confirm,
+                )
+            }
+            is ReaderUiState.Note -> {
+                BackHandler(onBack = viewModel::leaveNote)
+                NoteScreen(
+                    image = s.image,
+                    title = s.title,
+                    saved = s.saved,
+                    onBack = viewModel::leaveNote,
+                    onEdit = viewModel::editNote,
+                    onSave = viewModel::saveNote,
+                    onDelete = if (s.id != null) viewModel::deleteNote else null,
+                    description = s.description,
+                )
+            }
+            is ReaderUiState.Write -> {
+                BackHandler(onBack = viewModel::leaveWriter)
+                WriteScreen(draft = s.draft, direction = settings.direction, onDone = viewModel::finishWriting, onBack = viewModel::leaveWriter)
+            }
+            ReaderUiState.History -> {
+                val all by viewModel.allHistory.collectAsStateWithLifecycle()
+                BackHandler(onBack = viewModel::goHome)
+                HistoryScreen(all, onOpen = viewModel::openSaved, onBack = viewModel::goHome, grid = settings.historyGrid, onGridChange = viewModel::setHistoryGrid, onDelete = viewModel::deleteSaved)
+            }
+            is ReaderUiState.Camera -> {
+                BackHandler(onBack = viewModel::goHome)
+                // a câmera é sempre escura, independente do tema
+                ZuReaderTheme(darkTheme = true) {
+                    CameraScreen(
+                        onCaptured = viewModel::onCaptured,
+                        // a galeria segue o propósito da câmera
+                        onPickFromGallery = when (s.purpose) {
+                            CameraPurpose.NOTE -> { { notePicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) } }
+                            CameraPurpose.QR -> { { qrPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) } }
+                            CameraPurpose.READ -> pickImage
+                            CameraPurpose.VIDEO -> pickVideo
+                        },
+                        onVideoRecorded = viewModel::onVideoRecorded,
+                        purpose = s.purpose,
+                        onQrFound = viewModel::onQrFound,
+                        onClose = viewModel::goHome,
+                        direction = settings.direction,
+                    )
+                }
+            }
+            ReaderUiState.Settings -> {
+                BackHandler(onBack = viewModel::goHome)
+                SettingsScreen(
+                    settings = settings,
+                    versionName = "${BuildConfig.VERSION_NAME} (build ${BuildConfig.VERSION_CODE})",
+                    onDirection = viewModel::setDirection,
+                    onTheme = viewModel::setTheme,
+                    learnedCount = learned.size,
+                    onForgetLearned = viewModel::forgetLearned,
+                    onBack = viewModel::goHome,
+                    language = remember { AppLanguage.current(context) },
+                    // a tela é recriada no idioma novo e volta para as configurações
+                    onLanguage = { language -> (context as? Activity)?.let { AppLanguage.set(it, language) } },
+                )
+            }
+            is ReaderUiState.Crop -> {
+                BackHandler(onBack = viewModel::leaveCrop)
+                CropScreen(
+                    image = s.image,
+                    suggestion = s.suggestion,
+                    onConfirm = viewModel::confirmCrop,
+                    onUseWhole = viewModel::useWholePhoto,
+                    onRetake = viewModel::leaveCrop,
+                )
+            }
+            ReaderUiState.Reading -> ReadingProgress()
+            is ReaderUiState.Result -> {
+                val back: () -> Unit = when {
+                    // aberto porque o texto já estava salvo: voltar é sair da leitura, não ir à coleção
+                    s.fresh != null -> viewModel::goHome
+                // leitura de um quadro de vídeo (ainda não salva): volta para o vídeo
+                s.savedId == null && s.crop?.video != null -> viewModel::backToVideo
+                    s.savedId != null -> viewModel::openHistory
+                    s.written != null -> { { viewModel.openWriter(s.written) } }
+                    else -> viewModel::goHome
+                }
+                BackHandler(onBack = back)
+                ResultScreen(
+                    image = s.image,
+                    result = s.result,
+                    onBack = back,
+                    onPickAnother = pickImage,
+                    savedId = s.savedId,
+                    onCorrect = viewModel::correct,
+                    onRemoveGlyph = viewModel::removeGlyph,
+                    onRestore = viewModel::restoreReading,
+                    onSave = viewModel::save,
+                    onDelete = viewModel::deleteCurrent,
+                    onAdjustCrop = if (s.crop != null) viewModel::adjustCrop else null,
+                    alreadySavedAt = s.savedAt.takeIf { s.fresh != null },
+                    onReadAnyway = if (s.fresh != null) viewModel::readAnyway else null,
+                    name = s.name,
+                    description = s.description,
+                    onDetails = viewModel::setDetails,
+                    typedImage = s.typed?.image,
+                    typedReading = s.typed?.reading,
+                    // escrever à mão vale para leituras de foto (o resultado de "Escrever à mão" já é escrito)
+                    onWriteByHand = if (s.written == null) viewModel::writeForPhoto else null,
+                )
+            }
         }
     }
 }
@@ -308,7 +328,7 @@ private fun ReadingProgress() {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
         ) {
-            CircularProgressIndicator(color = MaterialTheme.colorScheme.tertiary)
+            PixelLoader()
             Text(stringResource(R.string.reading_progress), style = MaterialTheme.typography.titleSmall)
         }
     }

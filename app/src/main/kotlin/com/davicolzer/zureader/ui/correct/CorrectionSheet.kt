@@ -86,18 +86,29 @@ private fun CorrectionBody(glyph: GlyphReading, rotation: Int, onSelect: (Char) 
             ) {
                 MiniGlyph(glyph.source.bits.rotate(rotation), MaterialTheme.colorScheme.onSurface, size = 54.dp)
             }
-            Text(
-                when {
-                    mode == ReadingMode.NUMBERS && glyph.isLowConfidence -> stringResource(R.string.correct_body_doubt_numbers)
-                    mode == ReadingMode.NUMBERS -> stringResource(R.string.correct_body_numbers, mode.symbolLabel(glyph.letter))
-                    glyph.isLowConfidence -> stringResource(R.string.correct_body_doubt)
-                    ZuAlphabet.twin(glyph.letter) != null ->
-                        stringResource(R.string.correct_body_twin, glyph.letter.toString(), ZuAlphabet.twin(glyph.letter).toString())
-                    else -> stringResource(R.string.correct_body, mode.symbolLabel(glyph.letter))
-                },
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    when {
+                        mode == ReadingMode.NUMBERS && glyph.isLowConfidence -> stringResource(R.string.correct_body_doubt_numbers)
+                        mode == ReadingMode.NUMBERS -> stringResource(R.string.correct_body_numbers, mode.symbolLabel(glyph.letter))
+                        glyph.isLowConfidence -> stringResource(R.string.correct_body_doubt)
+                        ZuAlphabet.twin(glyph.letter) != null ->
+                            stringResource(R.string.correct_body_twin, glyph.letter.toString(), ZuAlphabet.twin(glyph.letter).toString())
+                        else -> stringResource(R.string.correct_body, mode.symbolLabel(glyph.letter))
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                // não era letra (mancha, folha, cenário): botão pequeno, ao lado do glifo
+                onRemove?.let {
+                    PixelOutlinedButton(
+                        stringResource(if (mode != ReadingMode.NUMBERS) R.string.correct_remove else R.string.correct_remove_number),
+                        R.drawable.ic_pixel_trash,
+                        onClick = it,
+                        compact = true,
+                    )
+                }
+            }
         }
 
         val twin = if (mode != ReadingMode.NUMBERS) ZuAlphabet.twin(glyph.letter) else null
@@ -148,14 +159,6 @@ private fun CorrectionBody(glyph: GlyphReading, rotation: Int, onSelect: (Char) 
                     repeat(KEYS_PER_ROW - row.size) { Box(Modifier.weight(1f).size(1.dp)) }
                 }
             }
-        }
-        // não era letra (mancha, folha, cenário): tira do texto
-        onRemove?.let {
-            PixelOutlinedButton(
-                stringResource(if (mode != ReadingMode.NUMBERS) R.string.correct_remove else R.string.correct_remove_number),
-                R.drawable.ic_pixel_trash,
-                onClick = it,
-            )
         }
     }
 }

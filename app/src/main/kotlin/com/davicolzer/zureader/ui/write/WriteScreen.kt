@@ -39,6 +39,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.sp
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.foundation.text.TextAutoSize
+import androidx.compose.foundation.text.BasicText
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
@@ -180,7 +184,13 @@ fun WriteScreen(
                             inactiveContentColor = MaterialTheme.colorScheme.onSurface,
                         ),
                     ) {
-                        Text(stringResource(if (letters) R.string.write_by_letters else R.string.write_by_glyphs), style = MaterialTheme.typography.labelLarge)
+                        // numa linha só, diminuindo se o idioma tiver um nome mais longo
+                        BasicText(
+                            stringResource(if (letters) R.string.write_by_letters else R.string.write_by_glyphs),
+                            style = MaterialTheme.typography.labelLarge.copy(color = LocalContentColor.current),
+                            maxLines = 1,
+                            autoSize = TextAutoSize.StepBased(minFontSize = 10.sp, maxFontSize = MaterialTheme.typography.labelLarge.fontSize),
+                        )
                     }
                 }
             }
@@ -200,7 +210,8 @@ fun WriteScreen(
             }
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ActionKey(stringResource(R.string.write_space), null, Modifier.weight(1.3f)) {
+                // espaço: o ícone (a palavra fica para quem usa leitor de tela)
+                ActionKey(stringResource(R.string.write_space), R.drawable.ic_pixel_space, Modifier.weight(1.3f)) {
                     if (text.isNotEmpty() && !text.endsWith(' ') && !text.endsWith('\n')) text += ' '
                 }
                 ActionKey(
