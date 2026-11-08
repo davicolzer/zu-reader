@@ -38,6 +38,11 @@ data class ImageReading(
     val mode: ReadingMode = ReadingMode.TEXT,
     /** QR code achado na mesma imagem, se houver. */
     val qr: QrCode? = null,
+    /**
+     * Texto que o usuário escreveu à mão depois de ler esta foto (quando a leitura saiu ruim).
+     * Se houver, ele é o texto que vale; a foto e os glifos lidos ficam como estavam.
+     */
+    val typed: String? = null,
 ) {
     /** Nota da leitura: glifos confiantes somam, duvidosos subtraem (compara leituras da mesma imagem). */
     val quality: Float get() = reading.glyphs.sumOf { it.confidence.toDouble() - ZuImageReader.QUALITY_OFFSET }.toFloat()

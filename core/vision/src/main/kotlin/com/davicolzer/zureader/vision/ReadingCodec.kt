@@ -15,7 +15,8 @@ import java.util.Base64
  * Formato (uma linha por item, campos separados por `;`):
  * ```
  * zu1
- * w;h;rotação;inclinação;tinta escura;direção;pontuação;modo;QR code (Base64, vazio se não houver)
+ * w;h;rotação;inclinação;tinta escura;direção;pontuação;modo;QR code;texto escrito à mão
+ * (os dois últimos em Base64, vazios se não houver)
  * texto (com | no lugar de quebra de linha)
  * x;y;largura;altura;25 blocos (# ou .);letra;confiança;corrigida;alternativas (letra:nota,...)
  * ...
@@ -28,7 +29,8 @@ object ReadingCodec {
         val r = reading.reading
         appendLine(VERSION)
         val qr = reading.qr?.let { Base64.getEncoder().encodeToString(it.text.toByteArray(Charsets.UTF_8)) }.orEmpty()
-        appendLine(listOf(reading.width, reading.height, r.rotation, reading.skewDegrees, if (reading.inkIsDark) 1 else 0, r.direction.name, r.score, reading.mode.name, qr).joinToString(";"))
+        val typed = reading.typed?.let { Base64.getEncoder().encodeToString(it.toByteArray(Charsets.UTF_8)) }.orEmpty()
+        appendLine(listOf(reading.width, reading.height, r.rotation, reading.skewDegrees, if (reading.inkIsDark) 1 else 0, r.direction.name, r.score, reading.mode.name, qr, typed).joinToString(";"))
         appendLine(r.text.replace('\n', '|'))
         for (g in r.glyphs) {
             val s = g.source
@@ -76,6 +78,8 @@ object ReadingCodec {
             mode = head.getOrNull(7)?.let { runCatching { ReadingMode.valueOf(it) }.getOrNull() } ?: ReadingMode.TEXT,
             // leituras salvas antes do leitor de QR não têm este campo
             qr = head.getOrNull(8)?.takeIf { it.isNotEmpty() }?.let { QrCode(String(Base64.getDecoder().decode(it), Charsets.UTF_8)) },
+            // leituras salvas antes do "escrever à mão" na leitura não têm este campo
+            typed = head.getOrNull(9)?.takeIf { it.isNotEmpty() }?.let { String(Base64.getDecoder().decode(it), Charsets.UTF_8) },
         )
     }
 }

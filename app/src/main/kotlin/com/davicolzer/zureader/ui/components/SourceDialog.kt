@@ -12,9 +12,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -61,9 +59,7 @@ fun SourceDialog(
                 extra?.invoke()
                 PixelPrimaryButton(stringResource(R.string.source_camera), R.drawable.ic_pixel_camera, onClick = onCamera)
                 PixelOutlinedButton(stringResource(R.string.source_gallery), R.drawable.ic_pixel_gallery, onClick = onGallery)
-                TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.CenterHorizontally)) {
-                    Text(stringResource(R.string.cancel), style = MaterialTheme.typography.labelLarge)
-                }
+                PixelOutlinedButton(stringResource(R.string.cancel), R.drawable.ic_pixel_close, onClick = onDismiss)
             }
         }
     }

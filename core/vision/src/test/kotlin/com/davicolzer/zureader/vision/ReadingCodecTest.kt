@@ -45,4 +45,20 @@ class ReadingCodecTest {
         }
         assertEquals(null, ReadingCodec.decode(ReadingCodec.encode(base)).qr)
     }
+
+    @Test
+    fun `texto escrito a mao vai e volta, e leitura antiga abre sem ele`() {
+        val base = ZuImageReader().read(ZuRenderer.render("OPEN"))
+        for (text in listOf("OPEN THE DOOR", "ROOM 12\nA;B", "127=#")) {
+            val back = ReadingCodec.decode(ReadingCodec.encode(base.copy(typed = text, qr = QrCode("x"))))
+            assertEquals(text, back.typed)
+            assertEquals("x", back.qr?.text)
+            assertEquals(base.reading.text, back.reading.text)
+        }
+        assertEquals(null, ReadingCodec.decode(ReadingCodec.encode(base)).typed)
+        // formato antigo, sem o campo: abre sem texto escrito
+        val old = ReadingCodec.encode(base).lines().toMutableList()
+        old[1] = old[1].substringBeforeLast(';')
+        assertEquals(null, ReadingCodec.decode(old.joinToString("\n")).typed)
+    }
 }

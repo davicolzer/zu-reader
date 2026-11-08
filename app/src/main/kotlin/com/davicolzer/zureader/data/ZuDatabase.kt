@@ -12,6 +12,8 @@ import androidx.room.Query
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.Upsert
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -30,6 +32,8 @@ data class ReadingEntity(
 ) {
     companion object {
         const val KIND_READING = "reading"
+        const val KIND_WRITTEN = "written"
+        const val KIND_QR = "qr"
         const val KIND_NOTE = "note"
     }
 }
@@ -48,8 +52,8 @@ interface ReadingDao {
     @Query("UPDATE readings SET text = :text, data = :data WHERE id = :id")
     suspend fun update(id: Long, text: String, data: String)
 
-    @Query("UPDATE readings SET text = :text, imageFile = :imageFile WHERE id = :id")
-    suspend fun updateNote(id: Long, text: String, imageFile: String)
+    @Query("UPDATE readings SET text = :text, imageFile = :imageFile, data = :data WHERE id = :id")
+    suspend fun updateNote(id: Long, text: String, imageFile: String, data: String)
 
     @Query("DELETE FROM readings WHERE id = :id")
     suspend fun delete(id: Long)
@@ -81,7 +85,7 @@ interface LearnedGlyphDao {
 
 @Database(
     entities = [ReadingEntity::class, LearnedGlyphEntity::class],
-    version = 3,
+    version = 4,
     exportSchema = true,
     autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3)],
 )
@@ -91,6 +95,17 @@ abstract class ZuDatabase : RoomDatabase() {
 
     companion object {
         fun create(context: Context): ZuDatabase =
-            Room.databaseBuilder(context, ZuDatabase::class.java, "zu-reader.db").build()
+            Room.databaseBuilder(context, ZuDatabase::class.java, "zu-reader.db").addMigrations(MIGRATION_3_4).build()
+
+        /**
+         * 3 → 4: o tipo passa a separar também "escrita" e "QR code". A tabela não muda; os QR
+         * já salvos (lista "QR: …") viram do tipo QR. Escritas antigas não dá para distinguir e
+         * ficam como leitura.
+         */
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("UPDATE readings SET kind = '${ReadingEntity.KIND_QR}' WHERE kind = '${ReadingEntity.KIND_READING}' AND text LIKE 'QR: %'")
+            }
+        }
     }
 }

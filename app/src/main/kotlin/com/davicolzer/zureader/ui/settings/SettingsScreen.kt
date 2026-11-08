@@ -14,7 +14,6 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -23,7 +22,6 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -42,6 +40,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.davicolzer.zureader.R
+import com.davicolzer.zureader.ui.components.AppDialog
 import com.davicolzer.zureader.data.Settings
 import com.davicolzer.zureader.data.ThemeMode
 import com.davicolzer.zureader.ui.components.PixelOutlinedButton
@@ -134,15 +133,15 @@ fun SettingsScreen(
 
 @Composable
 private fun ForgetDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.settings_forget_title)) },
-        text = { Text(stringResource(R.string.settings_forget_body)) },
-        confirmButton = {
-            TextButton(onClick = onConfirm) { Text(stringResource(R.string.settings_forget_confirm), color = MaterialTheme.colorScheme.error) }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
-        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+    AppDialog(
+        title = stringResource(R.string.settings_forget_title),
+        body = stringResource(R.string.settings_forget_body),
+        icon = R.drawable.ic_pixel_undo,
+        iconTint = MaterialTheme.colorScheme.primary,
+        confirmLabel = stringResource(R.string.settings_forget_confirm),
+        confirmIcon = R.drawable.ic_pixel_trash,
+        onConfirm = onConfirm,
+        onDismiss = onDismiss,
     )
 }
 
