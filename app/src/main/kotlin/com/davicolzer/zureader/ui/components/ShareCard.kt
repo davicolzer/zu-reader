@@ -10,6 +10,8 @@ import android.text.Layout
 import android.text.StaticLayout
 import android.text.TextPaint
 import androidx.core.content.FileProvider
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 import kotlin.math.roundToInt
 
@@ -69,15 +71,20 @@ object ShareCard {
         return out
     }
 
-    /** Abre o "compartilhar" do Android com a imagem (se houver) e o texto. */
-    fun share(context: Context, image: Bitmap?, name: String?, text: String?, description: String?) {
+    /**
+     * Abre o "compartilhar" do Android com a imagem (se houver) e o texto. A imagem com o rodapé é
+     * montada e gravada fora da thread principal (numa foto grande, leva um instante).
+     */
+    suspend fun share(context: Context, image: Bitmap?, name: String?, text: String?, description: String?) {
         val message = message(name, text, description)
         val send = Intent(Intent.ACTION_SEND)
         if (image != null) {
-            val card = withFooter(image, name, text, description)
-            val dir = File(context.cacheDir, "shared").apply { mkdirs() }
-            val file = File(dir, "zu-reader.jpg")
-            file.outputStream().use { card.compress(Bitmap.CompressFormat.JPEG, 92, it) }
+            val file = withContext(Dispatchers.Default) {
+                val card = withFooter(image, name, text, description)
+                File(File(context.cacheDir, "shared").apply { mkdirs() }, "zu-reader.jpg").also { file ->
+                    file.outputStream().use { card.compress(Bitmap.CompressFormat.JPEG, 92, it) }
+                }
+            }
             val uri = FileProvider.getUriForFile(context, "${context.packageName}.files", file)
             send.setType("image/jpeg").putExtra(Intent.EXTRA_STREAM, uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         } else {

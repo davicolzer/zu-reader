@@ -178,7 +178,7 @@ fun ResultScreen(
                     }
                     ActionTile(R.drawable.ic_pixel_share, stringResource(R.string.result_share), Modifier.weight(1f)) {
                         // a foto com um rodapé (nome, texto, descrição) e o mesmo texto na mensagem
-                        ShareCard.share(context, image, name, shareable(result, typedReading), description)
+                        scope.launch { ShareCard.share(context, image, name, shareable(result, typedReading), description) }
                     }
                     if (savedId == null) {
                         ActionTile(R.drawable.ic_pixel_save, stringResource(R.string.result_save), Modifier.weight(1f), primary = true) {

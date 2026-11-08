@@ -44,9 +44,11 @@ import com.davicolzer.zureader.ui.components.PixelOutlinedButton
 import com.davicolzer.zureader.ui.components.PixelPrimaryButton
 import com.davicolzer.zureader.ui.theme.ZuTheme
 import java.io.File
+import kotlinx.coroutines.launch
 import com.davicolzer.zureader.ui.components.AppTopBar
 import com.davicolzer.zureader.ui.components.DeleteAction
 import com.davicolzer.zureader.ui.components.DeleteDialog
+import androidx.compose.runtime.rememberCoroutineScope
 
 /**
  * A anotação pronta (depois do "OK" no editor, ou aberta do histórico): o nome em cima, a foto
@@ -67,6 +69,7 @@ fun NoteScreen(
     description: String = "",
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var confirmDelete by remember { mutableStateOf(false) }
     var name by remember(title) { mutableStateOf(title) }
     var about by remember(description) { mutableStateOf(description) }
@@ -103,7 +106,7 @@ fun NoteScreen(
             DetailsFields(name, about, { n, d -> name = n; about = d }, showName = false)
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 PixelOutlinedButton(stringResource(R.string.note_edit), R.drawable.ic_pixel_pen, onClick = onEdit, modifier = Modifier.weight(1f), compact = true)
-                PixelOutlinedButton(stringResource(R.string.note_share), R.drawable.ic_pixel_share, onClick = { ShareCard.share(context, image, name.ifBlank { null }, null, about) }, modifier = Modifier.weight(1f), compact = true)
+                PixelOutlinedButton(stringResource(R.string.note_share), R.drawable.ic_pixel_share, onClick = { scope.launch { ShareCard.share(context, image, name.ifBlank { null }, null, about) } }, modifier = Modifier.weight(1f), compact = true)
             }
             if (upToDate) {
                 PixelOutlinedButton(stringResource(R.string.note_saved), R.drawable.ic_pixel_check, onClick = {}, enabled = false)

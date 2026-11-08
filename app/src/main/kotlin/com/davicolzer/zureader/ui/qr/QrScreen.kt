@@ -188,7 +188,7 @@ fun QrScreen(
                     }
                     ActionTile(R.drawable.ic_pixel_share, stringResource(R.string.result_share), Modifier.weight(1f)) {
                         // a imagem do QR com um rodapé (nome, conteúdo, descrição) e o texto na mensagem
-                        ShareCard.share(context, image, name, code.text, description)
+                        scope.launch { ShareCard.share(context, image, name, code.text, description) }
                     }
                     if (savedId == null) {
                         ActionTile(R.drawable.ic_pixel_save, stringResource(R.string.result_save), Modifier.weight(1f), primary = true) {
