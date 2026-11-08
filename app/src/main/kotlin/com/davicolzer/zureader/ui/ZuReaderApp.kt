@@ -25,7 +25,7 @@ import com.davicolzer.zureader.BuildConfig
 import com.davicolzer.zureader.R
 import com.davicolzer.zureader.ui.components.PixelLoader
 import androidx.compose.animation.AnimatedContent
-import com.davicolzer.zureader.ui.components.CubeBackdrop
+import com.davicolzer.zureader.ui.theme.Backdrop
 import com.davicolzer.zureader.ui.components.cubeFace
 import com.davicolzer.zureader.ui.components.cubeTurnSpec
 import com.davicolzer.zureader.ui.video.VideoScreen
@@ -131,7 +131,7 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
     val forward = turn.update(state)
     AnimatedContent(
         targetState = state,
-        modifier = Modifier.background(CubeBackdrop),
+        modifier = Modifier.background(Backdrop),
         // a mesma tela atualizando (ex.: correção de uma letra, o aviso no início) não gira;
         // só a troca de tela
         contentKey = { screenKey(it) },

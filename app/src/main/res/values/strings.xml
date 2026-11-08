@@ -75,7 +75,6 @@
     <string name="note_hint_text">Tap the photo where you want to write, or a text to change it.</string>
     <string name="note_hint_typing">Write on the photo. Tap outside or Done to finish.</string>
     <string name="note_text_placeholder">Write</string>
-    <string name="note_name_label">Name (optional)</string>
     <string name="note_default_name">Note</string>
     <string name="note_image_description">Annotated photo</string>
     <string name="note_share">Share</string>
@@ -158,7 +157,6 @@
     <string name="video_read_frame">Read Zu in this frame</string>
     <string name="video_delete_title">Delete video?</string>
     <string name="video_delete_body">The video leaves the collection.</string>
-    <string name="video_description">Video</string>
     <string name="video_record_failed">The video wasn\'t recorded. Try again.</string>
     <string name="details_name">Name (optional)</string>
     <string name="details_name_hint">E.g.: Forest tombstone</string>

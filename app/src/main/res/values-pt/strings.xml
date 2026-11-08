@@ -76,7 +76,6 @@
     <string name="note_hint_text">Toque na foto onde quer escrever, ou num texto para mudar.</string>
     <string name="note_hint_typing">Escreva na foto. Toque fora ou em Concluir para terminar.</string>
     <string name="note_text_placeholder">Escreva</string>
-    <string name="note_name_label">Nome (opcional)</string>
     <string name="note_default_name">Anotação</string>
     <string name="note_image_description">Foto anotada</string>
     <string name="note_share">Compartilhar</string>
@@ -159,7 +158,6 @@
     <string name="video_read_frame">Ler Zu neste quadro</string>
     <string name="video_delete_title">Apagar vídeo?</string>
     <string name="video_delete_body">O vídeo sai da coleção.</string>
-    <string name="video_description">Vídeo</string>
     <string name="video_record_failed">O vídeo não foi gravado. Tente de novo.</string>
     <string name="details_name">Nome (opcional)</string>
     <string name="details_name_hint">Ex.: Lápide da floresta</string>

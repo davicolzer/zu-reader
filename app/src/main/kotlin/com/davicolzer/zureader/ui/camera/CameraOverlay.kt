@@ -56,8 +56,9 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.LiveRegionMode
 import com.davicolzer.zureader.reader.CameraPurpose
 import com.davicolzer.zureader.ui.theme.ZuTheme
+import com.davicolzer.zureader.ui.theme.Backdrop
+import com.davicolzer.zureader.ui.theme.Scrim
 
-private val Scrim = Color(0xCC0B0A18)
 
 /**
  * Tudo o que fica por cima do visor: guia, qualidade da imagem e controles. Não há leitura ao
@@ -161,7 +162,7 @@ fun CameraOverlay(
             Column(
                 Modifier
                     .fillMaxWidth()
-                    .background(Brush.verticalGradient(0f to Color.Transparent, 0.35f to Scrim, 1f to Color(0xFF0B0A18)))
+                    .background(Brush.verticalGradient(0f to Color.Transparent, 0.35f to Scrim, 1f to Backdrop))
                     .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom + WindowInsetsSides.Horizontal))
                     .padding(top = 28.dp, bottom = 20.dp, start = 24.dp, end = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,

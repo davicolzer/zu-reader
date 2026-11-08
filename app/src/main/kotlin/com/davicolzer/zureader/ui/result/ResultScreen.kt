@@ -3,24 +3,13 @@ package com.davicolzer.zureader.ui.result
 import androidx.compose.ui.semantics.onClick
 import com.davicolzer.zureader.ui.components.LocalFullscreen
 import com.davicolzer.zureader.ui.components.ExpandHint
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.calculateCentroid
-import androidx.compose.foundation.gestures.calculatePan
-import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import com.davicolzer.zureader.vision.Viewport
 import kotlin.math.roundToInt
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context
-import android.content.Intent
 import android.graphics.Bitmap
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.BorderStroke
@@ -72,8 +61,6 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -100,13 +87,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.ui.text.font.FontFamily
-import android.net.Uri
 import com.davicolzer.zureader.vision.QrCode
 import com.davicolzer.zureader.R
 import com.davicolzer.zureader.ui.components.ActionTile
 import com.davicolzer.zureader.ui.components.ShareCard
 import com.davicolzer.zureader.ui.components.DetailsFields
-import com.davicolzer.zureader.ui.components.AppDialog
 import com.davicolzer.zureader.ui.components.MiniGlyph
 import com.davicolzer.zureader.ui.components.PixelOutlinedButton
 import com.davicolzer.zureader.ui.components.PixelPrimaryButton
@@ -116,6 +101,12 @@ import com.davicolzer.zureader.zu.GlyphReading
 import com.davicolzer.zureader.zu.ReadingMode
 import com.davicolzer.zureader.zu.ZuAlphabet
 import kotlinx.coroutines.launch
+import com.davicolzer.zureader.ui.components.AppTopBar
+import com.davicolzer.zureader.ui.components.DeleteAction
+import com.davicolzer.zureader.ui.components.DeleteDialog
+import com.davicolzer.zureader.ui.components.detectZoomGestures
+import com.davicolzer.zureader.ui.components.copyText
+import com.davicolzer.zureader.ui.components.openLink
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -201,22 +192,7 @@ fun ResultScreen(
             }
         },
         topBar = {
-            TopAppBar(
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(painterResource(R.drawable.ic_pixel_back), stringResource(R.string.back), Modifier.size(22.dp))
-                    }
-                },
-                title = { Text(stringResource(R.string.result_title), style = MaterialTheme.typography.titleLarge) },
-                actions = {
-                    if (savedId != null) {
-                        IconButton(onClick = { confirmDelete = true }) {
-                            Icon(painterResource(R.drawable.ic_pixel_trash), stringResource(R.string.result_delete), Modifier.size(22.dp))
-                        }
-                    }
-                },
-            )
+            AppTopBar(R.string.result_title, onBack) { if (savedId != null) DeleteAction { confirmDelete = true } }
         },
     ) { padding ->
         Column(
@@ -348,13 +324,9 @@ fun ResultScreen(
     }
 
     if (confirmDelete) {
-        AppDialog(
+        DeleteDialog(
             title = stringResource(R.string.result_delete_title),
             body = stringResource(R.string.result_delete_body),
-            icon = R.drawable.ic_pixel_trash,
-            iconTint = MaterialTheme.colorScheme.primary,
-            confirmLabel = stringResource(R.string.result_delete),
-            confirmIcon = R.drawable.ic_pixel_trash,
             onConfirm = { confirmDelete = false; onDelete() },
             onDismiss = { confirmDelete = false },
         )
@@ -423,47 +395,21 @@ private fun PhotoWithBoxes(
             }
             SideEffect { if (stored !== fitted) stored = fitted }
             val view = fitted
-            val slop = LocalViewConfiguration.current.touchSlop
             Canvas(
                 Modifier
                     .fillMaxSize()
                     .clipToBounds()
                     .pointerInput(glyphs, viewW, viewH) {
-                        awaitEachGesture {
-                            val down = awaitFirstDown(requireUnconsumed = false)
-                            var moved = 0f
-                            var multi = false
-                            while (true) {
-                                val event = awaitPointerEvent()
-                                val pressed = event.changes.filter { it.pressed }
-                                if (pressed.isEmpty()) break
-                                if (pressed.size >= 2) {
-                                    multi = true
-                                    val c = event.calculateCentroid()
-                                    val pan = event.calculatePan()
-                                    stored = (stored ?: fitted).zoomedAt(c.x, c.y, event.calculateZoom()).panned(pan.x, pan.y)
-                                    event.changes.forEach { it.consume() }
-                                } else {
-                                    val change = pressed.first()
-                                    val d = change.positionChange()
-                                    moved += kotlin.math.abs(d.x) + kotlin.math.abs(d.y)
-                                    // sem zoom, o arrasto de um dedo fica para a rolagem da tela
-                                    if ((stored ?: fitted).zoom > 1f && !multi) {
-                                        stored = (stored ?: fitted).panned(d.x, d.y)
-                                        change.consume()
-                                    }
-                                }
-                            }
-                            if (multi || moved > slop) return@awaitEachGesture
+                        detectZoomGestures({ stored ?: fitted }, { stored = it }) { position, _ ->
                             // fora de um glifo, no quadro: abre a tela cheia
                             val outside = { if (!fill) open() }
-                            if (onTapGlyph == null) return@awaitEachGesture outside()
-                            val p = (stored ?: fitted).toImage(down.position.x, down.position.y)
+                            if (onTapGlyph == null) return@detectZoomGestures outside()
+                            val p = (stored ?: fitted).toImage(position.x, position.y)
                             // o glifo cuja caixa contém o toque (ou o mais perto, até meio glifo de distância)
                             val nearest = glyphs.indices.minByOrNull { k ->
                                 val g = glyphs[k].source
                                 kotlin.math.hypot(g.x - p.x, g.y - p.y)
-                            } ?: return@awaitEachGesture outside()
+                            } ?: return@detectZoomGestures outside()
                             val g = glyphs[nearest].source
                             if (kotlin.math.hypot(g.x - p.x, g.y - p.y) <= g.size) onTapGlyph(nearest) else outside()
                         }
@@ -715,13 +661,4 @@ private fun QrCard(qr: QrCode, onCopy: () -> Unit, onOpen: (String) -> Unit) {
         }
         PixelOutlinedButton(stringResource(R.string.qr_copy), R.drawable.ic_pixel_copy, onClick = onCopy)
     }
-}
-
-private fun openLink(context: Context, link: String) {
-    runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(link))) }
-}
-
-private fun copyText(context: Context, text: String) {
-    val clipboard = context.getSystemService(ClipboardManager::class.java)
-    clipboard.setPrimaryClip(ClipData.newPlainText("Zu", text))
 }

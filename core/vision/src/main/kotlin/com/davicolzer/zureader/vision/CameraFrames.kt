@@ -39,16 +39,3 @@ object CameraFrames {
         return GrayImage(outW, outH, out)
     }
 }
-
-/** Como uma imagem aparece numa área que ela preenche por inteiro, cortando sobras (FILL_CENTER). */
-data class FillCenter(val scale: Float, val offsetX: Float, val offsetY: Float) {
-    fun mapX(x: Float) = x * scale + offsetX
-    fun mapY(y: Float) = y * scale + offsetY
-
-    companion object {
-        fun of(imageWidth: Int, imageHeight: Int, viewWidth: Float, viewHeight: Float): FillCenter {
-            val scale = maxOf(viewWidth / imageWidth, viewHeight / imageHeight)
-            return FillCenter(scale, (viewWidth - imageWidth * scale) / 2, (viewHeight - imageHeight * scale) / 2)
-        }
-    }
-}

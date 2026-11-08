@@ -30,8 +30,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -90,9 +88,12 @@ import androidx.compose.ui.unit.sp
 import com.davicolzer.zureader.R
 import com.davicolzer.zureader.ui.theme.ZuTheme
 import kotlin.math.roundToInt
+import com.davicolzer.zureader.ui.components.AppTopBar
+import com.davicolzer.zureader.ui.theme.CubeGold
+import com.davicolzer.zureader.ui.theme.ScanTeal
 
 /** Cores das anotações: dourado, vermelho, azul e branco (as do app, fortes em qualquer foto). */
-private val MarkColors = listOf(Color(0xFFF5B700), Color(0xFFE5243B), Color(0xFF4FC3C9), Color.White)
+private val MarkColors = listOf(CubeGold, Color(0xFFE5243B), ScanTeal, Color.White)
 
 /**
  * Editor de anotações (abre direto ao escolher a foto): em cima, "Recortar" e "OK"; a foto ocupa
@@ -152,27 +153,18 @@ fun AnnotateScreen(
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            TopAppBar(
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(painterResource(R.drawable.ic_pixel_back), stringResource(R.string.back), Modifier.size(22.dp))
-                    }
-                },
-                title = { Text(stringResource(R.string.note_title), style = MaterialTheme.typography.titleLarge) },
-                actions = {
-                    TextButton(onClick = { commitText(); onCrop(marks.toList()) }) {
-                        Icon(painterResource(R.drawable.ic_pixel_crop), contentDescription = null, Modifier.size(20.dp))
-                        Spacer(Modifier.size(6.dp))
-                        Text(stringResource(R.string.note_crop), style = MaterialTheme.typography.labelLarge)
-                    }
-                    TextButton(onClick = { commitText(); onDone(renderMarks(image, marks.toList()), marks.toList()) }) {
-                        Icon(painterResource(R.drawable.ic_pixel_check), contentDescription = null, Modifier.size(20.dp))
-                        Spacer(Modifier.size(6.dp))
-                        Text(stringResource(R.string.note_done), style = MaterialTheme.typography.labelLarge)
-                    }
-                },
-            )
+            AppTopBar(R.string.note_title, onBack) {
+                TextButton(onClick = { commitText(); onCrop(marks.toList()) }) {
+                    Icon(painterResource(R.drawable.ic_pixel_crop), contentDescription = null, Modifier.size(20.dp))
+                    Spacer(Modifier.size(6.dp))
+                    Text(stringResource(R.string.note_crop), style = MaterialTheme.typography.labelLarge)
+                }
+                TextButton(onClick = { commitText(); onDone(renderMarks(image, marks.toList()), marks.toList()) }) {
+                    Icon(painterResource(R.drawable.ic_pixel_check), contentDescription = null, Modifier.size(20.dp))
+                    Spacer(Modifier.size(6.dp))
+                    Text(stringResource(R.string.note_done), style = MaterialTheme.typography.labelLarge)
+                }
+            }
         },
     ) { padding ->
         Column(

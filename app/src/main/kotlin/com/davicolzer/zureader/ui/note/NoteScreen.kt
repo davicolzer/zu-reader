@@ -19,12 +19,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -43,11 +40,13 @@ import com.davicolzer.zureader.R
 import com.davicolzer.zureader.ui.components.ZoomableImage
 import com.davicolzer.zureader.ui.components.ShareCard
 import com.davicolzer.zureader.ui.components.DetailsFields
-import com.davicolzer.zureader.ui.components.AppDialog
 import com.davicolzer.zureader.ui.components.PixelOutlinedButton
 import com.davicolzer.zureader.ui.components.PixelPrimaryButton
 import com.davicolzer.zureader.ui.theme.ZuTheme
 import java.io.File
+import com.davicolzer.zureader.ui.components.AppTopBar
+import com.davicolzer.zureader.ui.components.DeleteAction
+import com.davicolzer.zureader.ui.components.DeleteDialog
 
 /**
  * A anotação pronta (depois do "OK" no editor, ou aberta do histórico): o nome em cima, a foto
@@ -76,22 +75,7 @@ fun NoteScreen(
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            TopAppBar(
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(painterResource(R.drawable.ic_pixel_back), stringResource(R.string.back), Modifier.size(22.dp))
-                    }
-                },
-                title = { Text(stringResource(R.string.note_screen_title), style = MaterialTheme.typography.titleLarge) },
-                actions = {
-                    if (onDelete != null) {
-                        IconButton(onClick = { confirmDelete = true }) {
-                            Icon(painterResource(R.drawable.ic_pixel_trash), stringResource(R.string.result_delete), Modifier.size(22.dp))
-                        }
-                    }
-                },
-            )
+            AppTopBar(R.string.note_screen_title, onBack) { if (onDelete != null) DeleteAction { confirmDelete = true } }
         },
     ) { padding ->
         Column(
@@ -130,13 +114,9 @@ fun NoteScreen(
     }
 
     if (confirmDelete && onDelete != null) {
-        AppDialog(
+        DeleteDialog(
             title = stringResource(R.string.note_delete_title),
             body = stringResource(R.string.note_delete_body),
-            icon = R.drawable.ic_pixel_trash,
-            iconTint = MaterialTheme.colorScheme.primary,
-            confirmLabel = stringResource(R.string.result_delete),
-            confirmIcon = R.drawable.ic_pixel_trash,
             onConfirm = { confirmDelete = false; onDelete() },
             onDismiss = { confirmDelete = false },
         )

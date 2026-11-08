@@ -1,11 +1,6 @@
 package com.davicolzer.zureader.ui.qr
 
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context
-import android.content.Intent
 import android.graphics.Bitmap
-import android.net.Uri
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -25,14 +20,11 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -58,12 +50,16 @@ import androidx.compose.foundation.layout.IntrinsicSize
 import com.davicolzer.zureader.ui.components.ActionTile
 import com.davicolzer.zureader.ui.components.ShareCard
 import com.davicolzer.zureader.ui.components.DetailsFields
-import com.davicolzer.zureader.ui.components.AppDialog
 import com.davicolzer.zureader.ui.components.PixelOutlinedButton
 import com.davicolzer.zureader.ui.components.PixelPrimaryButton
 import com.davicolzer.zureader.ui.theme.ZuTheme
 import com.davicolzer.zureader.vision.QrCode
 import kotlinx.coroutines.launch
+import com.davicolzer.zureader.ui.components.AppTopBar
+import com.davicolzer.zureader.ui.components.DeleteAction
+import com.davicolzer.zureader.ui.components.DeleteDialog
+import com.davicolzer.zureader.ui.components.copyText
+import com.davicolzer.zureader.ui.components.openLink
 
 /**
  * O que está no QR code: a imagem de onde ele foi lido (dá para recortar) e o texto inteiro,
@@ -96,22 +92,7 @@ fun QrScreen(
         containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
-            TopAppBar(
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(painterResource(R.drawable.ic_pixel_back), stringResource(R.string.back), Modifier.size(22.dp))
-                    }
-                },
-                title = { Text(stringResource(R.string.qr_title), style = MaterialTheme.typography.titleLarge) },
-                actions = {
-                    if (savedId != null) {
-                        IconButton(onClick = { confirmDelete = true }) {
-                            Icon(painterResource(R.drawable.ic_pixel_trash), stringResource(R.string.result_delete), Modifier.size(22.dp))
-                        }
-                    }
-                },
-            )
+            AppTopBar(R.string.qr_title, onBack) { if (savedId != null) DeleteAction { confirmDelete = true } }
         },
     ) { padding ->
         Column(
@@ -177,7 +158,7 @@ fun QrScreen(
                 if (code != null) {
                     code.link?.let { link ->
                         PixelOutlinedButton(stringResource(R.string.qr_open), R.drawable.ic_pixel_link, onClick = {
-                            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(link))) }
+                            openLink(context, link)
                         })
                     }
                     DetailsFields(name, description, onDetails, showName = false)
@@ -202,7 +183,7 @@ fun QrScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     ActionTile(R.drawable.ic_pixel_copy, stringResource(R.string.result_copy), Modifier.weight(1f)) {
-                        copy(context, code.text)
+                        copyText(context, code.text)
                         scope.launch { snackbar.showSnackbar(copied) }
                     }
                     ActionTile(R.drawable.ic_pixel_share, stringResource(R.string.result_share), Modifier.weight(1f)) {
@@ -223,19 +204,11 @@ fun QrScreen(
     }
 
     if (confirmDelete) {
-        AppDialog(
+        DeleteDialog(
             title = stringResource(R.string.qr_delete_title),
             body = stringResource(R.string.qr_delete_body),
-            icon = R.drawable.ic_pixel_trash,
-            iconTint = MaterialTheme.colorScheme.primary,
-            confirmLabel = stringResource(R.string.result_delete),
-            confirmIcon = R.drawable.ic_pixel_trash,
             onConfirm = { confirmDelete = false; onDelete() },
             onDismiss = { confirmDelete = false },
         )
     }
-}
-
-private fun copy(context: Context, text: String) {
-    context.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText("QR", text))
 }

@@ -35,6 +35,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.davicolzer.zureader.R
 import com.davicolzer.zureader.ui.theme.ZuReaderTheme
+import com.davicolzer.zureader.ui.theme.Backdrop
+import com.davicolzer.zureader.ui.theme.Scrim
+import com.davicolzer.zureader.ui.theme.Paper
 
 /** O que aparece em tela cheia; recebe a função que fecha a tela cheia. */
 typealias FullscreenContent = @Composable (close: () -> Unit) -> Unit
@@ -59,7 +62,7 @@ fun FullscreenHost(content: @Composable () -> Unit) {
     ) { if (it) 1f else 0f }
     val close = { shown = null }
     CompositionLocalProvider(LocalFullscreen provides { c -> last = c; shown = c }) {
-        Box(Modifier.fillMaxSize().background(CubeBackdrop)) {
+        Box(Modifier.fillMaxSize().background(Backdrop)) {
             Box(
                 Modifier
                     .fillMaxSize()
@@ -77,15 +80,12 @@ fun FullscreenHost(content: @Composable () -> Unit) {
     }
 }
 
-/** O que fica atrás do cubo enquanto ele gira (o "céu" escuro do jogo, nos dois temas). */
-val CubeBackdrop = Color(0xFF0B0A18)
-
 @Composable
 private fun FullscreenFrame(onClose: () -> Unit, content: @Composable () -> Unit) {
     BackHandler(onBack = onClose)
     // fotos ficam melhores no escuro, em qualquer tema (como na câmera)
     ZuReaderTheme(darkTheme = true) {
-        Box(Modifier.fillMaxSize().background(CubeBackdrop)) {
+        Box(Modifier.fillMaxSize().background(Backdrop)) {
             content()
             Box(
                 Modifier
@@ -94,7 +94,7 @@ private fun FullscreenFrame(onClose: () -> Unit, content: @Composable () -> Unit
                     .padding(16.dp)
                     .size(48.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(Color(0xCC0B0A18))
+                    .background(Scrim)
                     .clickable(onClick = onClose)
                     .semantics { role = Role.Button },
                 contentAlignment = Alignment.Center,
@@ -118,10 +118,10 @@ fun ExpandHint(modifier: Modifier = Modifier) {
             .padding(8.dp)
             .size(32.dp)
             .clip(RoundedCornerShape(8.dp))
-            .background(Color(0xB30B0A18))
+            .background(Backdrop.copy(alpha = 0.7f))
             .clearAndSetSemantics {},
         contentAlignment = Alignment.Center,
     ) {
-        Icon(painterResource(R.drawable.ic_pixel_expand), null, Modifier.size(16.dp), tint = Color(0xFFFFF6E5))
+        Icon(painterResource(R.drawable.ic_pixel_expand), null, Modifier.size(16.dp), tint = Paper)
     }
 }
