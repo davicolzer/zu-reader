@@ -1,4 +1,4 @@
-package com.davicolzer.zureader.reader
+package com.davicolzer.zureader.media
 
 import android.content.Context
 import android.graphics.Bitmap

@@ -24,7 +24,6 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import com.davicolzer.zureader.vision.Viewport
 import kotlin.math.roundToInt
-import com.davicolzer.zureader.ui.components.detectZoomGestures
 
 /**
  * Foto com zoom **dentro do quadro**: o tamanho do quadro vem do [modifier] e não muda ao

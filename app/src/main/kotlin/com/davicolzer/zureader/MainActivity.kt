@@ -16,6 +16,7 @@ import com.davicolzer.zureader.data.ThemeMode
 import com.davicolzer.zureader.ui.ZuReaderApp
 import com.davicolzer.zureader.ui.components.FullscreenHost
 import com.davicolzer.zureader.ui.theme.ZuReaderTheme
+import com.davicolzer.zureader.data.AppLanguage
 
 class MainActivity : ComponentActivity() {
     // idioma escolhido no app (antes do Android 13; depois, o sistema aplica sozinho)

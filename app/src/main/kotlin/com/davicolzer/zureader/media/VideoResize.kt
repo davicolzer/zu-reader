@@ -1,4 +1,4 @@
-package com.davicolzer.zureader.reader
+package com.davicolzer.zureader.media
 
 import android.content.Context
 import android.media.MediaMetadataRetriever
@@ -81,3 +81,7 @@ object VideoResize {
         cont.invokeOnCancellation { transformer.cancel() }
     }
 }
+
+/** Arquivo novo para um vídeo ainda não salvo (no cache do app; vai para a coleção ao salvar). */
+fun newVideoFile(context: Context): File =
+    File(File(context.cacheDir, "videos").apply { mkdirs() }, "video-${System.currentTimeMillis()}.mp4")

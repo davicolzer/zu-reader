@@ -27,10 +27,23 @@ O Gradle roda no JDK 25. O bytecode é gerado para Java 21, que é o que o Andro
 ## Estrutura
 
 ```
-app/        Activity, tema, telas (Compose), câmera (CameraX), histórico (Room)
-core/zu/    Kotlin puro: alfabeto Zu, classificador, ordenação e leitura (testável sem emulador)
-core/vision/ Kotlin puro: imagem → glifos (limiar, manchas, caixas, grade 5×5)
-tools/      scripts de apoio (tabela de pares de letras do inglês)
+app/         o aplicativo Android
+core/zu/     Kotlin puro: alfabeto Zu, classificador, ordenação e leitura (testável sem emulador)
+core/vision/ Kotlin puro: imagem → glifos (limiar, manchas, caixas, grade 5×5), QR, escrita em Zu
+tools/       scripts de apoio (tabela de pares de letras do inglês)
+```
+
+Dentro de `app/src/main/kotlin/com/davicolzer/zureader/`:
+
+```
+MainActivity, ZuReaderApplication   entrada do app (idioma, tema, tela cheia de fotos)
+data/        coleção (Room), configurações (DataStore), idioma, letras aprendidas, tamanho das fotos
+media/       carregar e endireitar fotos, reduzir vídeos a 720p
+ui/          ZuReaderApp (troca de telas com o cubo) e ReaderViewModel (estado de todas as telas)
+ui/components/ peças repetidas: barra de cima, botões, diálogos, foto com zoom, tela cheia, cubo
+ui/theme/    cores, fontes e tema claro/escuro
+ui/<tela>/   uma pasta por tela: home, camera (com os analisadores da câmera), crop, result,
+             correct, write, qr, note, video, history, settings
 ```
 
 ## Como rodar

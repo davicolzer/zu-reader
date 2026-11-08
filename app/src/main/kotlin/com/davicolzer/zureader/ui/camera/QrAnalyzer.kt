@@ -1,4 +1,4 @@
-package com.davicolzer.zureader.reader
+package com.davicolzer.zureader.ui.camera
 
 import android.os.SystemClock
 import androidx.camera.core.ImageAnalysis

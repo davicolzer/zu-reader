@@ -14,7 +14,7 @@ import android.view.OrientationEventListener
 import android.view.Surface
 import androidx.camera.core.ImageAnalysis
 import java.io.File
-import com.davicolzer.zureader.reader.newVideoFile
+import com.davicolzer.zureader.media.newVideoFile
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.camera.video.VideoRecordEvent
 import androidx.camera.video.VideoCapture
@@ -64,11 +64,9 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.davicolzer.zureader.R
-import com.davicolzer.zureader.reader.CameraPurpose
-import com.davicolzer.zureader.reader.QrAnalyzer
+import com.davicolzer.zureader.ui.CameraPurpose
 import com.davicolzer.zureader.vision.QrCode
-import com.davicolzer.zureader.reader.ImageLoading
-import com.davicolzer.zureader.reader.QualityAnalyzer
+import com.davicolzer.zureader.media.ImageLoading
 import com.davicolzer.zureader.vision.PhotoQuality
 import com.davicolzer.zureader.ui.components.PixelOutlinedButton
 import com.davicolzer.zureader.ui.components.PixelPrimaryButton

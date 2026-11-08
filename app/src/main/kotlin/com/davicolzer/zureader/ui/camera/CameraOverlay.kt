@@ -54,7 +54,7 @@ import com.davicolzer.zureader.R
 import com.davicolzer.zureader.vision.PhotoQuality
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.LiveRegionMode
-import com.davicolzer.zureader.reader.CameraPurpose
+import com.davicolzer.zureader.ui.CameraPurpose
 import com.davicolzer.zureader.ui.theme.ZuTheme
 import com.davicolzer.zureader.ui.theme.Backdrop
 import com.davicolzer.zureader.ui.theme.Scrim

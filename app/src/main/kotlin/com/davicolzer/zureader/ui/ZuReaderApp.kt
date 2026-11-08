@@ -30,10 +30,8 @@ import com.davicolzer.zureader.ui.components.cubeFace
 import com.davicolzer.zureader.ui.components.cubeTurnSpec
 import com.davicolzer.zureader.ui.video.VideoScreen
 import androidx.compose.ui.platform.LocalContext
-import com.davicolzer.zureader.AppLanguage
+import com.davicolzer.zureader.data.AppLanguage
 import android.app.Activity
-import com.davicolzer.zureader.reader.ReaderUiState
-import com.davicolzer.zureader.reader.ReaderViewModel
 import com.davicolzer.zureader.ui.camera.CameraScreen
 import com.davicolzer.zureader.ui.crop.CropScreen
 import com.davicolzer.zureader.ui.history.HistoryScreen
@@ -47,7 +45,6 @@ import com.davicolzer.zureader.ui.note.renderMarks
 import com.davicolzer.zureader.ui.note.NoteScreen
 import com.davicolzer.zureader.ui.qr.QrScreen
 import com.davicolzer.zureader.ui.components.SourceDialog
-import com.davicolzer.zureader.reader.CameraPurpose
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue

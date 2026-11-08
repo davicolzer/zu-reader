@@ -40,7 +40,7 @@ import com.davicolzer.zureader.R
 import androidx.compose.foundation.clickable
 import androidx.compose.material3.Surface
 import androidx.compose.ui.window.Dialog
-import com.davicolzer.zureader.AppLanguage
+import com.davicolzer.zureader.data.AppLanguage
 import com.davicolzer.zureader.ui.components.AppDialog
 import com.davicolzer.zureader.data.Settings
 import com.davicolzer.zureader.data.ThemeMode
