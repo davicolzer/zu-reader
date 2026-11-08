@@ -8,10 +8,10 @@ nomes, descrições, desenhos das anotações e as letras aprendidas com as corr
 |---|---|---|
 | Para quem usa | "Fazer backup agora" e "Restaurar do Drive" nas Configurações | "Salvar cópia" e "Restaurar cópia" nas Configurações |
 | Conta | A conta Google **que já está no celular**: na primeira vez, a tela do Google pede "Permitir". Sem login no app | Nenhuma: a pessoa escolhe onde salvar (no celular, no Drive, onde quiser) |
-| Onde fica | Pasta de dados do app no Drive (escondida, só o Zu Reader enxerga; um arquivo, trocado a cada backup) | No arquivo `zu-reader-backup.zip` escolhido |
+| Onde fica | Pasta de dados do app no Drive (escondida, só o Zu Reader enxerga; um arquivo, trocado a cada backup) | No arquivo `zu-reader-backup.zubackup`, onde a pessoa escolher |
 | Precisa configurar | Sim, uma vez (abaixo) | Não |
 
-O arquivo de backup é um `.zip` com o banco de dados, as fotos e os vídeos da coleção e um
+O arquivo de backup tem a extensão própria do app, **`.zubackup`** (por dentro é um zip), com o banco de dados, as fotos e os vídeos da coleção e um
 `backup.txt` com a versão. Ao restaurar, o app confere antes de mexer em qualquer coisa: recusa
 arquivos que não são backup do app, caminhos que saem da pasta, banco estragado e backup de uma
 versão mais nova do app.

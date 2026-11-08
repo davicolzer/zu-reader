@@ -8,12 +8,19 @@ import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
 
 /**
- * O arquivo de backup da coleção: um .zip com o banco de dados (itens, nomes, descrições,
+ * O arquivo de backup da coleção (`.zubackup`, por dentro um zip) com o banco de dados (itens, nomes, descrições,
  * leituras, desenhos e correções aprendidas), a pasta com as fotos e vídeos e um `backup.txt`
  * com a versão do formato e do banco.
  */
 object BackupArchive {
     const val FORMAT = 1
+
+    /** Extensão própria do backup do app (por dentro é um zip). */
+    const val EXTENSION = "zubackup"
+    const val FILE_NAME = "zu-reader-backup.$EXTENSION"
+
+    /** Tipo genérico: com "application/zip" o Android trocaria a extensão por .zip. */
+    const val MIME = "application/octet-stream"
     private const val MANIFEST = "backup.txt"
     private const val DATABASE = "database/zu-reader.db"
     private const val FILES = "files/"

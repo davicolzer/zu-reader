@@ -35,7 +35,7 @@ class DriveApi(private val accessToken: String) {
     fun upload(file: File, existing: Backup?) {
         if (existing != null) {
             // HttpURLConnection não faz PATCH: a API do Google aceita o método no cabeçalho
-            request("POST", "$UPLOAD/files/${existing.id}?uploadType=media", contentType = "application/zip", extraHeaders = mapOf("X-HTTP-Method-Override" to "PATCH")) { out ->
+            request("POST", "$UPLOAD/files/${existing.id}?uploadType=media", contentType = BackupArchive.MIME, extraHeaders = mapOf("X-HTTP-Method-Override" to "PATCH")) { out ->
                 file.inputStream().use { it.copyTo(out) }
             }
             return
@@ -44,7 +44,7 @@ class DriveApi(private val accessToken: String) {
         val metadata = JSONObject().put("name", FILE_NAME).put("parents", org.json.JSONArray().put("appDataFolder")).toString()
         request("POST", "$UPLOAD/files?uploadType=multipart", contentType = "multipart/related; boundary=$boundary") { out ->
             out.write("--$boundary\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n$metadata\r\n".toByteArray())
-            out.write("--$boundary\r\nContent-Type: application/zip\r\n\r\n".toByteArray())
+            out.write("--$boundary\r\nContent-Type: ${BackupArchive.MIME}\r\n\r\n".toByteArray())
             file.inputStream().use { it.copyTo(out) }
             out.write("\r\n--$boundary--\r\n".toByteArray())
         }
@@ -93,7 +93,7 @@ class DriveApi(private val accessToken: String) {
     }
 
     companion object {
-        const val FILE_NAME = "zu-reader-backup.zip"
+        const val FILE_NAME = BackupArchive.FILE_NAME
         private const val API = "https://www.googleapis.com/drive/v3"
         private const val UPLOAD = "https://www.googleapis.com/upload/drive/v3"
 

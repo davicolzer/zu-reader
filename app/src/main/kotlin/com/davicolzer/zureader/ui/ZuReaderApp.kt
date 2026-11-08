@@ -1,5 +1,6 @@
 package com.davicolzer.zureader.ui
 
+import com.davicolzer.zureader.data.backup.BackupArchive
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -70,7 +71,7 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
     var backupMessage by remember { mutableStateOf<String?>(null) }
     val driveAccess = rememberDriveAccess(onFailed = { backupMessage = authFailed })
     // cópia num arquivo: a tela do Android para salvar ou escolher o arquivo
-    val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
+    val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(BackupArchive.MIME)) { uri ->
         if (uri != null) viewModel.exportBackup(uri)
     }
     var importUri by remember { mutableStateOf<android.net.Uri?>(null) }
@@ -329,8 +330,9 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
                     message = backupMessage,
                     onBackup = { backupMessage = null; driveAccess { token -> viewModel.backupNow(token) } },
                     onRestore = { backupMessage = null; driveAccess { token -> viewModel.findBackupToRestore(token) } },
-                    onExport = { backupMessage = null; exportLauncher.launch("zu-reader-backup.zip") },
-                    onImport = { backupMessage = null; importLauncher.launch(arrayOf("application/zip", "application/octet-stream")) },
+                    onExport = { backupMessage = null; exportLauncher.launch(BackupArchive.FILE_NAME) },
+                    onImport = { backupMessage = null; // a extensão própria não tem tipo conhecido no Android: mostra todos; o app confere o conteúdo
+                    importLauncher.launch(arrayOf("*/*")) },
                 ),
                     // a tela é recriada no idioma novo e volta para as configurações
                     onLanguage = { language -> (context as? Activity)?.let { AppLanguage.set(it, language) } },
