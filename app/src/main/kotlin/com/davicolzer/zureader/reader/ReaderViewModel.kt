@@ -2,6 +2,8 @@ package com.davicolzer.zureader.reader
 
 import android.app.Application
 import android.graphics.Bitmap
+import java.io.File
+import android.media.MediaMetadataRetriever
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -40,7 +42,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.withContext
 
 /** Para que a câmera foi aberta. */
-enum class CameraPurpose { READ, NOTE, QR }
+enum class CameraPurpose { READ, NOTE, QR, VIDEO }
 
 sealed interface ReaderUiState {
     data object Home : ReaderUiState
@@ -69,6 +71,17 @@ sealed interface ReaderUiState {
      * veio (já salva, ou ainda não): voltar abre ela de novo; sem ela, voltar descarta.
      */
     data class Annotate(val image: Bitmap, val marks: List<Mark> = emptyList(), val note: Note? = null) : ReaderUiState
+
+    /**
+     * Um vídeo: gravado agora ou trazido da galeria ([id] nulo = ainda não salvo; o arquivo fica
+     * no cache até salvar) ou aberto da coleção.
+     */
+    data class Video(
+        val file: File,
+        val id: Long? = null,
+        val name: String = "",
+        val description: String = "",
+    ) : ReaderUiState
 
     /** Recortando a foto do editor ([editing] guarda os desenhos para voltar). */
     data class AnnotateCrop(val editing: Annotate) : ReaderUiState
@@ -186,6 +199,72 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
     /** "Anotar foto" pela câmera. */
     fun openCameraForNote() {
         _state.value = ReaderUiState.Camera(CameraPurpose.NOTE)
+    }
+
+    /** "Gravar vídeo" pela câmera. */
+    fun openCameraForVideo() {
+        _state.value = ReaderUiState.Camera(CameraPurpose.VIDEO)
+    }
+
+    /** O vídeo terminou de gravar (arquivo no cache): abre para ver, nomear e salvar. */
+    fun onVideoRecorded(file: File) {
+        _state.value = ReaderUiState.Video(file)
+    }
+
+    /** "Gravar vídeo" pela galeria: copia o vídeo para o cache do app e abre. */
+    fun pickVideo(uri: Uri) = work {
+        withContext(Dispatchers.IO) {
+            val file = newVideoFile(getApplication())
+            getApplication<Application>().contentResolver.openInputStream(uri)?.use { input ->
+                file.outputStream().use { input.copyTo(it) }
+            } ?: throw IllegalArgumentException("Vídeo inválido: $uri")
+            ReaderUiState.Video(file)
+        }
+    }
+
+    /** Salva o vídeo aberto na coleção (com a miniatura do primeiro quadro, em HD). */
+    fun saveVideo() {
+        val video = _state.value as? ReaderUiState.Video ?: return
+        if (video.id != null) return
+        viewModelScope.launch {
+            val thumb = withContext(Dispatchers.IO) { videoFrame(video.file, 0) }
+                ?: ImageLoading.toBitmap(RgbImage.fromGray(com.davicolzer.zureader.vision.GrayImage.filled(64, 64, 40)))
+            val saved = history.saveVideo(video.file, ImageLoading.hd(thumb), video.name, video.description)
+            (_state.value as? ReaderUiState.Video)?.takeIf { it.file == video.file }?.let {
+                _state.value = it.copy(file = saved.file, id = saved.id)
+                if (it.name != video.name || it.description != video.description) history.updateDetails(saved.id, it.name, it.description)
+            }
+        }
+    }
+
+    /** Apaga o vídeo aberto da coleção e volta para ela. */
+    fun deleteVideo() {
+        val id = (_state.value as? ReaderUiState.Video)?.id ?: return
+        viewModelScope.launch {
+            history.delete(id)
+            _state.value = ReaderUiState.History
+        }
+    }
+
+    /** Sai do vídeo: salvo → coleção; não salvo → descarta o arquivo e volta ao início. */
+    fun leaveVideo() {
+        val video = _state.value as? ReaderUiState.Video ?: return
+        if (video.id == null) {
+            video.file.delete()
+            _state.value = ReaderUiState.Home
+        } else {
+            _state.value = ReaderUiState.History
+        }
+    }
+
+    /** "Ler Zu neste quadro": pega o quadro em [positionMs] e abre o recorte, como uma foto. */
+    fun readVideoFrame(positionMs: Long) {
+        val video = _state.value as? ReaderUiState.Video ?: return
+        work {
+            val frame = withContext(Dispatchers.IO) { videoFrame(video.file, positionMs) }
+                ?: throw IllegalStateException("Quadro não encontrado")
+            prepareCrop(frame, fromCamera = false)
+        }
     }
 
     /** "Ler QR code" pela câmera (lê ao vivo, basta apontar). */
@@ -496,6 +575,7 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         val savedId = when (val s = _state.value) {
             is ReaderUiState.Result -> s.copy(name = name, description = description).also { _state.value = it }.savedId
             is ReaderUiState.QrResult -> s.copy(name = name, description = description).also { _state.value = it }.savedId
+            is ReaderUiState.Video -> s.copy(name = name, description = description).also { _state.value = it }.id
             else -> return
         } ?: return
         detailsJob?.cancel()
@@ -577,7 +657,11 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun openSaved(id: Long) = work {
-        if (history.isNote(id)) {
+        if (history.kindOf(id) == com.davicolzer.zureader.data.SavedKind.VIDEO) {
+            val video = history.loadVideo(id) ?: throw IllegalStateException("Vídeo $id não encontrado")
+            return@work ReaderUiState.Video(video.file, video.id, video.name, video.description)
+        }
+                if (history.isNote(id)) {
             val note = history.loadNote(id) ?: throw IllegalStateException("Anotação $id não encontrada")
             return@work ReaderUiState.Note(note.id, note.image, note.title, note.original, note.marks, description = note.description)
         }
@@ -632,6 +716,19 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         _state.value = ReaderUiState.Home
     }
 
+    /** Quadro do vídeo em [positionMs] (o mais perto), ou `null` se não deu para ler. */
+    private fun videoFrame(file: File, positionMs: Long): Bitmap? {
+        val retriever = MediaMetadataRetriever()
+        return try {
+            retriever.setDataSource(file.path)
+            retriever.getFrameAtTime(positionMs * 1000, MediaMetadataRetriever.OPTION_CLOSEST)
+        } catch (e: Exception) {
+            null
+        } finally {
+            retriever.release()
+        }
+    }
+
     private fun work(block: suspend () -> ReaderUiState) {
         _state.value = ReaderUiState.Reading
         viewModelScope.launch {
@@ -645,3 +742,7 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 }
+
+/** Arquivo novo para um vídeo ainda não salvo (no cache do app; vai para a coleção ao salvar). */
+fun newVideoFile(context: android.content.Context): File =
+    File(File(context.cacheDir, "videos").apply { mkdirs() }, "video-${System.currentTimeMillis()}.mp4")

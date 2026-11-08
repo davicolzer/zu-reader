@@ -39,6 +39,7 @@ data class ReadingEntity(
         const val KIND_WRITTEN = "written"
         const val KIND_QR = "qr"
         const val KIND_NOTE = "note"
+        const val KIND_VIDEO = "video"
     }
 }
 

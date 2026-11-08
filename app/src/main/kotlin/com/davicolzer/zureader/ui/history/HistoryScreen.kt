@@ -179,6 +179,7 @@ private val SavedKind.filterLabel: Int
         SavedKind.WRITTEN -> R.string.history_kind_written
         SavedKind.QR -> R.string.history_kind_qr
         SavedKind.NOTE -> R.string.history_kind_note
+        SavedKind.VIDEO -> R.string.history_kind_video
     }
 
 private val SavedKind.badge: Int
@@ -187,6 +188,7 @@ private val SavedKind.badge: Int
         SavedKind.WRITTEN -> R.string.history_badge_written
         SavedKind.QR -> R.string.history_badge_qr
         SavedKind.NOTE -> R.string.history_note_badge
+        SavedKind.VIDEO -> R.string.history_badge_video
     }
 
 private val SavedKind.icon: Int
@@ -195,6 +197,7 @@ private val SavedKind.icon: Int
         SavedKind.WRITTEN -> R.drawable.ic_pixel_keyboard
         SavedKind.QR -> R.drawable.ic_pixel_qr
         SavedKind.NOTE -> R.drawable.ic_pixel_note
+        SavedKind.VIDEO -> R.drawable.ic_pixel_video
     }
 
 @Composable
@@ -203,6 +206,7 @@ private fun SavedKind.color(): Color = when (this) {
     SavedKind.WRITTEN -> MaterialTheme.colorScheme.tertiary
     SavedKind.QR -> MaterialTheme.colorScheme.onSurfaceVariant
     SavedKind.NOTE -> ZuTheme.colors.gold
+    SavedKind.VIDEO -> MaterialTheme.colorScheme.primary
 }
 
 /** Quadrado do mosaico: a foto grande, o ícone do tipo num canto e o texto numa linha embaixo. */
@@ -268,6 +272,7 @@ private fun listTitle(item: HistoryItem): String = item.name.takeIf { it.isNotBl
 private fun contentText(item: HistoryItem): String = when (item.kind) {
     SavedKind.QR -> item.text.removePrefix("QR: ")
     SavedKind.NOTE -> item.text.ifBlank { stringResource(R.string.note_default_name) }
+    SavedKind.VIDEO -> item.description.ifBlank { stringResource(R.string.video_default_name) }
     else -> ReadingMode.of(item.text.firstOrNull { !it.isWhitespace() } ?: 'A').display(item.text).replace('\n', ' ').ifBlank { "—" }
 }
 
@@ -308,6 +313,16 @@ fun HistoryRow(item: HistoryItem, onOpen: (Long) -> Unit, onDelete: ((HistoryIte
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
+            } else if (item.kind == SavedKind.VIDEO) {
+                // vídeo sem nome: "Vídeo" e a descrição, se houver
+                Text(
+                    stringResource(R.string.video_default_name),
+                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                    maxLines = 1,
+                )
+                if (item.description.isNotBlank()) {
+                    Text(item.description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
             } else if (item.isNote) {
                 // foto anotada: o nome dado pelo usuário
                 Text(

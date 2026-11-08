@@ -21,6 +21,7 @@ enum class SavedKind(val key: String) {
     WRITTEN(ReadingEntity.KIND_WRITTEN),
     QR(ReadingEntity.KIND_QR),
     NOTE(ReadingEntity.KIND_NOTE),
+    VIDEO(ReadingEntity.KIND_VIDEO),
     ;
 
     companion object {
@@ -57,6 +58,11 @@ data class SavedReading(
     val description: String = "",
 )
 
+/** Vídeo salvo: o arquivo na pasta da coleção, com nome e descrição. */
+data class SavedVideo(val id: Long, val file: File, val name: String, val description: String)
+
+private const val VIDEO_DATA = "video1"
+
 /** Leituras salvas: dados no banco e imagens em arquivos na pasta do app. */
 class HistoryRepository(private val dao: ReadingDao, filesDir: File) {
     private val imagesDir = File(filesDir, "readings").apply { mkdirs() }
@@ -70,6 +76,44 @@ class HistoryRepository(private val dao: ReadingDao, filesDir: File) {
 
     /** `true` se o item [id] é uma foto anotada. */
     suspend fun isNote(id: Long): Boolean = withContext(Dispatchers.IO) { dao.get(id)?.kind == ReadingEntity.KIND_NOTE }
+
+    /** O tipo do item [id] (`null` se não existe). */
+    suspend fun kindOf(id: Long): SavedKind? = withContext(Dispatchers.IO) { dao.get(id)?.let { SavedKind.of(it.kind) } }
+
+    /**
+     * Guarda um vídeo: o arquivo [video] (gravado ou trazido da galeria) é movido para a pasta da
+     * coleção; [thumbnail] (o primeiro quadro, em HD) vira a miniatura.
+     */
+    suspend fun saveVideo(video: File, thumbnail: Bitmap, name: String, description: String): SavedVideo = withContext(Dispatchers.IO) {
+        val videoName = "${UUID.randomUUID()}.mp4"
+        val target = File(imagesDir, videoName)
+        if (!video.renameTo(target)) {
+            video.copyTo(target, overwrite = true)
+            video.delete()
+        }
+        val thumb = writeImage(thumbnail)
+        val id = dao.insert(
+            ReadingEntity(
+                createdAt = System.currentTimeMillis(),
+                text = "",
+                imageFile = thumb,
+                data = VIDEO_DATA + "\n" + videoName,
+                kind = ReadingEntity.KIND_VIDEO,
+                name = name.trim(),
+                description = description.trim(),
+            ),
+        )
+        SavedVideo(id, target, name.trim(), description.trim())
+    }
+
+    suspend fun loadVideo(id: Long): SavedVideo? = withContext(Dispatchers.IO) {
+        val row = dao.get(id)?.takeIf { it.kind == ReadingEntity.KIND_VIDEO } ?: return@withContext null
+        val file = videoFile(row) ?: return@withContext null
+        SavedVideo(row.id, file, row.name, row.description)
+    }
+
+    private fun videoFile(row: ReadingEntity): File? =
+        row.data.lines().takeIf { it.size >= 2 && it[0] == VIDEO_DATA }?.let { File(imagesDir, it[1]) }
 
     /**
      * Guarda uma foto anotada com o nome [title]: a foto já desenhada ([rendered]) e, para editar
@@ -184,6 +228,7 @@ class HistoryRepository(private val dao: ReadingDao, filesDir: File) {
         dao.get(id)?.let { row ->
             File(imagesDir, row.imageFile).delete()
             if (row.kind == ReadingEntity.KIND_NOTE) MarkCodec.decode(row.data)?.let { File(imagesDir, it.originalFile).delete() }
+            if (row.kind == ReadingEntity.KIND_VIDEO) videoFile(row)?.delete()
         }
         dao.delete(id)
     }

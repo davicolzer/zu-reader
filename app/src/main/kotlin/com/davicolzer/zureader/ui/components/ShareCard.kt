@@ -87,6 +87,17 @@ object ShareCard {
         context.startActivity(Intent.createChooser(send, null))
     }
 
+    /** Compartilha um vídeo (o arquivo, do cache ou da coleção) com o nome e a descrição na mensagem. */
+    fun shareVideo(context: Context, video: File, name: String?, description: String?) {
+        val uri = FileProvider.getUriForFile(context, "${context.packageName}.files", video)
+        val send = Intent(Intent.ACTION_SEND)
+            .setType("video/mp4")
+            .putExtra(Intent.EXTRA_STREAM, uri)
+            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        message(name, null, description).takeIf { it.isNotEmpty() }?.let { send.putExtra(Intent.EXTRA_TEXT, it) }
+        context.startActivity(Intent.createChooser(send, null))
+    }
+
     private const val MIN_WIDTH = 1080
     private const val APP_TAG = "Zu Reader"
     private const val INK = 0xFF14122A.toInt()

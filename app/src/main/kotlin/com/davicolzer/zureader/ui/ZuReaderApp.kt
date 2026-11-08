@@ -21,6 +21,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.davicolzer.zureader.BuildConfig
 import com.davicolzer.zureader.R
+import com.davicolzer.zureader.ui.video.VideoScreen
 import androidx.compose.ui.platform.LocalContext
 import com.davicolzer.zureader.AppLanguage
 import android.app.Activity
@@ -87,6 +88,25 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
             onDismiss = { chooseQrSource = false },
         )
     }
+    // "Gravar vídeo": gravar agora ou escolher um vídeo da galeria
+    val videoPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) viewModel.pickVideo(uri)
+    }
+    val pickVideo = { videoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly)) }
+    var chooseVideoSource by remember { mutableStateOf(false) }
+    if (chooseVideoSource) {
+        SourceDialog(
+            title = R.string.video_source_title,
+            body = R.string.video_source_body,
+            icon = R.drawable.ic_pixel_video,
+            onCamera = { chooseVideoSource = false; viewModel.openCameraForVideo() },
+            onGallery = { chooseVideoSource = false; pickVideo() },
+            onDismiss = { chooseVideoSource = false },
+            cameraLabel = R.string.source_record,
+            galleryLabel = R.string.source_video_gallery,
+            cameraIcon = R.drawable.ic_pixel_video,
+        )
+    }
     if (chooseNoteSource) {
         SourceDialog(
             title = R.string.note_source_title,
@@ -110,7 +130,22 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
             onWrite = { viewModel.openWriter() },
             onAnnotate = { chooseNoteSource = true },
             onReadQr = { chooseQrSource = true },
+            onRecordVideo = { chooseVideoSource = true },
         )
+        is ReaderUiState.Video -> {
+            BackHandler(onBack = viewModel::leaveVideo)
+            VideoScreen(
+                file = s.file,
+                saved = s.id != null,
+                name = s.name,
+                description = s.description,
+                onDetails = viewModel::setDetails,
+                onSave = viewModel::saveVideo,
+                onBack = viewModel::leaveVideo,
+                onReadFrame = viewModel::readVideoFrame,
+                onDelete = if (s.id != null) viewModel::deleteVideo else null,
+            )
+        }
         is ReaderUiState.QrResult -> {
             val back = if (s.savedId != null) viewModel::openHistory else viewModel::goHome
             BackHandler(onBack = back)
@@ -195,7 +230,9 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
                         CameraPurpose.NOTE -> { { notePicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) } }
                         CameraPurpose.QR -> { { qrPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) } }
                         CameraPurpose.READ -> pickImage
+                        CameraPurpose.VIDEO -> pickVideo
                     },
+                    onVideoRecorded = viewModel::onVideoRecorded,
                     purpose = s.purpose,
                     onQrFound = viewModel::onQrFound,
                     onClose = viewModel::goHome,

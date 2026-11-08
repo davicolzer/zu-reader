@@ -36,6 +36,10 @@ fun SourceDialog(
     onGallery: () -> Unit,
     onDismiss: () -> Unit,
     extra: (@Composable () -> Unit)? = null,
+    /** Textos dos botões (ex.: "Gravar agora" / "Escolher vídeo da galeria" no vídeo). */
+    @StringRes cameraLabel: Int = R.string.source_camera,
+    @StringRes galleryLabel: Int = R.string.source_gallery,
+    @DrawableRes cameraIcon: Int = R.drawable.ic_pixel_camera,
 ) {
     Dialog(onDismissRequest = onDismiss) {
         Surface(
@@ -57,8 +61,8 @@ fun SourceDialog(
                 Text(stringResource(title), style = MaterialTheme.typography.titleLarge, modifier = Modifier.semantics { heading() })
                 Text(stringResource(body), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 extra?.invoke()
-                PixelPrimaryButton(stringResource(R.string.source_camera), R.drawable.ic_pixel_camera, onClick = onCamera)
-                PixelOutlinedButton(stringResource(R.string.source_gallery), R.drawable.ic_pixel_gallery, onClick = onGallery)
+                PixelPrimaryButton(stringResource(cameraLabel), cameraIcon, onClick = onCamera)
+                PixelOutlinedButton(stringResource(galleryLabel), R.drawable.ic_pixel_gallery, onClick = onGallery)
                 PixelOutlinedButton(stringResource(R.string.cancel), R.drawable.ic_pixel_close, onClick = onDismiss)
             }
         }

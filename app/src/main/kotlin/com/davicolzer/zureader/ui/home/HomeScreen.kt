@@ -69,6 +69,7 @@ fun HomeScreen(
     onWrite: () -> Unit = {},
     onAnnotate: () -> Unit = {},
     onReadQr: () -> Unit = {},
+    onRecordVideo: () -> Unit = {},
 ) {
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -146,11 +147,23 @@ fun HomeScreen(
                     compact = true,
                 )
             }
-            PixelOutlinedButton(
-                text = stringResource(R.string.home_write),
-                icon = R.drawable.ic_pixel_keyboard,
-                onClick = onWrite,
-            )
+            // vídeo e, por último, escrever à mão, lado a lado
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                PixelOutlinedButton(
+                    text = stringResource(R.string.home_record_video),
+                    icon = R.drawable.ic_pixel_video,
+                    onClick = onRecordVideo,
+                    modifier = Modifier.weight(1f),
+                    compact = true,
+                )
+                PixelOutlinedButton(
+                    text = stringResource(R.string.home_write),
+                    icon = R.drawable.ic_pixel_keyboard,
+                    onClick = onWrite,
+                    modifier = Modifier.weight(1f),
+                    compact = true,
+                )
+            }
             Spacer(Modifier.height(6.dp))
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(

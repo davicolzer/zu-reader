@@ -78,6 +78,8 @@ fun CameraOverlay(
      * (o "rodapé" de quem segura o celular assim).
      */
     turn: Int = 0,
+    /** Vídeo: tempo já gravado (ms) enquanto grava; `null` = não está gravando. */
+    recordingMs: Long? = null,
 ) {
     val spin by animateFloatAsState(turn.toFloat(), tween(250), label = "giro")
     val landscape = turn != 0
@@ -127,6 +129,7 @@ fun CameraOverlay(
                             when (purpose) {
                                 CameraPurpose.QR -> R.string.camera_qr_hint
                                 CameraPurpose.NOTE -> R.string.camera_note_hint
+                                CameraPurpose.VIDEO -> R.string.camera_video_hint
                                 CameraPurpose.READ -> R.string.home_read_zu
                             },
                         ),
@@ -154,11 +157,11 @@ fun CameraOverlay(
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 // em pé, as frases ficam aqui embaixo; deitado, vão para a lateral (abaixo)
-                if (!landscape) Hints(reading, quality, frameColor, purpose, horizontal)
+                if (!landscape) Hints(reading, quality, frameColor, purpose, horizontal, recordingMs)
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     RoundControl(R.drawable.ic_pixel_gallery, stringResource(R.string.home_pick_gallery), onGallery, spin)
                     Spacer(Modifier.weight(1f))
-                    Shutter(capturing, onShutter)
+                    Shutter(capturing, onShutter, video = purpose == CameraPurpose.VIDEO, recording = recordingMs != null)
                     Spacer(Modifier.weight(1f))
                     Spacer(Modifier.size(48.dp))
                 }
@@ -181,7 +184,7 @@ fun CameraOverlay(
                         .padding(horizontal = 16.dp, vertical = 10.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) { Hints(reading, quality, frameColor, purpose, horizontal) }
+                ) { Hints(reading, quality, frameColor, purpose, horizontal, recordingMs) }
             }
         }
     }
@@ -190,8 +193,23 @@ fun CameraOverlay(
 
 /** As frases da câmera: qualidade (ou o que fazer) e, na leitura de Zu, a ordem de leitura. */
 @Composable
-private fun Hints(reading: Boolean, quality: PhotoQuality?, frameColor: Color, purpose: CameraPurpose, horizontal: Boolean) {
-    if (reading && quality != null) {
+private fun Hints(reading: Boolean, quality: PhotoQuality?, frameColor: Color, purpose: CameraPurpose, horizontal: Boolean, recordingMs: Long? = null) {
+    if (recordingMs != null) {
+        // gravando: ponto vermelho e o tempo
+        val seconds = recordingMs / 1000
+        Row(
+            Modifier.clip(RoundedCornerShape(50)).background(Scrim).padding(horizontal = 16.dp, vertical = 9.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Box(Modifier.size(10.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary))
+            Text(
+                stringResource(R.string.camera_video_recording, "%d:%02d".format(seconds / 60, seconds % 60)),
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+            )
+        }
+    } else if (reading && quality != null) {
         QualityLabel(quality, frameColor)
     } else {
         Text(
@@ -199,6 +217,7 @@ private fun Hints(reading: Boolean, quality: PhotoQuality?, frameColor: Color, p
                 when (purpose) {
                     CameraPurpose.QR -> R.string.camera_qr_aim
                     CameraPurpose.NOTE -> R.string.camera_note_aim
+                    CameraPurpose.VIDEO -> R.string.camera_video_aim
                     CameraPurpose.READ -> R.string.camera_aim
                 },
             ),
@@ -262,8 +281,16 @@ private fun QualityLabel(quality: PhotoQuality, color: Color) {
 }
 
 @Composable
-private fun Shutter(capturing: Boolean, onClick: () -> Unit) {
-    val description = stringResource(R.string.camera_shutter)
+private fun Shutter(capturing: Boolean, onClick: () -> Unit, video: Boolean = false, recording: Boolean = false) {
+    val description = stringResource(
+        when {
+            recording -> R.string.camera_stop
+            video -> R.string.camera_record
+            else -> R.string.camera_shutter
+        },
+    )
+    // gravando: o miolo vira um quadrado vermelho menor (parar)
+    val inner = if (recording) RoundedCornerShape(6.dp) else CircleShape
     Box(
         Modifier
             .size(76.dp)
@@ -271,8 +298,8 @@ private fun Shutter(capturing: Boolean, onClick: () -> Unit) {
             .border(4.dp, MaterialTheme.colorScheme.onSurface, CircleShape)
             .clickable(enabled = !capturing, onClick = onClick)
             .semantics { contentDescription = description; role = Role.Button }
-            .padding(8.dp)
-            .clip(CircleShape)
+            .padding(if (recording) 22.dp else 8.dp)
+            .clip(inner)
             .background(if (capturing) ZuTheme.colors.fezDeep else MaterialTheme.colorScheme.primary),
         contentAlignment = Alignment.Center,
     ) {

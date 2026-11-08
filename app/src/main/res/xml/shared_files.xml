@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Imagens copiadas para compartilhar (fotos anotadas). -->
+<!-- Arquivos entregues a outros apps: imagens copiadas para compartilhar, vídeos gravados (ainda
+     não salvos) e vídeos da coleção. -->
 <paths>
     <cache-path name="shared" path="shared/" />
+    <cache-path name="videos" path="videos/" />
+    <files-path name="collection" path="readings/" />
 </paths>
