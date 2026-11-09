@@ -59,6 +59,7 @@ import com.davicolzer.zureader.ui.components.PixelOutlinedButton
 import com.davicolzer.zureader.ui.components.PixelPrimaryButton
 import com.davicolzer.zureader.ui.components.ShareCard
 import com.davicolzer.zureader.ui.components.ZoomableImage
+import com.davicolzer.zureader.ui.components.rememberInBackground
 import com.davicolzer.zureader.ui.components.copyText
 import com.davicolzer.zureader.ui.theme.ZuTheme
 import com.davicolzer.zureader.vision.Cell
@@ -66,7 +67,9 @@ import com.davicolzer.zureader.vision.CommandPiece
 import com.davicolzer.zureader.vision.CommandReading
 import com.davicolzer.zureader.vision.GameButton
 import com.davicolzer.zureader.vision.Tetromino
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Uma sequência de comandos lida (peças de 4 blocos): o nome em cima, a foto recortada, as peças
@@ -121,8 +124,9 @@ fun CommandsScreen(
             ) {
                 if (found) DetailsFields(name, description, onDetails, showDescription = false)
                 // a foto com cada peça marcada: o número na ordem de leitura e o botão
-                val marked = remember(image, reading) { markPieces(image, reading) }
-                val shown = remember(marked) { marked.asImageBitmap() }
+                // desenhar sobre a foto inteira é feito fora da thread principal; até lá, a foto sem marcas
+                val marked = rememberInBackground(image, reading) { markPieces(image, reading) }
+                val shown = remember(image, marked) { (marked ?: image).asImageBitmap() }
                 ZoomableImage(
                     shown,
                     stringResource(R.string.commands_image_description),
@@ -190,7 +194,7 @@ fun CommandsScreen(
                         scope.launch { snackbar.showSnackbar(copied) }
                     }
                     ActionTile(R.drawable.ic_pixel_share, stringResource(R.string.result_share), Modifier.weight(1f)) {
-                        scope.launch { ShareCard.share(context, markPieces(image, reading), name, summary, description) }
+                        scope.launch { ShareCard.share(context, withContext(Dispatchers.Default) { markPieces(image, reading) }, name, summary, description) }
                     }
                     if (savedId == null) {
                         ActionTile(R.drawable.ic_pixel_save, stringResource(R.string.result_save), Modifier.weight(1f), primary = true) {

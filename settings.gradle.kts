@@ -20,7 +20,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "fez-translate"
+rootProject.name = "zu-reader"
 
 include(":app")
 include(":core:zu")

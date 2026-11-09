@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security issue / Problema de segurança
+    url: https://github.com/davicolzer/zu-reader/security/advisories/new
+    about: Report privately, not in a public issue. / Relate em particular, não numa issue pública.

@@ -1,20 +1,76 @@
-# fez-translate (Zu Reader)
+<p align="center">
+  <img src="docs/design/icon-512.png" width="96" alt="Zu Reader icon">
+</p>
 
-App Android em Kotlin que lê textos no alfabeto Zu, do jogo Fez, a partir de uma foto e mostra o texto em inglês (o Zu é uma cifra do alfabeto latino).
+<h1 align="center">Zu Reader</h1>
 
-- Plano: [docs/PLANO.md](docs/PLANO.md)
-- Design: [docs/design/mockup.png](docs/design/mockup.png) (fonte em [mockup.html](docs/design/mockup.html)) e ícone [icon.svg](docs/design/icon.svg)
-- Telas no Android: [início](docs/design/home-android.png), [câmera](docs/design/camera-android.png), [recorte](docs/design/crop-android.png), [resultado do recorte](docs/design/crop-result-android.png), [resultado](docs/design/result-android.png) e [título e texto inclinados](docs/design/result-inclinado-android.png), [correção](docs/design/correction-android.png), [leitura salva](docs/design/result-saved-android.png) e [recentes](docs/design/home-recent-android.png) , [letras sobre a foto](docs/design/result-letras-android.png), [escrever à mão](docs/design/escrever-texto-android.png), [seletor Auto/Escrita/Números](docs/design/home-auto-android.png), [modo números](docs/design/home-numeros-android.png) e [números lidos](docs/design/result-numeros-android.png)
-- Imagens de exemplo para testar pela galeria: [docs/samples/](docs/samples/)
-- Fotos reais do jogo usadas no teste de regressão: [testdata/real/](testdata/real/) (imagens do jogo FEZ, © Polytron; repositório privado)
-- Release e assinatura: [docs/RELEASE.md](docs/RELEASE.md)
-- Tema claro: [início](docs/design/home-light-android.png) e [resultado](docs/design/result-light-android.png); [configurações](docs/design/settings-android.png)
+<p align="center">
+  Read and write <b>Zu</b>, the alphabet from the game <i>FEZ</i>, with your phone's camera.<br>
+  An open-source Android app made by fans.
+</p>
 
-## Versões
+<p align="center">
+  <a href="../../releases"><img alt="Download" src="https://img.shields.io/github/v/release/davicolzer/zu-reader?include_prereleases&label=download&color=d7263d"></a>
+  <a href="../../actions/workflows/release.yml"><img alt="Build" src="https://img.shields.io/github/actions/workflow/status/davicolzer/zu-reader/release.yml?branch=main&label=build"></a>
+  <img alt="Android 8.0+" src="https://img.shields.io/badge/Android-8.0%2B-3ddc84">
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue"></a>
+</p>
 
-| Ferramenta | Versão |
+<p align="center">
+  <b>English</b> · <a href="README.pt-BR.md">Português</a>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/home-en.png" width="24%" alt="Home screen">
+  <img src="docs/screenshots/result-en.png" width="24%" alt="A photo read as text">
+  <img src="docs/screenshots/write-en.png" width="24%" alt="Writing in Zu">
+  <img src="docs/screenshots/commands-en.png" width="24%" alt="A command sequence">
+</p>
+
+## Features
+
+- **Read Zu**: take a photo (or pick one from the gallery), crop around the text, and get the English text. Each glyph is marked on the photo; tap a letter to correct it.
+- **Numbers**: reads Zu numbers too (0–10). An automatic mode tells letters and numbers apart.
+- **Write by hand**: type with a glyph keyboard (or letters) and see the text drawn in Zu, with a cursor like a normal text field.
+- **Commands**: reads the tetromino command sequences from the game, glued or separate, in rows or columns, and shows the button for each piece (↑ ↓ ← →, A, LT, RT). You can also correct or create sequences by hand.
+- **QR codes, annotations and video**: read QR codes, draw on photos, and record up to 10 minutes of gameplay to read frames later.
+- **Collection**: save anything you read or write, with a name and a description, and share it as an image plus text.
+- Light and dark themes, English and Portuguese. **Works offline**: no account, no ads, no tracking.
+
+## Install
+
+1. On your phone, open the [latest release](../../releases) and download `zu-reader-<version>.apk`.
+2. Open the file. If Android asks, allow installs from that source.
+3. New versions install over the old one and keep your collection.
+
+Requires Android 8.0 or newer.
+
+## How it works
+
+The reader is plain Kotlin with no ML framework, so it runs fully on the device:
+
+1. **Ink mask**: global and local thresholds at several scales, for dark-on-light and light-on-dark text. If the result is weak, it also tries color variants (contrast, R/G/B channels, saturation).
+2. **Glyph boxes**: every glyph fills all rows and columns of its 5×5 grid, so the mask is split by its projections. Skew up to ±12° and stretching up to 3× are corrected.
+3. **Classification**: each glyph becomes a 5×5 bit matrix and is matched against the 24 Zu glyphs (6 shapes × 4 rotations) by Hamming distance.
+4. **Text**: a Viterbi search over English letter pairs picks the most likely letters. This resolves the pairs that share a glyph (K/Q, U/V) and noisy blocks.
+
+Columns are read top to bottom, right to left, as in the game. Horizontal reading is an option in the settings.
+
+## Build from source
+
+You need **JDK 25** and the **Android SDK** with platform 37 (Android Studio installs it).
+
+```bash
+git clone https://github.com/davicolzer/zu-reader.git
+cd zu-reader
+./gradlew build                # compile, run all tests and lint
+./gradlew :app:installDebug    # install on a connected device or emulator
+./gradlew :core:vision:test    # only the image-reading tests (no emulator needed)
+```
+
+| Tool | Version |
 |---|---|
-| JDK | 25 (LTS) |
+| JDK | 25 (LTS); bytecode targets Java 21 |
 | Gradle | 9.8.2 |
 | Kotlin | 2.4.21 |
 | Android Gradle Plugin | 9.5.1 |
@@ -22,48 +78,36 @@ App Android em Kotlin que lê textos no alfabeto Zu, do jogo Fez, a partir de um
 | compileSdk / targetSdk | 37 |
 | minSdk | 26 (Android 8.0) |
 
-O Gradle roda no JDK 25. O bytecode é gerado para Java 21, que é o que o Android aceita.
-
-## Estrutura
+## Project structure
 
 ```
-app/         o aplicativo Android
-core/zu/     Kotlin puro: alfabeto Zu, classificador, ordenação e leitura (testável sem emulador)
-core/vision/ Kotlin puro: imagem → glifos (limiar, manchas, caixas, grade 5×5), QR, escrita em Zu
-tools/       scripts de apoio (tabela de pares de letras do inglês)
+app/            Android app (Jetpack Compose, CameraX, Room, DataStore)
+  data/         collection (Room), settings (DataStore), language
+  media/        loading and straightening photos, shrinking videos
+  ui/           one folder per screen; ZuReaderApp (navigation) and ReaderViewModel (state)
+core/zu/        pure Kotlin: Zu alphabet, classifier, reading order, English model
+core/vision/    pure Kotlin: image → glyphs, numbers, commands, QR codes, writing in Zu
+testdata/real/  real photos used by the regression tests
+tools/          helper scripts (English letter-pair table, glyph network training)
+docs/           roadmap (PLANO.md), release guide, design files
 ```
 
-Dentro de `app/src/main/kotlin/com/davicolzer/zureader/`:
+The `core` modules do not depend on Android, so the readers are tested quickly on the JVM with real and synthetic images.
 
-```
-MainActivity, ZuReaderApplication   entrada do app (idioma, tema, tela cheia de fotos)
-data/        coleção (Room), configurações (DataStore), idioma, letras aprendidas, tamanho das fotos
-media/       carregar e endireitar fotos, reduzir vídeos a 720p
-ui/          ZuReaderApp (troca de telas com o cubo) e ReaderViewModel (estado de todas as telas)
-ui/components/ peças repetidas: barra de cima, botões, diálogos, foto com zoom, tela cheia, cubo
-ui/theme/    cores, fontes e tema claro/escuro
-ui/<tela>/   uma pasta por tela: home, camera (com os analisadores da câmera), crop, result,
-             correct, write, qr, note, video, history, settings
-```
+## Contributing
 
-## Como rodar
+Bug reports, ideas and pull requests are welcome. **Photos where the app reads wrong are especially useful.** See [CONTRIBUTING.md](CONTRIBUTING.md).
 
-Requisitos: JDK 25 e Android SDK com a plataforma 37 (o Android Studio instala).
+- [Report a bug](../../issues/new?template=bug_report.yml)
+- [Suggest a feature](../../issues/new?template=feature_request.yml)
+- Roadmap (in Portuguese): [docs/PLANO.md](docs/PLANO.md)
 
-```bash
-./gradlew build                 # compila, roda testes e lint
-./gradlew :app:installDebug     # instala no aparelho/emulador conectado
-./gradlew :core:zu:test         # só os testes do leitor
-```
+## Credits and licenses
 
-CI em dois fluxos: **PR** (testes e lint → build dos APKs) e **Release** (no merge na `main`: build dos APKs → release com o APK para instalar). Ver `docs/RELEASE.md`.
+- Code: [MIT](LICENSE).
+- Zu glyph shapes from [FEZ Pixel Font](https://github.com/TakWolf/fez-pixel-font) by TakWolf (CC0).
+- English letter pairs built from the NLTK Gutenberg corpus (public-domain books) with `tools/gen_english_bigrams.py`.
+- Fonts: Silkscreen, Figtree and JetBrains Mono, under the SIL Open Font License (see `third_party/fonts/`).
+- The photos in `testdata/real/` are screenshots of *FEZ*, used only to test the reader.
 
-## Licenças
-
-Desenhos dos glifos Zu extraídos da [FEZ Pixel Font](https://github.com/TakWolf/fez-pixel-font), de TakWolf (CC0). O alfabeto Zu pertence à Polytron.
-
-Tabela de pares de letras do inglês gerada a partir do corpus Gutenberg do NLTK (livros em domínio público), com `tools/gen_english_bigrams.py`.
-
-Fontes Silkscreen, Figtree e JetBrains Mono sob a SIL Open Font License (ver `third_party/fonts/`).
-
-Projeto de fã, sem vínculo com a Polytron.
+**Fan project, not affiliated with Polytron.** *FEZ* and the Zu alphabet belong to Polytron Corporation. The app icon and artwork are original.

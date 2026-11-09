@@ -1,0 +1,16 @@
+name: Feature request / Sugerir função
+description: An idea to make the app better. / Uma ideia para melhorar o app.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like? / O que você gostaria?
+      description: Describe the idea and when you would use it. / Descreva a ideia e quando você usaria.
+    validations:
+      required: true
+  - type: textarea
+    id: example
+    attributes:
+      label: Example / Exemplo
+      description: A photo, a sketch or a scene from the game helps. / Uma foto, um desenho ou uma cena do jogo ajudam.
