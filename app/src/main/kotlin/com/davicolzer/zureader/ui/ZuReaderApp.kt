@@ -49,8 +49,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.davicolzer.zureader.ui.commands.CommandsScreen
-import com.davicolzer.zureader.ui.commands.LocalSwapRotation
-import androidx.compose.runtime.CompositionLocalProvider
 
 @Composable
 fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
@@ -145,8 +143,6 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
     // gira para um lado, voltando gira para o outro
     val turn = remember { CubeTurn(state) }
     val forward = turn.update(state)
-    // comandos: qual peça é LT e qual é RT vale para todas as telas (coleção e sequência)
-    CompositionLocalProvider(LocalSwapRotation provides settings.swapRotation) {
     AnimatedContent(
         targetState = state,
         modifier = Modifier.background(Backdrop),
@@ -322,7 +318,6 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
                     name = s.name,
                     description = s.description,
                     onDetails = viewModel::setDetails,
-                    onSwapRotation = viewModel::setSwapRotation,
                 )
             }
             ReaderUiState.Reading -> ReadingProgress()
@@ -362,7 +357,6 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
             }
         }
       }
-    }
     }
 }
 

@@ -89,7 +89,8 @@ class HistoryRepository(private val dao: ReadingDao, filesDir: File) {
                 createdAt = System.currentTimeMillis(),
                 text = reading.code,
                 imageFile = writeImage(image),
-                data = "",
+                // onde cada peça está na foto, para marcar de novo ao abrir
+                data = reading.boxesCode,
                 kind = ReadingEntity.KIND_COMMANDS,
                 name = name.trim(),
                 description = description.trim(),
@@ -100,7 +101,7 @@ class HistoryRepository(private val dao: ReadingDao, filesDir: File) {
     suspend fun loadCommands(id: Long): SavedCommands? = withContext(Dispatchers.IO) {
         val row = dao.get(id)?.takeIf { it.kind == ReadingEntity.KIND_COMMANDS } ?: return@withContext null
         val image = BitmapFactory.decodeFile(File(imagesDir, row.imageFile).path) ?: return@withContext null
-        SavedCommands(row.id, image, CommandReading.parse(row.text), row.name, row.description)
+        SavedCommands(row.id, image, CommandReading.parse(row.text, row.data), row.name, row.description)
     }
 
     /** `true` se o item [id] é uma foto anotada. */

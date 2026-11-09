@@ -28,7 +28,6 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -62,6 +61,7 @@ import com.davicolzer.zureader.ui.components.ShareCard
 import com.davicolzer.zureader.ui.components.ZoomableImage
 import com.davicolzer.zureader.ui.components.copyText
 import com.davicolzer.zureader.ui.theme.ZuTheme
+import com.davicolzer.zureader.vision.Cell
 import com.davicolzer.zureader.vision.CommandPiece
 import com.davicolzer.zureader.vision.CommandReading
 import com.davicolzer.zureader.vision.GameButton
@@ -87,10 +87,7 @@ fun CommandsScreen(
     name: String = "",
     description: String = "",
     onDetails: (name: String, description: String) -> Unit = { _, _ -> },
-    /** S = RT e Z = LT (a troca é guardada nas configurações). */
-    onSwapRotation: (Boolean) -> Unit = {},
 ) {
-    val swap = LocalSwapRotation.current
     val context = LocalContext.current
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -98,7 +95,7 @@ fun CommandsScreen(
     val saved = stringResource(R.string.result_saved_message)
     var confirmDelete by remember { mutableStateOf(false) }
     val found = reading.pieces.isNotEmpty()
-    val summary = commandSummary(reading, swap)
+    val summary = commandSummary(reading)
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(snackbar) },
@@ -121,7 +118,9 @@ fun CommandsScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 if (found) DetailsFields(name, description, onDetails, showDescription = false)
-                val shown = remember(image) { image.asImageBitmap() }
+                // a foto com cada peça marcada: o número na ordem de leitura e o botão
+                val marked = remember(image, reading) { markPieces(image, reading) }
+                val shown = remember(marked) { marked.asImageBitmap() }
                 ZoomableImage(
                     shown,
                     stringResource(R.string.commands_image_description),
@@ -158,13 +157,10 @@ fun CommandsScreen(
                         }
                         // as peças na ordem de leitura, quebrando a linha quando não cabem
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            reading.pieces.forEach { PieceTile(it, swap) }
+                            // cada peça desenhada como está na foto (em pé, numa coluna)
+                            reading.pieces.forEachIndexed { i, piece -> PieceTile(i + 1, piece, reading.vertical) }
                         }
                         Text(stringResource(R.string.commands_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        // qual peça é LT e qual é RT ainda não está confirmado: um toque troca
-                        if (reading.pieces.any { it.shape == Tetromino.S || it.shape == Tetromino.Z }) {
-                            PixelOutlinedButton(stringResource(R.string.commands_swap), R.drawable.ic_pixel_undo, onClick = { onSwapRotation(!swap) }, compact = true)
-                        }
                         if (reading.recognized < reading.pieces.size) {
                             Text(stringResource(R.string.commands_unknown), style = MaterialTheme.typography.bodySmall, color = ZuTheme.colors.gold)
                         }
@@ -190,7 +186,7 @@ fun CommandsScreen(
                         scope.launch { snackbar.showSnackbar(copied) }
                     }
                     ActionTile(R.drawable.ic_pixel_share, stringResource(R.string.result_share), Modifier.weight(1f)) {
-                        scope.launch { ShareCard.share(context, image, name, summary, description) }
+                        scope.launch { ShareCard.share(context, markPieces(image, reading), name, summary, description) }
                     }
                     if (savedId == null) {
                         ActionTile(R.drawable.ic_pixel_save, stringResource(R.string.result_save), Modifier.weight(1f), primary = true) {
@@ -215,39 +211,46 @@ fun CommandsScreen(
     }
 }
 
-/** Comandos: S = RT e Z = LT (escolha guardada nas configurações), para a tela e a coleção. */
-val LocalSwapRotation = compositionLocalOf { false }
-
 /**
  * A sequência em texto, para copiar, compartilhar e mostrar na coleção: os botões do jogo
  * ("↑ ← LT A …"); peça sem botão, a letra do formato; "?" = não reconhecida.
  */
-fun commandSummary(reading: CommandReading, swapRotation: Boolean = false): String = reading.pieces.joinToString(" ") { piece ->
-    GameButton.of(piece, swapRotation)?.label ?: piece.shape?.name ?: "?"
+fun commandSummary(reading: CommandReading): String = reading.pieces.joinToString(" ") { piece ->
+    GameButton.of(piece)?.label ?: piece.shape?.name ?: "?"
 }
 
 /** Uma peça: o desenho dos 4 blocos e, embaixo, o botão a apertar. Não reconhecida: "?" em dourado. */
 @Composable
-private fun PieceTile(piece: CommandPiece, swap: Boolean) {
-    val button = GameButton.of(piece, swap)
+private fun PieceTile(number: Int, piece: CommandPiece, inColumn: Boolean) {
+    val button = GameButton.of(piece)
     val label = when {
         piece.shape == null -> stringResource(R.string.commands_piece_unknown)
         button != null -> stringResource(button.spoken)
         else -> stringResource(R.string.commands_piece, piece.shape!!.name)
-    }
+    }.let { "$number: $it" }
     val known = piece.shape != null
-    Column(
+    Box(
         Modifier
-            .size(width = 56.dp, height = 74.dp)
+            .size(width = 56.dp, height = 80.dp)
             .clip(RoundedCornerShape(10.dp))
             .background(MaterialTheme.colorScheme.background)
             .border(1.dp, if (known) MaterialTheme.colorScheme.outline else ZuTheme.colors.gold, RoundedCornerShape(10.dp))
             .clearAndSetSemantics { contentDescription = label },
+    ) {
+    // o número da peça, o mesmo da marca na foto
+    Text(
+        number.toString(),
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.align(Alignment.TopStart).padding(start = 6.dp, top = 3.dp),
+    )
+    Column(
+        Modifier.fillMaxSize().padding(top = 10.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
     ) {
         if (known) {
-            PieceDrawing(piece, MaterialTheme.colorScheme.onBackground, 30.dp)
+            PieceDrawing(if (inColumn) piece.cellsInColumn else piece.cells, MaterialTheme.colorScheme.onBackground, 30.dp)
             Text(
                 button?.label ?: piece.shape!!.name,
                 // as setas são finas na fonte: maiores, para ficarem do peso de "LT" e "A"
@@ -258,7 +261,49 @@ private fun PieceTile(piece: CommandPiece, swap: Boolean) {
             Text("?", style = MaterialTheme.typography.headlineSmall, color = ZuTheme.colors.gold)
         }
     }
+    }
 }
+
+/**
+ * A foto com cada peça marcada: um quadro em volta dela e uma etiqueta com o número (na ordem de
+ * leitura) e o botão; não reconhecida, quadro dourado e "?". Sem as posições, a foto como está.
+ */
+fun markPieces(image: Bitmap, reading: CommandReading): Bitmap {
+    if (reading.boxes.size != reading.pieces.size || reading.boxes.isEmpty()) return image
+    val out = image.copy(Bitmap.Config.ARGB_8888, true)
+    val canvas = android.graphics.Canvas(out)
+    val side = minOf(out.width, out.height)
+    val stroke = (maxOf(out.width, out.height) / 220f).coerceAtLeast(2f)
+    val frame = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { style = android.graphics.Paint.Style.STROKE; strokeWidth = stroke }
+    val tag = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+    val text = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+        typeface = android.graphics.Typeface.DEFAULT_BOLD
+        textSize = (maxOf(out.width, out.height) / 32f).coerceIn(12f, side * 0.5f)
+    }
+    reading.pieces.forEachIndexed { i, piece ->
+        val b = reading.boxes[i]
+        val r = android.graphics.RectF(b.left * out.width, b.top * out.height, b.right * out.width, b.bottom * out.height)
+        val known = piece.shape != null
+        val color = if (known) MARK_TEAL else MARK_GOLD
+        frame.color = color
+        canvas.drawRect(r, frame)
+        val label = "${i + 1} " + (GameButton.of(piece)?.label ?: piece.shape?.name ?: "?")
+        val pad = text.textSize * 0.25f
+        val tw = text.measureText(label)
+        // a etiqueta no canto de cima da peça, sem sair da foto
+        val left = r.left.coerceIn(0f, (out.width - tw - 2 * pad).coerceAtLeast(0f))
+        val top = (r.top - text.textSize - pad).coerceAtLeast(0f)
+        tag.color = color
+        canvas.drawRoundRect(left, top, left + tw + 2 * pad, top + text.textSize + pad, pad, pad, tag)
+        text.color = MARK_INK
+        canvas.drawText(label, left + pad, top + text.textSize * 0.92f, text)
+    }
+    return out
+}
+
+private const val MARK_TEAL = 0xFF4FC3C9.toInt()
+private const val MARK_GOLD = 0xFFF5B700.toInt()
+private const val MARK_INK = 0xFF14122A.toInt()
 
 /** Como o leitor de tela fala cada botão. */
 private val GameButton.spoken: Int
@@ -274,8 +319,7 @@ private val GameButton.spoken: Int
 
 /** O desenho de uma peça (os 4 blocos), centralizado num quadrado de lado [size]. */
 @Composable
-fun PieceDrawing(piece: CommandPiece, color: Color, size: Dp) {
-    val cells = piece.cells
+fun PieceDrawing(cells: List<Cell>, color: Color, size: Dp) {
     Box(Modifier.size(size), contentAlignment = Alignment.Center) {
         if (cells.isEmpty()) return@Box
         Canvas(Modifier.size(size)) {
