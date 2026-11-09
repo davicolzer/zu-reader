@@ -49,6 +49,14 @@
 
 Precisa de Android 8.0 ou mais novo.
 
+**Confira o download.** Os APKs oficiais vêm só das Releases deste repositório e são assinados com este certificado (SHA-256):
+
+```
+75:83:05:03:22:DA:39:AF:A9:B6:A4:01:B1:D9:EE:D2:67:08:52:C2:C1:BF:39:34:01:67:5E:88:FE:15:AD:10
+```
+
+Para conferir: `apksigner verify --print-certs zu-reader.apk`. Uma impressão digital diferente quer dizer que o arquivo não veio daqui; não instale.
+
 ## Como funciona
 
 O leitor é Kotlin puro, sem framework de aprendizado de máquina, e roda inteiro no aparelho:
