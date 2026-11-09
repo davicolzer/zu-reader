@@ -1,5 +1,6 @@
 package com.davicolzer.zureader.ui.write
 
+import com.davicolzer.zureader.ui.components.ActionKey
 import com.davicolzer.zureader.ui.components.cubeTurnSpec
 import com.davicolzer.zureader.ui.components.cubeFace
 import androidx.compose.foundation.layout.safeDrawingPadding
@@ -7,6 +8,7 @@ import androidx.compose.animation.AnimatedContent
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -79,6 +81,9 @@ import com.davicolzer.zureader.zu.ZuMixed
 import com.davicolzer.zureader.zu.ZuNumerals
 import com.davicolzer.zureader.ui.components.AppTopBar
 import com.davicolzer.zureader.ui.components.detectZoomGestures
+import com.davicolzer.zureader.ui.components.CursorEdit
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.foundation.layout.width
 
 /**
  * Escrever à mão, tudo numa tela só (sem rolagem). Em cima, a mensagem em Zu (colunas, como no
@@ -101,9 +106,14 @@ fun WriteScreen(
     startFullScreen: Boolean = false,
     /** Teclas por linha (4 ou 6; ver [KeyboardLayout]). */
     columns: Int = 6,
+    /** Cursor e letra selecionada ao abrir (prévias); sem eles, o cursor fica no fim. */
+    startCursor: Int? = null,
+    startSelected: Int? = null,
 ) {
     val layout = KeyboardLayout.of(columns)
-    var text by rememberSaveable(draft) { mutableStateOf(draft) }
+    // o texto com cursor (e letra selecionada), como num editor: digitar entra no cursor
+    var edit by rememberSaveable(draft, saver = EditSaver) { mutableStateOf(CursorEdit(draft.toList(), startCursor ?: draft.length, startSelected)) }
+    val text = edit.items.joinToString("")
     var byLetters by rememberSaveable { mutableStateOf(startWithLetters) }
     var fullScreen by rememberSaveable { mutableStateOf(startFullScreen) }
     // K/Q e U/V tocados pelo glifo: a letra vem do contexto do inglês e muda enquanto o usuário digita
@@ -146,78 +156,106 @@ fun WriteScreen(
                     .padding(12.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                ZuPreview(message, direction, Modifier.fillMaxWidth().weight(1f), pending = pendingBreak(text))
+                // o glifo no cursor (ou o selecionado) em dourado; o vão de espaço só no fim
+                val atEnd = edit.selected == null && edit.cursor == text.length
+                val highlight = glyphIndex(text, edit.selected ?: (edit.cursor - 1))
+                ZuPreview(message, direction, Modifier.fillMaxWidth().weight(1f), pending = if (atEnd) pendingBreak(text) else null, highlight = highlight)
                 // sem nada escrito, a dica usa a área toda (cabe em tela pequena)
+                if (text.isNotEmpty()) {
+                    CursorLine(
+                        SharedLetters.resolve(text),
+                        edit,
+                        onSelect = { edit = edit.select(it) },
+                        onEnd = { edit = edit.moveTo(text.length) },
+                    )
+                }
+            }
+
+            val space = {
+                // não começa com espaço nem repete espaço (antes ou depois do cursor)
+                val before = text.getOrNull((edit.selected ?: edit.cursor) - 1)
+                if (before != null && before != ' ' && before != '\n') edit = edit.type(' ')
+            }
+            val newColumn = {
+                // próxima coluna (ou linha) no cursor; tira os espaços logo antes dele
                 if (message.isNotEmpty()) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            englishLine(message, pendingBreak(text)),
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onBackground,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f).semantics { contentDescription = message },
-                        )
-                    }
+                    var e = edit
+                    while (e.selected == null && e.cursor > 0 && e.items[e.cursor - 1] == ' ') e = e.delete()
+                    edit = e.type('\n')
                 }
             }
-
-            SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                listOf(false, true).forEachIndexed { i, letters ->
-                    SegmentedButton(
-                        selected = byLetters == letters,
-                        onClick = { byLetters = letters },
-                        shape = SegmentedButtonDefaults.itemShape(index = i, count = 2),
-                        icon = {},
-                        colors = SegmentedButtonDefaults.colors(
-                            activeContainerColor = MaterialTheme.colorScheme.tertiary,
-                            activeContentColor = MaterialTheme.colorScheme.onTertiary,
-                            inactiveContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-                            inactiveContentColor = MaterialTheme.colorScheme.onSurface,
-                        ),
-                    ) {
-                        // numa linha só, diminuindo se o idioma tiver um nome mais longo
-                        BasicText(
-                            stringResource(if (letters) R.string.write_by_letters else R.string.write_by_glyphs),
-                            style = MaterialTheme.typography.labelLarge.copy(color = LocalContentColor.current),
-                            maxLines = 1,
-                            autoSize = TextAutoSize.StepBased(minFontSize = 10.sp, maxFontSize = MaterialTheme.typography.labelLarge.fontSize),
-                        )
+            val breakLabel = stringResource(if (direction == ReadingDirection.VERTICAL_RIGHT_TO_LEFT) R.string.write_new_column else R.string.write_new_line)
+            // espaço e nova coluna em destaque, ao lado da escolha entre glifos e letras
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                SingleChoiceSegmentedButtonRow(Modifier.weight(1f)) {
+                    listOf(false, true).forEachIndexed { i, letters ->
+                        SegmentedButton(
+                            selected = byLetters == letters,
+                            onClick = { byLetters = letters },
+                            shape = SegmentedButtonDefaults.itemShape(index = i, count = 2),
+                            icon = {},
+                            colors = SegmentedButtonDefaults.colors(
+                                activeContainerColor = MaterialTheme.colorScheme.tertiary,
+                                activeContentColor = MaterialTheme.colorScheme.onTertiary,
+                                inactiveContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+                                inactiveContentColor = MaterialTheme.colorScheme.onSurface,
+                            ),
+                        ) {
+                            // numa linha só, diminuindo se o idioma tiver um nome mais longo
+                            BasicText(
+                                stringResource(if (letters) R.string.write_by_letters else R.string.write_by_glyphs),
+                                style = MaterialTheme.typography.labelLarge.copy(color = LocalContentColor.current),
+                                maxLines = 1,
+                                autoSize = TextAutoSize.StepBased(minFontSize = 10.sp, maxFontSize = MaterialTheme.typography.labelLarge.fontSize),
+                            )
+                        }
                     }
                 }
+                ActionKey(
+                    stringResource(R.string.write_space),
+                    R.drawable.ic_pixel_space,
+                    Modifier.width(52.dp),
+                    container = ZuTheme.colors.gold.copy(alpha = 0.22f),
+                    content = ZuTheme.colors.gold,
+                    border = ZuTheme.colors.gold,
+                    height = 40.dp,
+                    onClick = space,
+                )
+                ActionKey(
+                    breakLabel,
+                    R.drawable.ic_pixel_newline,
+                    Modifier.width(52.dp),
+                    container = ZuTheme.colors.gold.copy(alpha = 0.22f),
+                    content = ZuTheme.colors.gold,
+                    border = ZuTheme.colors.gold,
+                    height = 40.dp,
+                    onClick = newColumn,
+                )
             }
 
+            val keyOf: @Composable (Key, Modifier) -> Unit = { key, modifier ->
+                when (key) {
+                    is Key.Glyph -> GlyphKey(key.glyph, modifier) { edit = edit.type(SharedLetters.typed(key.glyph)) }
+                    is Key.Symbol -> LetterKey(key.symbol, modifier) { edit = edit.type(key.symbol) }
+                }
+            }
             if (!byLetters) {
-                // pelo desenho (ver KeyboardLayout) e, embaixo, todos os desenhos de números
-                KeyGrid(layout, keyHeight, layout.letterRows(), ZuNumerals.glyphs.chunked(layout.columns)) { glyph, modifier ->
-                    GlyphKey(glyph, modifier) { text += SharedLetters.typed(glyph) }
-                }
+                // pelo desenho (ver KeyboardLayout) e, embaixo, os desenhos de números
+                KeyGrid(layout, keyHeight, layout.letterRows().map { row -> row.map { Key.Glyph(it) } }, ZuNumerals.glyphs.map { Key.Glyph(it) }.chunked(layout.columns), keyOf)
             } else {
-                // um de cada, na ordem: A–Z e depois 0–10
-                // letras em cima e, separados, os números
+                // um de cada, na ordem: A–Z e, separados, 0–10
                 val numberSymbols = ('0'..'9').toList() + ReadingMode.TEN + ReadingMode.EQUALS
-                KeyGrid(layout, keyHeight, ('A'..'Z').toList().chunked(layout.columns), numberSymbols.chunked(layout.columns)) { symbol, modifier ->
-                    LetterKey(symbol, modifier) { text += symbol }
-                }
+                KeyGrid(layout, keyHeight, ('A'..'Z').map { Key.Symbol(it) }.chunked(layout.columns), numberSymbols.map { Key.Symbol(it) }.chunked(layout.columns), keyOf)
             }
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                // espaço: o ícone (a palavra fica para quem usa leitor de tela)
-                ActionKey(stringResource(R.string.write_space), R.drawable.ic_pixel_space, Modifier.weight(1.3f)) {
-                    if (text.isNotEmpty() && !text.endsWith(' ') && !text.endsWith('\n')) text += ' '
-                }
-                ActionKey(
-                    stringResource(if (direction == ReadingDirection.VERTICAL_RIGHT_TO_LEFT) R.string.write_new_column else R.string.write_new_line),
-                    R.drawable.ic_pixel_newline,
-                    Modifier.weight(1f),
-                ) {
-                    // próxima coluna (ou linha); não começa com quebra nem repete espaço antes dela
-                    if (message.isNotEmpty()) text = text.trimEnd(' ') + '\n'
-                }
+                // mover o cursor (o espaço e a nova coluna ficam ao lado da escolha de teclado)
+                ActionKey(stringResource(R.string.cursor_left), R.drawable.ic_pixel_cursor_left, Modifier.weight(1f)) { edit = edit.left() }
+                ActionKey(stringResource(R.string.cursor_right), R.drawable.ic_pixel_cursor_right, Modifier.weight(1f)) { edit = edit.right() }
                 ActionKey(stringResource(R.string.write_delete), R.drawable.ic_pixel_backspace, Modifier.weight(1f)) {
-                    text = text.dropLast(1)
+                    edit = edit.delete()
                 }
-                ActionKey(stringResource(R.string.write_clear), R.drawable.ic_pixel_trash, Modifier.weight(1f)) { text = "" }
+                ActionKey(stringResource(R.string.write_clear), R.drawable.ic_pixel_trash, Modifier.weight(1f)) { edit = edit.clear() }
                 ActionKey(
                     stringResource(R.string.write_done),
                     R.drawable.ic_pixel_check,
@@ -245,18 +283,83 @@ private fun pendingBreak(text: String): Char? = when {
     else -> null
 }
 
-/** O texto em inglês com cursor; mensagem longa mostra o final (onde o usuário está digitando). */
-private fun englishLine(message: String, pending: Char?): String {
-    val full = ReadingMode.MIXED.display(message).replace("\n", " | ") + when (pending) {
-        '\n' -> " | "
-        ' ' -> " "
-        else -> ""
+/** O glifo (contando só letras e números, sem espaços) da posição [index] do texto; `null` se antes do começo. */
+private fun glyphIndex(text: String, index: Int): Int? =
+    if (index < 0 || index >= text.length) null else text.take(index + 1).count { !it.isWhitespace() } - 1
+
+/** Guarda o texto, o cursor e a seleção ao girar a tela. */
+private val EditSaver = androidx.compose.runtime.saveable.listSaver<androidx.compose.runtime.MutableState<CursorEdit<Char>>, Any>(
+    save = { listOf(it.value.items.joinToString(""), it.value.cursor, it.value.selected ?: -1) },
+    restore = { mutableStateOf(CursorEdit((it[0] as String).toList(), it[1] as Int, (it[2] as Int).takeIf { s -> s >= 0 })) },
+)
+
+/**
+ * A linha do texto com o cursor: cada letra (em inglês) é tocável e fica selecionada para trocar ou
+ * apagar; o cursor é uma barra dourada; tocar no fim põe o cursor lá (◀ ▶ ficam embaixo). A linha
+ * rola até o cursor.
+ */
+@Composable
+private fun CursorLine(
+    text: String,
+    edit: CursorEdit<Char>,
+    onSelect: (Int) -> Unit,
+    onEnd: () -> Unit,
+) {
+    val scroll = rememberScrollState()
+    val gold = ZuTheme.colors.gold
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            Modifier.weight(1f).horizontalScroll(scroll).semantics { contentDescription = text },
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            text.forEachIndexed { i, ch ->
+                if (edit.selected == null && edit.cursor == i) Caret(gold)
+                val selected = edit.selected == i
+                Box(
+                    Modifier
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(if (selected) gold else Color.Transparent)
+                        .clickable { onSelect(i) }
+                        .padding(horizontal = 1.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        when (ch) {
+                            ' ' -> "␣"
+                            '\n' -> "|"
+                            else -> ReadingMode.MIXED.symbolLabel(ch)
+                        },
+                        style = MaterialTheme.typography.titleMedium,
+                        color = when {
+                            selected -> MaterialTheme.colorScheme.background
+                            ch.isWhitespace() -> MaterialTheme.colorScheme.onSurfaceVariant
+                            else -> MaterialTheme.colorScheme.onBackground
+                        },
+                    )
+                }
+            }
+            Box(Modifier.size(width = 24.dp, height = 28.dp).clickable(onClick = onEnd), contentAlignment = Alignment.CenterStart) {
+                if (edit.selected == null && edit.cursor == text.length) Caret(gold)
+            }
+        }
     }
-    return (if (full.length > ENGLISH_MAX) "…" + full.takeLast(ENGLISH_MAX) else full) + "_"
+    // a linha acompanha o cursor (aproximado pela proporção do texto)
+    LaunchedEffect(edit.cursor, edit.selected, text.length) {
+        val at = (edit.selected ?: edit.cursor).toFloat() / maxOf(1, text.length)
+        scroll.animateScrollTo((scroll.maxValue * at).toInt())
+    }
 }
 
-/** Quantos caracteres do texto em inglês mostrar (o final). */
-private const val ENGLISH_MAX = 26
+@Composable
+private fun Caret(color: Color) {
+    Box(Modifier.padding(horizontal = 1.dp).size(width = 2.dp, height = 22.dp).background(color))
+}
+
+/** Uma tecla do teclado: um glifo, ou uma letra ou número. */
+private sealed interface Key {
+    data class Glyph(val glyph: ZuGlyph) : Key
+    data class Symbol(val symbol: Char) : Key
+}
 
 /** Espaço mínimo da mensagem em Zu. */
 private val MESSAGE_MIN = 170.dp
@@ -420,6 +523,8 @@ private fun ZuPreview(
     showAll: Boolean = false,
     /** Espaço ou nova coluna digitados por último: mostra o cursor onde o próximo glifo vai entrar. */
     pending: Char? = null,
+    /** O glifo em dourado (o do cursor); sem ele, o último. */
+    highlight: Int? = null,
 ) {
     val glyphs = remember(message, direction) { ZuWriter.layout(message, direction) }
     // onde o próximo glifo entraria: o mesmo texto com o espaço (ou a coluna nova) e mais uma letra
@@ -481,7 +586,7 @@ private fun ZuPreview(
                     val top = offY + (g.y - half - minY) * scale
                     // fora o modo "tudo", só glifos inteiros: uma coluna cortada ao meio confunde
                     if (!showAll && (left < -0.5f || top < -0.5f || left + 2 * half * scale > size.width + 0.5f || top + 2 * half * scale > size.height + 0.5f)) return@forEachIndexed
-                    val color = if (i == glyphs.lastIndex && cursor == null) last else ink
+                    val color = if (cursor == null && i == (highlight ?: glyphs.lastIndex)) last else ink
                     for (r in 0 until 5) for (c in 0 until 5) if (g.bits[r, c]) {
                         drawRect(color, Offset(left + c * cell, top + r * cell), Size(cell + 0.5f, cell + 0.5f))
                     }
@@ -532,31 +637,4 @@ private fun KeyBox(label: String, modifier: Modifier, onClick: () -> Unit, conte
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
     ) { content() }
-}
-
-@Composable
-private fun ActionKey(
-    label: String,
-    icon: Int?,
-    modifier: Modifier,
-    container: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
-    content: Color = MaterialTheme.colorScheme.onSurface,
-    showLabel: Boolean = icon == null,
-    enabled: Boolean = true,
-    onClick: () -> Unit,
-) {
-    Row(
-        modifier
-            .height(52.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(if (enabled) container else MaterialTheme.colorScheme.surfaceContainer)
-            .clickable(enabled = enabled, role = Role.Button, onClickLabel = label, onClick = onClick)
-            .semantics { contentDescription = label },
-        horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        val tint = if (enabled) content else MaterialTheme.colorScheme.onSurfaceVariant
-        if (icon != null) Icon(painterResource(icon), contentDescription = null, modifier = Modifier.size(20.dp), tint = tint)
-        if (showLabel) Text(label, style = MaterialTheme.typography.labelLarge, color = tint, maxLines = 1)
-    }
 }

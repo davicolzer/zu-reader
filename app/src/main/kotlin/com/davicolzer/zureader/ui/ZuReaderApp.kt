@@ -49,8 +49,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.davicolzer.zureader.ui.commands.CommandsScreen
-import com.davicolzer.zureader.ui.commands.LocalSwapRotation
-import androidx.compose.runtime.CompositionLocalProvider
+import com.davicolzer.zureader.ui.commands.CommandsWriteScreen
+import com.davicolzer.zureader.ui.components.PixelOutlinedButton
 
 @Composable
 fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
@@ -109,6 +109,13 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
             onCamera = { chooseCommandsSource = false; viewModel.openCameraForCommands() },
             onGallery = { chooseCommandsSource = false; pickCommands() },
             onDismiss = { chooseCommandsSource = false },
+            // ou montar a sequência à mão, sem foto
+            more = {
+                PixelOutlinedButton(stringResource(R.string.commands_write_hand), R.drawable.ic_pixel_keyboard, onClick = {
+                    chooseCommandsSource = false
+                    viewModel.openCommandsWriter()
+                })
+            },
         )
     }
     // "Gravar vídeo": gravar agora ou escolher um vídeo da galeria
@@ -145,8 +152,6 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
     // gira para um lado, voltando gira para o outro
     val turn = remember { CubeTurn(state) }
     val forward = turn.update(state)
-    // comandos: qual peça é LT e qual é RT vale para todas as telas (coleção e sequência)
-    CompositionLocalProvider(LocalSwapRotation provides settings.swapRotation) {
     AnimatedContent(
         targetState = state,
         modifier = Modifier.background(Backdrop),
@@ -322,8 +327,12 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
                     name = s.name,
                     description = s.description,
                     onDetails = viewModel::setDetails,
-                    onSwapRotation = viewModel::setSwapRotation,
+                    onFixByHand = viewModel::fixCommands,
                 )
+            }
+            is ReaderUiState.CommandsWrite -> {
+                BackHandler(onBack = viewModel::leaveCommandsWriter)
+                CommandsWriteScreen(initial = s.pieces, onDone = viewModel::finishCommandsWriting, onBack = viewModel::leaveCommandsWriter)
             }
             ReaderUiState.Reading -> ReadingProgress()
             is ReaderUiState.Result -> {
@@ -363,7 +372,6 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
         }
       }
     }
-    }
 }
 
 @Composable
@@ -399,6 +407,7 @@ private class CubeTurn(private var last: ReaderUiState) {
         ReaderUiState.History, ReaderUiState.Settings, is ReaderUiState.Camera -> 1
         is ReaderUiState.Crop, ReaderUiState.Reading, is ReaderUiState.Annotate, is ReaderUiState.Video -> 2
         is ReaderUiState.Write -> if (s.from != null) 4 else 2
+        is ReaderUiState.CommandsWrite -> if (s.from != null) 4 else 2
         else -> 3
     }
 }

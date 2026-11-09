@@ -86,7 +86,7 @@
     <string name="write_title">Escrever em Zu</string>
     <string name="write_empty">Toque nos glifos para escrever. A mensagem aparece aqui em Zu.</string>
     <string name="write_by_glyphs">Glifos</string>
-    <string name="write_by_letters">Letras e números</string>
+    <string name="write_by_letters">ABC 123</string>
     <string name="write_space">Espaço</string>
     <string name="write_new_column">Nova coluna</string>
     <string name="write_new_line">Nova linha</string>
@@ -248,7 +248,7 @@
         <item quantity="one">%1$d peça</item>
         <item quantity="other">%1$d peças</item>
     </plurals>
-    <string name="commands_hint">Setas: a perna do T aponta a direção. A: pular. LT e RT: girar o mundo (peças S e Z). Ainda não confirmado no jogo: se o código não funcionar, toque em “Trocar LT e RT”.</string>
+    <string name="commands_hint">Setas: a perna do T aponta a direção. A: pular. LT e RT: girar o mundo (Z é LT, S é RT). Os números na foto mostram cada peça.</string>
     <string name="commands_unknown">As peças com ? não foram reconhecidas: recorte mais justo em volta da sequência.</string>
     <string name="commands_none_title">Nenhuma peça encontrada</string>
     <string name="commands_none_body">Recorte só em volta da sequência, com as peças em linha ou em coluna.</string>
@@ -261,7 +261,6 @@
     <string name="commands_piece_unknown">peça não reconhecida</string>
     <string name="history_kind_commands">Comandos</string>
     <string name="history_badge_commands">COMANDOS</string>
-    <string name="commands_swap">Trocar LT e RT</string>
     <string name="button_up">cima</string>
     <string name="button_down">baixo</string>
     <string name="button_left">esquerda</string>
@@ -269,4 +268,10 @@
     <string name="button_jump">pular (A)</string>
     <string name="button_lt">girar para a esquerda (LT)</string>
     <string name="button_rt">girar para a direita (RT)</string>
+    <string name="commands_fix">Corrigir à mão</string>
+    <string name="commands_write_hand">Escrever à mão</string>
+    <string name="commands_write_title">Escrever comandos</string>
+    <string name="commands_write_empty">Toque nos botões para montar a sequência. Toque numa peça para trocar ou apagar; ◀ ▶ movem o cursor.</string>
+    <string name="cursor_left">Mover o cursor para a esquerda</string>
+    <string name="cursor_right">Mover o cursor para a direita</string>
 </resources>
