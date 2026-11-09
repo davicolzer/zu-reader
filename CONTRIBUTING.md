@@ -40,8 +40,8 @@ and run `./gradlew :core:vision:test` without an emulator.
 
 ## Releases
 
-Every merge into `main` publishes a pre-release build with the APK. Stable versions are published by
-the maintainer. See [docs/RELEASE.md](docs/RELEASE.md).
+Every merge into `main` publishes a release with the APK, marked as the latest one.
+See [docs/RELEASE.md](docs/RELEASE.md).
 
 ## Code of conduct
 

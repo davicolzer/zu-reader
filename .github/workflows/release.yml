@@ -1,17 +1,11 @@
 name: Release
 
-# Depois do merge na main: gera os APKs e publica uma pré-release com o APK para instalar.
-# À mão (Actions → Release → Run workflow), com "estável" marcado: publica uma versão estável,
-# que vira a "Latest" da página de releases. Os testes já rodaram no PR.
+# Depois do merge na main (ou à mão em Actions → Release → Run workflow): gera os APKs e publica
+# uma release, marcada como a mais recente (Latest), com o APK para instalar. Os testes já rodaram no PR.
 on:
   push:
     branches: [main]
   workflow_dispatch:
-    inputs:
-      estavel:
-        description: "Versão estável (Latest), não pré-release"
-        type: boolean
-        default: false
 
 concurrency:
   group: release-${{ github.ref }}
@@ -60,10 +54,21 @@ jobs:
           name: zu-reader
           path: dist
 
-      - name: Deixar só o que o usuário precisa
-        # o APK de depuração e o sem assinatura ficam nos artefatos da execução, não na release
+      - name: Conferir a assinatura de produção
+        # sem a chave de publicação (secrets ZU_*), o APK sairia com a chave de teste, que é pública:
+        # a release não é publicada (ver docs/RELEASE.md)
+        if: needs.apk.outputs.signed != 'true'
         run: |
-          rm -f dist/*-debug.apk dist/*-sem-assinatura.apk
+          echo "::error::Chave de publicação não configurada: crie os secrets ZU_KEYSTORE_BASE64, ZU_KEYSTORE_PASSWORD, ZU_KEY_ALIAS e ZU_KEY_PASSWORD (docs/RELEASE.md)"
+          exit 1
+
+      - name: Deixar só o que o usuário precisa
+        # o APK de teste e o AAB (Play Store) ficam nos artefatos da execução, não na release
+        run: |
+          rm -f dist/*-debug.apk dist/*-sem-assinatura.apk dist/*.aab
+          # cópia com nome fixo: o link .../releases/latest/download/zu-reader.apk do README
+          # sempre baixa a versão mais nova
+          cp dist/zu-reader-*.apk dist/zu-reader.apk
           ls -la dist
 
       - name: Escrever notas da release
@@ -73,11 +78,11 @@ jobs:
           {
             echo "## Install / Instalar"
             echo
-            echo "1. On your phone, download **zu-reader-${VERSION}.apk** below. / No celular, baixe **zu-reader-${VERSION}.apk** abaixo."
+            echo "1. On your phone, download **zu-reader.apk** below. / No celular, baixe **zu-reader.apk** abaixo."
             echo "2. Open it and allow installs from this source if Android asks. / Abra e, se o Android pedir, permita instalar dessa fonte."
             echo "3. It installs over the previous version and keeps your collection. / Instala por cima da versão anterior e mantém a coleção."
             echo
-            echo "\`zu-reader-${VERSION}.aab\`: Play Store bundle / pacote para a Play Store."
+            echo "\`zu-reader-${VERSION}.apk\` is the same file with the version in the name. / é o mesmo arquivo, com a versão no nome."
             echo
           } > notas.md
           cat notas.md
@@ -86,19 +91,22 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ needs.apk.outputs.version }}
-          STABLE: ${{ inputs.estavel == true }}
         run: |
-          if [ "$STABLE" = "true" ]; then
-            # mudanças desde a última versão estável; ela vira a "Latest"
-            START=$(gh release list --repo "$GITHUB_REPOSITORY" --exclude-pre-releases --limit 1 --json tagName --jq '.[0].tagName // empty')
-            KIND=(--latest ${START:+--notes-start-tag "$START"})
-          else
-            KIND=(--prerelease)
-          fi
-          gh release create "v${VERSION}" dist/* \
-            --repo "$GITHUB_REPOSITORY" \
-            --target "$GITHUB_SHA" \
-            --title "Zu Reader ${VERSION}" \
-            --notes-file notas.md \
-            --generate-notes \
-            "${KIND[@]}"
+          publicar() {
+            gh release create "v${VERSION}" dist/* \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
+              --title "Zu Reader ${VERSION}" \
+              --notes-file notas.md \
+              --generate-notes \
+              --latest
+          }
+          # falha passageira do GitHub (ex.: no envio dos arquivos): apaga o que ficou pela metade
+          # (release e tag) e tenta de novo, até 3 vezes
+          for tentativa in 1 2 3; do
+            publicar && exit 0
+            echo "::warning::Falhou ao publicar (tentativa ${tentativa}); limpando e tentando de novo"
+            gh release delete "v${VERSION}" --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes 2>/dev/null || true
+            sleep $((tentativa * 15))
+          done
+          exit 1

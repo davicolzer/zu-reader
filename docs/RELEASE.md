@@ -11,31 +11,40 @@ As etapas comuns ficam em `.github/actions/preparar` (JDK, Gradle, SDK) e `.gith
 Como a `main` não roda testes, o que entra nela deve passar por PR (vale ativar a proteção da branch
 `main` exigindo o check "1 · Testes e lint").
 
-## Pré-release e versão estável
+## Releases
 
-- **Cada merge na `main`** publica uma **pré-release** (`v1.0.0-beta-build.N`): serve para testar.
-- **Versão estável**: em **Actions → Release → Run workflow**, marque **"Versão estável"**. A release
-  sai sem a marca de pré-release e vira a **Latest** da página de releases (é a que o botão de download
-  do README mostra primeiro). As notas listam os PRs desde a última versão estável.
+**Cada merge na `main`** publica uma release (`v1.0.0-beta-build.N`) marcada como a mais recente
+(**Latest**). Para mudar a versão (ex.: `1.0.0-beta` → `1.0.0`), edite `versionName` em
+`app/build.gradle.kts`. O número da build (`versionCode`, e o "build.N" no nome) é a quantidade de
+commits: sempre cresce.
 
-Antes de uma versão estável, mude `versionName` em `app/build.gradle.kts` (ex.: `1.0.0-beta` → `1.0.0`).
-O número da build (`versionCode`, e o "build.N" no nome) é a quantidade de commits: sempre cresce.
+Em cada release fica só o **APK para instalar**: `zu-reader.apk` (nome fixo) e o mesmo arquivo como
+`zu-reader-<versão>.apk`. O botão de download do README aponta para
+`releases/latest/download/zu-reader.apk`, então sempre baixa a versão mais nova. As notas trazem como
+instalar (inglês e português) e a lista de mudanças gerada pelo GitHub a partir dos PRs.
 
-Em cada release ficam só o **APK para instalar** (`zu-reader-<versão>.apk`) e o **AAB** para a Play
-Store. As notas trazem como instalar (inglês e português) e a lista de mudanças gerada pelo GitHub
-a partir dos PRs. O APK de depuração e o sem assinatura ficam só nos artefatos da execução.
+O **AAB** (para a Play Store) e o APK de teste ficam só nos **artefatos da execução** (Actions → a
+execução → Artifacts → `zu-reader`). Publicar o AAB não seria perigoso — é o mesmo código aberto,
+sem nenhuma chave dentro —, mas ninguém instala um AAB no celular: ele só serve para enviar à Play
+Store, então fica fora da página de releases.
 
-## Assinatura
+## Assinatura: teste e produção
 
-Sem chave de publicação configurada, o APK é assinado com a **chave do projeto**
-(`app/debug.keystore`, senha pública `android`). Ela serve para desenvolvimento: como está no
-repositório, **qualquer pessoa pode assinar um APK com ela**, e esse APK instalaria por cima do app
-de quem baixou daqui. Para o repositório público, configure uma **chave de publicação** (abaixo).
+| | Chave | App no celular | Onde aparece |
+|---|---|---|---|
+| **Teste** | do projeto (`app/debug.keystore`, senha pública `android`) | **Zu Reader Teste** (`com.davicolzer.zureader.debug`) | APK dos PRs e do Android Studio |
+| **Produção** | de publicação (secrets `ZU_*`, nunca no repositório) | **Zu Reader** (`com.davicolzer.zureader`) | Releases |
 
-> **Atenção ao trocar de chave**: o Android não instala um APK assinado com outra chave por cima do
-> app. Quem já tem o app instalado com a chave do projeto precisa **desinstalar uma vez** (a coleção
-> salva no aparelho é apagada junto) e instalar a versão nova. Depois disso, as atualizações voltam a
-> instalar por cima.
+Os dois são apps diferentes: o de teste instala **ao lado** do oficial, sem apagar a coleção dele.
+
+A chave de teste está no repositório, então **qualquer pessoa pode assinar um APK com ela**. Por isso
+a release **só é publicada com a chave de publicação**: sem os secrets, o fluxo de Release falha de
+propósito em vez de publicar um APK com a chave de teste.
+
+> **Ao trocar para a chave de publicação**: o Android não instala um APK assinado com outra chave por
+> cima do app. Quem tem o Zu Reader instalado de uma release antiga (assinada com a chave de teste)
+> precisa **desinstalar uma vez** (a coleção salva no aparelho é apagada junto) e instalar a versão
+> nova. Depois disso, as atualizações voltam a instalar por cima.
 
 ### Criar a chave de publicação
 

@@ -44,6 +44,11 @@ android {
     }
 
     buildTypes {
+        // versão de teste (APK dos PRs e do Android Studio): outro app, que instala ao lado do oficial
+        debug {
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-teste"
+        }
         release {
             signingConfig = signingConfigs.findByName("release")
             isMinifyEnabled = true
