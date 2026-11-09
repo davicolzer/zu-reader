@@ -1,6 +1,6 @@
 # Developing Zu Reader
 
-Technical notes for whoever builds or maintains the app. For using the app, see the [README](../README.md).
+Technical notes for whoever builds or maintains the app. For using the app, see the [README](../README.en.md) ([Português](../README.md)).
 
 ## How it works
 

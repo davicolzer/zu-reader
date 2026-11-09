@@ -39,6 +39,10 @@ Configuração no GitHub (Settings → Branches → regra para `staging` e para 
    próprio PR, então o dono precisa poder fazer o merge dos PRs dele (marcando "merge without
    waiting for requirements").
 
+**Só documentação** (arquivos `.md`, `docs/`, `LICENSE`, modelos de issue/PR, `CODEOWNERS`): no PR,
+os testes são pulados (o check "1 · Testes e lint" aparece como *skipped*, e a proteção da branch
+aceita); no merge, nem a staging nem a main geram versão nova.
+
 | Fluxo | Quando | Etapas |
 |---|---|---|
 | **PR** (`.github/workflows/pr.yml`) | em cada PR para a `staging` ou a `main` (também de forks) | 1 · Testes e lint (sem build: o APK sai no merge) |

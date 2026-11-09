@@ -6,6 +6,13 @@ name: Staging
 on:
   push:
     branches: [staging]
+    paths-ignore: # só documentação: não gera versão (mesma lista do pr.yml)
+      - "**.md"
+      - "docs/**"
+      - "LICENSE"
+      - ".github/ISSUE_TEMPLATE/**"
+      - ".github/CODEOWNERS"
+      - ".github/pull_request_template.md"
   workflow_dispatch:
 
 concurrency:

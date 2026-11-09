@@ -2,6 +2,8 @@ name: PR
 
 # Em cada PR (para a staging ou a main): só confere o código, com testes e lint. O APK é gerado
 # depois do merge: na staging, a versão de teste (fluxo Staging); na main, a release (fluxo Release).
+# PR só de documentação: os testes são pulados. O check "1 · Testes e lint" aparece como "skipped",
+# o que a proteção da branch aceita (se o fluxo nem rodasse, o PR ficaria esperando o check).
 on:
   pull_request:
 
@@ -13,8 +15,36 @@ permissions:
   contents: read
 
 jobs:
+  mudancas:
+    name: 0 · O que mudou
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      codigo: ${{ steps.ver.outputs.codigo }}
+    steps:
+      - name: Baixar o código (o merge do PR e a base)
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+
+      - name: Ver se mudou algo além da documentação
+        id: ver
+        # documentação: arquivos .md, docs/, LICENSE e os modelos de issue/PR (mesma lista dos
+        # paths-ignore de staging.yml e release.yml)
+        run: |
+          git diff --name-only HEAD^1 HEAD > mudados.txt
+          cat mudados.txt
+          if grep -vqE '(\.md$|^docs/|^LICENSE$|^\.github/ISSUE_TEMPLATE/|^\.github/CODEOWNERS$)' mudados.txt; then
+            echo "codigo=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::Só documentação mudou: os testes são pulados"
+            echo "codigo=false" >> "$GITHUB_OUTPUT"
+          fi
+
   testes:
     name: 1 · Testes e lint
+    needs: mudancas
+    if: needs.mudancas.outputs.codigo == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
