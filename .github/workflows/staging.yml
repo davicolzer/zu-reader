@@ -74,6 +74,8 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: write
+      pull-requests: write
+      issues: write
     steps:
       - name: Baixar o APK do job anterior
         uses: actions/download-artifact@v8
@@ -117,3 +119,18 @@ jobs:
             sleep $((tentativa * 15))
           done
           exit 1
+
+      - name: Avisar no PR que a versão de teste está pronta
+        # o merge do PR na staging é este commit: quem fez o PR recebe o link para baixar
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.apk.outputs.version }}
+        run: |
+          LINK="https://github.com/${GITHUB_REPOSITORY}/releases/download/staging/zu-reader-staging.apk"
+          for pr in $(gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/pulls" --jq '.[].number'); do
+            gh pr comment "$pr" --repo "$GITHUB_REPOSITORY" --body "$(printf '%s\n\n%s\n\n%s' \
+              "📱 **Versão de teste pronta / Test build ready** (\`${VERSION}\`)" \
+              "[⬇️ Baixar / Download zu-reader-staging.apk](${LINK})" \
+              "Instala como **Zu Reader Staging**, ao lado do app oficial. / Installs as **Zu Reader Staging**, next to the official app.")" \
+              || echo "::warning::Não deu para comentar no PR #${pr}"
+          done

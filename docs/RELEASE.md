@@ -20,6 +20,25 @@ branch da mudança ──PR──▶ staging ──PR──▶ main ──▶ (d
 4. **Deploy na Play Store**: fica para depois de criar as contas (Play Console e verificação de
    desenvolvedor); entra como uma etapa a mais no fluxo da `main`.
 
+### Regras do PR
+
+- Ao abrir o PR, o CI roda **testes e lint**.
+- O merge só é liberado com o **CI verde** e a **aprovação do dono** (`.github/CODEOWNERS`).
+- Só o dono do repositório faz o merge (quem não é colaborador não tem permissão de escrita).
+- No merge na `staging`, o fluxo Staging publica o APK e **comenta no PR** com o link para baixar,
+  então quem fez o PR recebe o aviso e testa no celular.
+
+Configuração no GitHub (Settings → Branches → regra para `staging` e para `main`):
+
+1. **Require a pull request before merging** → **Require approvals** (1) → **Require review from Code Owners**.
+2. **Require status checks to pass** → check **"1 · Testes e lint"**.
+3. **Do not allow bypassing the above settings** desligado: o GitHub não deixa o autor aprovar o
+   próprio PR, então o dono precisa poder fazer o merge dos PRs dele (marcando "merge without
+   waiting for requirements").
+
+Em Settings → Actions → General, deixe **"Require approval for first-time contributors"** ligado:
+o CI de um PR vindo de fork só roda depois que o dono olha o código.
+
 | Fluxo | Quando | Etapas |
 |---|---|---|
 | **PR** (`.github/workflows/pr.yml`) | em cada PR (também de forks) | 1 · Testes e lint; nos PRs para a `main`, também 2 · Build dos APKs (ficam nos artefatos da execução) |
