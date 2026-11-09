@@ -1,7 +1,13 @@
 # Contributing to Zu Reader
 
-Thanks for helping! Issues and pull requests can be in **English or Portuguese**.
-*Issues e PRs podem ser em inglês ou em português.*
+Thanks for helping! Contributions come as **issues**: bug reports, wrong readings and ideas.
+Issues can be in **English or Portuguese**. *Issues podem ser em inglês ou em português.*
+
+> Pull requests are open only to the maintainer, who makes the changes. If you have a fix in mind,
+> describe it in an issue (code snippets are welcome there).
+>
+> *Só o mantenedor abre pull requests e faz as mudanças. Se você tem uma correção em mente, descreva
+> numa issue (trechos de código são bem-vindos).*
 
 ## Reporting a wrong reading
 
@@ -9,39 +15,41 @@ The most useful contribution is a **photo the app reads wrong**, together with t
 Open a [bug report](../../issues/new?template=bug_report.yml) and attach it. With your permission,
 the photo may be added to `testdata/real/` so the fix stays covered by the tests.
 
-## Setting up
+## Reporting a bug
 
-1. Install **JDK 25** and the **Android SDK** with platform 37 (Android Studio does this).
-2. Fork the repository and clone your fork.
-3. Run `./gradlew build` once: it compiles, runs every test and runs lint.
+Open a [bug report](../../issues/new?template=bug_report.yml) with what you did, what you expected,
+what happened, a screenshot if possible, the app version (Settings → About) and your phone model.
 
-Most of the reading logic lives in the `core` modules, which are plain Kotlin: you can work on them
-and run `./gradlew :core:vision:test` without an emulator.
+## Suggesting a feature
 
-## Making a change
+Open a [feature request](../../issues/new?template=feature_request.yml). A photo, a sketch or a
+scene from the game helps.
 
-1. Create a branch from `main`.
-2. Keep the change focused: one fix or feature per pull request.
-3. Add or update tests:
-   - reader changes: a test in `core/vision` or `core/zu` (real photos in `testdata/real/`,
-     or synthetic images like `CommandSyntheticTest`);
-   - reader accuracy must not drop on the existing real photos (`RealPhotosTest`, `CommandReaderTest`).
-4. App texts go in **both** `app/src/main/res/values/strings.xml` (English) and `values-pt/strings.xml` (Portuguese).
-5. Screens must work in the **light and dark themes**. Attach screenshots of both for UI changes.
-6. Run `./gradlew build` before opening the pull request. CI runs the same checks and builds a test APK,
-   which you can download from the run's artifacts.
+## Security
 
-## Code style
+Do not report security problems in a public issue. See [SECURITY.md](SECURITY.md).
 
-- Kotlin official style (the IDE's default formatter).
-- Jetpack Compose for UI; one folder per screen in `app/.../ui/`; shared pieces in `ui/components/`.
+## Building it yourself
+
+The code is MIT-licensed: you can build and change it for yourself. You need **JDK 25** and the
+**Android SDK** with platform 37 (Android Studio does this), then:
+
+```bash
+./gradlew build                # compile, run every test and lint
+./gradlew :app:installDebug    # installs "Zu Reader Teste" next to the official app
+```
+
+## For the maintainer
+
+Each change goes in a pull request **against `staging`** (CI runs tests and lint), is tested on the
+phone with the staging APK after the merge, and then goes to `main` in a pull request from `staging`,
+which publishes the release. See [docs/RELEASE.md](docs/RELEASE.md).
+
+- Reader changes come with a test in `core/vision` or `core/zu`; accuracy must not drop on the real
+  photos (`RealPhotosTest`, `CommandReaderTest`).
+- App texts go in **both** `values/strings.xml` (English) and `values-pt/strings.xml` (Portuguese).
+- Screens must work in the **light and dark themes**.
 - Heavy work (decoding photos, reading, drawing on bitmaps) never runs on the main thread.
-- Code comments are mostly in Portuguese. New comments can be in either language.
-
-## Releases
-
-Every merge into `main` publishes a release with the APK, marked as the latest one.
-See [docs/RELEASE.md](docs/RELEASE.md).
 
 ## Code of conduct
 

@@ -1,0 +1,143 @@
+name: Staging
+
+# Depois do merge na branch staging (ou à mão em Actions → Staging → Run workflow): gera o APK de
+# staging e o publica na pré-release fixa "staging", trocando o anterior. O link de download não
+# muda: .../releases/download/staging/zu-reader-staging.apk. Os testes já rodaram no PR.
+on:
+  push:
+    branches: [staging]
+    paths-ignore: # só documentação: não gera versão (mesma lista do pr.yml)
+      - "**.md"
+      - "docs/**"
+      - "LICENSE"
+      - ".github/ISSUE_TEMPLATE/**"
+      - ".github/CODEOWNERS"
+      - ".github/pull_request_template.md"
+  workflow_dispatch:
+
+concurrency:
+  group: staging
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  apk:
+    name: 1 · Build do APK de staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      version: ${{ steps.nome.outputs.version }}
+    steps:
+      - name: Baixar o código (com histórico, para o número da build)
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Preparar ambiente
+        uses: ./.github/actions/preparar
+
+      - name: Preparar chave de publicação
+        env:
+          ZU_KEYSTORE_BASE64: ${{ secrets.ZU_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$ZU_KEYSTORE_BASE64" ]; then
+            echo "::error::Chave de publicação não configurada (secrets ZU_*, ver docs/RELEASE.md)"
+            exit 1
+          fi
+          echo "$ZU_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/zu-release.jks"
+          echo "ZU_KEYSTORE_PATH=$RUNNER_TEMP/zu-release.jks" >> "$GITHUB_ENV"
+          echo "ZU_BUILD_NUMBER=$(git rev-list --count HEAD)" >> "$GITHUB_ENV"
+
+      - name: Gerar APK de staging
+        env:
+          ZU_KEYSTORE_PASSWORD: ${{ secrets.ZU_KEYSTORE_PASSWORD }}
+          ZU_KEY_ALIAS: ${{ secrets.ZU_KEY_ALIAS }}
+          ZU_KEY_PASSWORD: ${{ secrets.ZU_KEY_PASSWORD }}
+        run: ./gradlew :app:assembleStaging --warning-mode all
+
+      - name: Dar nome ao arquivo
+        id: nome
+        run: |
+          VERSION="$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)-staging-build.${ZU_BUILD_NUMBER}"
+          mkdir -p dist
+          cp app/build/outputs/apk/staging/app-staging.apk dist/zu-reader-staging.apk
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          # o que entrou na staging e ainda não está na main
+          git log --no-merges --format='- %s (%h)' origin/main..HEAD > dist/mudancas.txt || true
+          ls -la dist
+
+      - name: Guardar APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: zu-reader-staging
+          path: dist/
+
+  release:
+    name: 2 · Publicar na pré-release staging
+    needs: apk
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    steps:
+      - name: Baixar o APK do job anterior
+        uses: actions/download-artifact@v8
+        with:
+          name: zu-reader-staging
+          path: dist
+
+      - name: Escrever notas
+        env:
+          VERSION: ${{ needs.apk.outputs.version }}
+        run: |
+          {
+            echo "**Versão de teste** (branch \`staging\`, ${GITHUB_SHA::7}): instala como **Zu Reader Staging**, ao lado do app oficial."
+            echo
+            echo "📥 [Baixar zu-reader-staging.apk](https://github.com/${GITHUB_REPOSITORY}/releases/download/staging/zu-reader-staging.apk)"
+            echo
+            echo "Build: \`${VERSION}\`"
+            echo
+            echo "## Na staging e ainda não na main"
+            echo
+            if [ -s dist/mudancas.txt ]; then cat dist/mudancas.txt; else echo "- (nada além da main)"; fi
+          } > notas.md
+          rm dist/mudancas.txt
+          cat notas.md
+
+      - name: Trocar a pré-release staging
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # sempre a mesma tag "staging": o link de download não muda
+          gh release delete staging --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes 2>/dev/null || true
+          for tentativa in 1 2 3; do
+            gh release create staging dist/zu-reader-staging.apk \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
+              --title "Zu Reader Staging" \
+              --notes-file notas.md \
+              --prerelease && exit 0
+            echo "::warning::Falhou ao publicar (tentativa ${tentativa}); tentando de novo"
+            gh release delete staging --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes 2>/dev/null || true
+            sleep $((tentativa * 15))
+          done
+          exit 1
+
+      - name: Avisar no PR que a versão de teste está pronta
+        # o merge do PR na staging é este commit: quem fez o PR recebe o link para baixar
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.apk.outputs.version }}
+        run: |
+          LINK="https://github.com/${GITHUB_REPOSITORY}/releases/download/staging/zu-reader-staging.apk"
+          for pr in $(gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/pulls" --jq '.[].number'); do
+            gh pr comment "$pr" --repo "$GITHUB_REPOSITORY" --body "$(printf '%s\n\n%s\n\n%s' \
+              "📱 **Versão de teste pronta / Test build ready** (\`${VERSION}\`)" \
+              "[⬇️ Baixar / Download zu-reader-staging.apk](${LINK})" \
+              "Instala como **Zu Reader Staging**, ao lado do app oficial. / Installs as **Zu Reader Staging**, next to the official app.")" \
+              || echo "::warning::Não deu para comentar no PR #${pr}"
+          done

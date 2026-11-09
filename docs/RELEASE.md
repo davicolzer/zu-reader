@@ -1,15 +1,68 @@
 # Release do Zu Reader
 
-Há dois fluxos no GitHub Actions:
+## Caminho de uma mudança
+
+```
+branch da mudança ──PR──▶ staging ──PR──▶ main ──▶ (depois) Play Store
+                   testes   │       testes   │
+                            ▼                ▼
+                   APK de staging     release oficial
+                   (para testar)      (Latest, download do README)
+```
+
+1. A mudança vai num **PR para a `staging`**. O CI roda só testes e lint (o APK é gerado no merge).
+2. **Merge na `staging`** → o APK de teste é publicado na pré-release fixa **staging**. Link que não muda:
+   **https://github.com/davicolzer/zu-reader/releases/download/staging/zu-reader-staging.apk**
+   (também na página da [pré-release staging](https://github.com/davicolzer/zu-reader/releases/tag/staging),
+   que lista o que está na staging e ainda não está na main). Instala como **Zu Reader Staging**,
+   ao lado do app oficial, sem mexer na coleção dele.
+3. Testou no celular e está bom → **PR da `staging` para a `main`** (de novo, só testes e lint). O merge
+   gera o build e publica a release oficial, que atualiza o botão de download do README.
+4. **Deploy na Play Store**: fica para depois de criar as contas (Play Console e verificação de
+   desenvolvedor); entra como uma etapa a mais no fluxo da `main`.
+
+### Regras do PR
+
+- **Só o dono abre PR**: em Settings → General → Features → **Pull requests**, a opção
+  **"Collaborators only"**. Quem é de fora contribui com **issues** (erro e sugestão); as mudanças
+  são feitas pelo dono.
+- Ao abrir o PR, o CI roda **testes e lint**.
+- O merge só é liberado com o **CI verde** e a **aprovação do dono** (`.github/CODEOWNERS`), ou com o
+  bypass marcado pelo dono no próprio PR.
+- No merge na `staging`, o fluxo Staging publica o APK e **comenta no PR** com o link para baixar.
+
+Configuração no GitHub (Settings → Branches → regra para `staging` e para `main`):
+
+1. **Require a pull request before merging** → **Require approvals** (1) → **Require review from Code Owners**.
+2. **Require status checks to pass** → check **"1 · Testes e lint"**.
+3. **Do not allow bypassing the above settings** desligado: o GitHub não deixa o autor aprovar o
+   próprio PR, então o dono precisa poder fazer o merge dos PRs dele (marcando "merge without
+   waiting for requirements").
+
+**Só documentação** (arquivos `.md`, `docs/`, `LICENSE`, modelos de issue/PR, `CODEOWNERS`): no PR,
+os testes são pulados (o check "1 · Testes e lint" aparece como *skipped*, e a proteção da branch
+aceita); no merge, nem a staging nem a main geram versão nova.
 
 | Fluxo | Quando | Etapas |
 |---|---|---|
-| **PR** (`.github/workflows/pr.yml`) | em cada PR (também de forks) | 1 · Testes e lint → 2 · Build dos APKs (ficam nos artefatos da execução) |
+| **PR** (`.github/workflows/pr.yml`) | em cada PR para a `staging` ou a `main` (também de forks) | 1 · Testes e lint (sem build: o APK sai no merge) |
+| **Staging** (`.github/workflows/staging.yml`) | merge na `staging`, ou à mão em **Actions → Staging → Run workflow** | 1 · Build do APK de staging → 2 · Publicar na pré-release staging |
 | **Release** (`.github/workflows/release.yml`) | merge na `main`, ou à mão em **Actions → Release → Run workflow** | 1 · Build dos APKs → 2 · Publicar release |
 
 As etapas comuns ficam em `.github/actions/preparar` (JDK, Gradle, SDK) e `.github/actions/gerar-apks`.
-Como a `main` não roda testes, o que entra nela deve passar por PR (vale ativar a proteção da branch
-`main` exigindo o check "1 · Testes e lint").
+Como `staging` e `main` não rodam testes no merge, o que entra nelas deve passar por PR (proteja as
+duas branches exigindo o check "1 · Testes e lint").
+
+### Os três apps
+
+| Build | App no celular | Chave | De onde vem |
+|---|---|---|---|
+| `debug` | **Zu Reader Teste** (`…zureader.debug`) | de teste | Android Studio (`./gradlew :app:installDebug`) |
+| `staging` | **Zu Reader Staging** (`…zureader.staging`) | de publicação | pré-release **staging** |
+| `release` | **Zu Reader** (`com.davicolzer.zureader`) | de publicação | releases oficiais |
+
+O de staging é igual ao oficial (otimizado com R8, mesma chave), só muda o pacote e o nome: o que
+você testa nele é o que vai para a `main`.
 
 ## Releases
 
