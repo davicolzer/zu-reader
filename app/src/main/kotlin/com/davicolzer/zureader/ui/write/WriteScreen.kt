@@ -105,10 +105,13 @@ fun WriteScreen(
     startFullScreen: Boolean = false,
     /** Teclas por linha (4 ou 6; ver [KeyboardLayout]). */
     columns: Int = 6,
+    /** Cursor e letra selecionada ao abrir (prévias); sem eles, o cursor fica no fim. */
+    startCursor: Int? = null,
+    startSelected: Int? = null,
 ) {
     val layout = KeyboardLayout.of(columns)
     // o texto com cursor (e letra selecionada), como num editor: digitar entra no cursor
-    var edit by rememberSaveable(draft, saver = EditSaver) { mutableStateOf(CursorEdit(draft.toList())) }
+    var edit by rememberSaveable(draft, saver = EditSaver) { mutableStateOf(CursorEdit(draft.toList(), startCursor ?: draft.length, startSelected)) }
     val text = edit.items.joinToString("")
     var byLetters by rememberSaveable { mutableStateOf(startWithLetters) }
     var fullScreen by rememberSaveable { mutableStateOf(startFullScreen) }
