@@ -224,7 +224,7 @@ private fun CameraContent(
                     // ler Zu: só diz se o visor está bom para fotografar (a leitura é feita na foto)
                     CameraPurpose.READ -> QualityAnalyzer { q -> main.execute { quality = q } }
                     // anotar e vídeo: a câmera só fotografa ou grava, não precisa analisar
-                    CameraPurpose.NOTE, CameraPurpose.VIDEO -> null
+                    CameraPurpose.NOTE, CameraPurpose.VIDEO, CameraPurpose.COMMANDS -> null
                 }
                 analyzer?.let { analysis.setAnalyzer(analysisExecutor, it) }
                 cameraProvider.unbindAll()

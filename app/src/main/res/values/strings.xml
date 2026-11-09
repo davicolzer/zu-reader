@@ -235,4 +235,38 @@
     <string name="result_low_confidence_numbers">Gold numbers are uncertain. Tap a number, here or on the photo, to fix it.</string>
     <string name="correct_body_numbers">Read as %1$s. If it\'s wrong, tap the right number.</string>
     <string name="correct_body_doubt_numbers">Low confidence. Pick a suggestion or tap the right number.</string>
+    <!-- Ler comandos (sequências de peças de 4 blocos) -->
+    <string name="home_read_commands">Commands</string>
+    <string name="commands_source_title">Read a command sequence</string>
+    <string name="commands_source_body">Take a photo or pick an image of the pieces (blocks like Tetris). Then crop just around the sequence.</string>
+    <string name="camera_commands_hint">Read commands</string>
+    <string name="camera_commands_aim">Frame the whole sequence of pieces</string>
+    <string name="crop_read_commands">Read pieces</string>
+    <string name="commands_title">Commands</string>
+    <string name="commands_label">SEQUENCE</string>
+    <plurals name="commands_count">
+        <item quantity="one">%1$d piece</item>
+        <item quantity="other">%1$d pieces</item>
+    </plurals>
+    <string name="commands_hint">Arrows: the stem of the T points the way. A: jump. LT and RT: rotate the world (S and Z pieces). Not confirmed in the game yet: if the code doesn\'t work, tap “Swap LT and RT”.</string>
+    <string name="commands_unknown">Pieces marked ? were not recognized: crop tighter around the sequence.</string>
+    <string name="commands_none_title">No pieces found</string>
+    <string name="commands_none_body">Crop just around the sequence, with the pieces in a row or a column.</string>
+    <string name="commands_adjust">Adjust crop</string>
+    <string name="commands_another">Read another</string>
+    <string name="commands_image_description">Photo of the command sequence</string>
+    <string name="commands_delete_title">Delete this sequence?</string>
+    <string name="commands_delete_body">It will be removed from the collection.</string>
+    <string name="commands_piece">%1$s piece</string>
+    <string name="commands_piece_unknown">piece not recognized</string>
+    <string name="history_kind_commands">Commands</string>
+    <string name="history_badge_commands">COMMANDS</string>
+    <string name="commands_swap">Swap LT and RT</string>
+    <string name="button_up">up</string>
+    <string name="button_down">down</string>
+    <string name="button_left">left</string>
+    <string name="button_right">right</string>
+    <string name="button_jump">jump (A)</string>
+    <string name="button_lt">rotate left (LT)</string>
+    <string name="button_rt">rotate right (RT)</string>
 </resources>

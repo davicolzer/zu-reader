@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.UUID
+import com.davicolzer.zureader.vision.CommandReading
 
 /** Item da lista do histórico: uma leitura ou, com [isNote], uma foto anotada ([text] = nome). */
 /** O que foi salvo: a função do app que gerou o item (para o selo e o filtro do histórico). */
@@ -22,6 +23,7 @@ enum class SavedKind(val key: String) {
     QR(ReadingEntity.KIND_QR),
     NOTE(ReadingEntity.KIND_NOTE),
     VIDEO(ReadingEntity.KIND_VIDEO),
+    COMMANDS(ReadingEntity.KIND_COMMANDS),
     ;
 
     companion object {
@@ -58,6 +60,9 @@ data class SavedReading(
     val description: String = "",
 )
 
+/** Sequência de comandos salva: a foto recortada e as peças lidas. */
+data class SavedCommands(val id: Long, val image: Bitmap, val reading: CommandReading, val name: String, val description: String)
+
 /** Vídeo salvo: o arquivo na pasta da coleção, com nome e descrição. */
 data class SavedVideo(val id: Long, val file: File, val name: String, val description: String)
 
@@ -73,6 +78,30 @@ class HistoryRepository(private val dao: ReadingDao, filesDir: File) {
                 HistoryItem(it.id, it.text, it.createdAt, File(imagesDir, it.imageFile), SavedKind.of(it.kind), it.name, it.description)
             }
         }
+
+    /** Itens salvos com o nome do arquivo da foto no lugar do nome (erro de versões anteriores) ficam sem nome. */
+    suspend fun repairNames() = withContext(Dispatchers.IO) { dao.clearFileNames() }
+
+    /** Guarda uma sequência de comandos: a foto (em HD) e o código das peças no texto. */
+    suspend fun saveCommands(image: Bitmap, reading: CommandReading, name: String, description: String): Long = withContext(Dispatchers.IO) {
+        dao.insert(
+            ReadingEntity(
+                createdAt = System.currentTimeMillis(),
+                text = reading.code,
+                imageFile = writeImage(image),
+                data = "",
+                kind = ReadingEntity.KIND_COMMANDS,
+                name = name.trim(),
+                description = description.trim(),
+            ),
+        )
+    }
+
+    suspend fun loadCommands(id: Long): SavedCommands? = withContext(Dispatchers.IO) {
+        val row = dao.get(id)?.takeIf { it.kind == ReadingEntity.KIND_COMMANDS } ?: return@withContext null
+        val image = BitmapFactory.decodeFile(File(imagesDir, row.imageFile).path) ?: return@withContext null
+        SavedCommands(row.id, image, CommandReading.parse(row.text), row.name, row.description)
+    }
 
     /** `true` se o item [id] é uma foto anotada. */
     suspend fun isNote(id: Long): Boolean = withContext(Dispatchers.IO) { dao.get(id)?.kind == ReadingEntity.KIND_NOTE }
@@ -185,12 +214,12 @@ class HistoryRepository(private val dao: ReadingDao, filesDir: File) {
             result.reading.glyphs.isEmpty() && result.qr != null && result.typed == null -> SavedKind.QR
             else -> SavedKind.READING
         }
-        val name = writeImage(image)
+        val file = writeImage(image)
         dao.insert(
             ReadingEntity(
                 createdAt = System.currentTimeMillis(),
                 text = listText(result),
-                imageFile = name,
+                imageFile = file,
                 data = ReadingCodec.encode(result),
                 kind = kind.key,
                 name = name.trim(),

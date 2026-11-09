@@ -43,9 +43,11 @@ import kotlinx.coroutines.withContext
 import com.davicolzer.zureader.media.ImageLoading
 import com.davicolzer.zureader.media.VideoResize
 import com.davicolzer.zureader.media.newVideoFile
+import com.davicolzer.zureader.vision.CommandReader
+import com.davicolzer.zureader.vision.CommandReading
 
 /** Para que a câmera foi aberta. */
-enum class CameraPurpose { READ, NOTE, QR, VIDEO }
+enum class CameraPurpose { READ, NOTE, QR, VIDEO, COMMANDS }
 
 sealed interface ReaderUiState {
     data object Home : ReaderUiState
@@ -62,6 +64,19 @@ sealed interface ReaderUiState {
         /** Imagem antes do recorte (para recortar de novo). */
         val original: Bitmap? = null,
         /** Nome (de onde veio) e descrição livre, opcionais. */
+        val name: String = "",
+        val description: String = "",
+    ) : ReaderUiState
+
+    /**
+     * Sequência de comandos lida (peças de 4 blocos). [crop] = o recorte de onde veio (para
+     * ajustar), nulo se aberta da coleção; [savedId] não nulo = está na coleção.
+     */
+    data class CommandsResult(
+        val reading: CommandReading,
+        val image: Bitmap,
+        val crop: Crop? = null,
+        val savedId: Long? = null,
         val name: String = "",
         val description: String = "",
     ) : ReaderUiState
@@ -107,7 +122,15 @@ sealed interface ReaderUiState {
     ) : ReaderUiState
     /** Recorte de uma foto ([fromCamera]) ou de uma imagem da galeria, com os cantos sugeridos. */
     /** Recorte da imagem antes de ler; [video] = o quadro veio de um vídeo (voltar abre o vídeo de novo). */
-    data class Crop(val image: Bitmap, val rgb: RgbImage, val suggestion: Quad, val fromCamera: Boolean, val video: Video? = null) : ReaderUiState
+    data class Crop(
+        val image: Bitmap,
+        val rgb: RgbImage,
+        val suggestion: Quad,
+        val fromCamera: Boolean,
+        val video: Video? = null,
+        /** Recorte de uma sequência de comandos (e não de texto em Zu). */
+        val commands: Boolean = false,
+    ) : ReaderUiState
     data object Reading : ReaderUiState
 
     /**
@@ -150,6 +173,11 @@ sealed interface ReaderUiState {
 class ReaderViewModel(application: Application) : AndroidViewModel(application) {
     private val app = application as ZuReaderApplication
     private val history = app.history
+
+    init {
+        // conserta nomes de itens salvos por versões anteriores (o nome do arquivo no lugar do nome)
+        viewModelScope.launch { history.repairNames() }
+    }
 
     val settings: StateFlow<Settings> =
         app.settings.settings.stateIn(viewModelScope, SharingStarted.Eagerly, Settings())
@@ -196,7 +224,59 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
             CameraPurpose.NOTE -> _state.value = editing(photo)
             // fotografou em vez de esperar a leitura ao vivo: procura o QR na foto
             CameraPurpose.QR -> work { ReaderUiState.QrResult(withContext(Dispatchers.Default) { QrReader.read(ImageLoading.toRgb(photo)) }, photo) }
+            CameraPurpose.COMMANDS -> _state.value = commandsCrop(photo, fromCamera = true)
             else -> work { prepareCrop(photo, fromCamera = true) }
+        }
+    }
+
+    /** "Ler comandos" pela câmera. */
+    fun openCameraForCommands() {
+        _state.value = ReaderUiState.Camera(CameraPurpose.COMMANDS)
+    }
+
+    /** "Ler comandos" pela galeria: abre o recorte (a sequência é lida depois de recortar). */
+    fun readCommands(uri: Uri) = work {
+        commandsCrop(withContext(Dispatchers.IO) { ImageLoading.decode(getApplication(), uri) }, fromCamera = false)
+    }
+
+    /** Recorte para uma sequência de comandos: sem sugestão de texto, uma margem pequena. */
+    private fun commandsCrop(image: Bitmap, fromCamera: Boolean): ReaderUiState.Crop {
+        val rgb = ImageLoading.toRgb(image)
+        return ReaderUiState.Crop(image, rgb, Quad.inset(rgb.width, rgb.height, 0.08f), fromCamera, commands = true)
+    }
+
+    /** Lê as peças na imagem já recortada. */
+    private fun readCommands(crop: ReaderUiState.Crop, quad: Quad, image: RgbImage) = ReaderUiState.CommandsResult(
+        CommandReader.read(image),
+        ImageLoading.toBitmap(image),
+        crop = crop.copy(suggestion = quad),
+    )
+
+    /** Volta ao recorte da sequência aberta, com os cantos usados. */
+    fun adjustCommandsCrop() {
+        val current = _state.value as? ReaderUiState.CommandsResult ?: return
+        current.crop?.let { _state.value = it }
+    }
+
+    /** Guarda a sequência (foto e peças) na coleção. */
+    fun saveCommands() {
+        val current = _state.value as? ReaderUiState.CommandsResult ?: return
+        if (current.savedId != null || current.reading.pieces.isEmpty()) return
+        viewModelScope.launch {
+            val id = history.saveCommands(current.image, current.reading, current.name, current.description)
+            (_state.value as? ReaderUiState.CommandsResult)?.let {
+                // salvo: só a foto em HD fica; o recorte original sai da memória
+                if (it.reading == current.reading) _state.value = it.copy(savedId = id, image = ImageLoading.hd(it.image), crop = null)
+            }
+        }
+    }
+
+    /** Apaga a sequência aberta e volta para a coleção. */
+    fun deleteCommands() {
+        val id = (_state.value as? ReaderUiState.CommandsResult)?.savedId ?: return
+        viewModelScope.launch {
+            history.delete(id)
+            _state.value = ReaderUiState.History
         }
     }
 
@@ -467,6 +547,7 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         work {
             withContext(Dispatchers.Default) {
                 val rectified = crop.rgb.rectify(quad)
+                if (crop.commands) return@withContext readCommands(crop, quad, rectified)
                 orSaved(ReaderUiState.Result(ImageLoading.toBitmap(rectified), readAll(rectified, whole = crop.rgb), crop = crop.copy(suggestion = quad)))
             }
         }
@@ -477,6 +558,7 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         work {
             withContext(Dispatchers.Default) {
                 val whole = Quad.inset(crop.rgb.width, crop.rgb.height, 0f)
+                if (crop.commands) return@withContext readCommands(crop, whole, crop.rgb)
                 orSaved(ReaderUiState.Result(crop.image, readAll(crop.rgb), crop = crop.copy(suggestion = whole)))
             }
         }
@@ -535,7 +617,10 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
     /** Sai do recorte: volta para a câmera se a imagem veio dela, senão para o início. */
     fun leaveCrop() {
         val crop = _state.value as? ReaderUiState.Crop ?: return
-        _state.value = crop.video ?: if (crop.fromCamera) ReaderUiState.Camera() else ReaderUiState.Home
+        _state.value = crop.video ?: when {
+            crop.fromCamera -> ReaderUiState.Camera(if (crop.commands) CameraPurpose.COMMANDS else CameraPurpose.READ)
+            else -> ReaderUiState.Home
+        }
     }
 
     /**
@@ -592,6 +677,7 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
             is ReaderUiState.Result -> s.copy(name = name, description = description).also { _state.value = it }.savedId
             is ReaderUiState.QrResult -> s.copy(name = name, description = description).also { _state.value = it }.savedId
             is ReaderUiState.Video -> s.copy(name = name, description = description).also { _state.value = it }.id
+            is ReaderUiState.CommandsResult -> s.copy(name = name, description = description).also { _state.value = it }.savedId
             else -> return
         } ?: return
         detailsJob?.cancel()
@@ -673,6 +759,10 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun openSaved(id: Long) = work {
+        if (history.kindOf(id) == com.davicolzer.zureader.data.SavedKind.COMMANDS) {
+            val saved = history.loadCommands(id) ?: throw IllegalStateException("Sequência $id não encontrada")
+            return@work ReaderUiState.CommandsResult(saved.reading, saved.image, savedId = saved.id, name = saved.name, description = saved.description)
+        }
         if (history.kindOf(id) == com.davicolzer.zureader.data.SavedKind.VIDEO) {
             val video = history.loadVideo(id) ?: throw IllegalStateException("Vídeo $id não encontrado")
             return@work ReaderUiState.Video(video.file, video.id, video.name, video.description)
@@ -726,6 +816,11 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
     /** Histórico em mosaico ([grid]) ou em lista; a escolha fica salva. */
     fun setHistoryGrid(grid: Boolean) {
         viewModelScope.launch { app.settings.setHistoryGrid(grid) }
+    }
+
+    /** Comandos: troca qual peça (S ou Z) é LT e qual é RT. */
+    fun setSwapRotation(swap: Boolean) {
+        viewModelScope.launch { app.settings.setSwapRotation(swap) }
     }
 
     fun goHome() {
