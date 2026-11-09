@@ -95,10 +95,21 @@ jobs:
           else
             KIND=(--prerelease)
           fi
-          gh release create "v${VERSION}" dist/* \
-            --repo "$GITHUB_REPOSITORY" \
-            --target "$GITHUB_SHA" \
-            --title "Zu Reader ${VERSION}" \
-            --notes-file notas.md \
-            --generate-notes \
-            "${KIND[@]}"
+          publicar() {
+            gh release create "v${VERSION}" dist/* \
+              --repo "$GITHUB_REPOSITORY" \
+              --target "$GITHUB_SHA" \
+              --title "Zu Reader ${VERSION}" \
+              --notes-file notas.md \
+              --generate-notes \
+              "${KIND[@]}"
+          }
+          # falha passageira do GitHub (ex.: no envio dos arquivos): apaga o que ficou pela metade
+          # (release e tag) e tenta de novo, até 3 vezes
+          for tentativa in 1 2 3; do
+            publicar && exit 0
+            echo "::warning::Falhou ao publicar (tentativa ${tentativa}); limpando e tentando de novo"
+            gh release delete "v${VERSION}" --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes 2>/dev/null || true
+            sleep $((tentativa * 15))
+          done
+          exit 1
