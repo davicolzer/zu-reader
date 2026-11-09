@@ -84,7 +84,7 @@ Versões das ferramentas e a estrutura do projeto estão no [README em inglês](
 
 ## Contribuir
 
-Relatos de erro, ideias e pull requests são bem-vindos. **Fotos em que o app lê errado ajudam muito.** Veja o [CONTRIBUTING.md](CONTRIBUTING.md); issues e PRs podem ser em português ou em inglês.
+Achou um problema ou tem uma ideia? **Abra uma issue**: o mantenedor faz as mudanças (só ele abre pull requests). **Fotos em que o app lê errado ajudam muito.** Veja o [CONTRIBUTING.md](CONTRIBUTING.md); as issues podem ser em português ou em inglês.
 
 - [Relatar um erro](../../issues/new?template=bug_report.yml)
 - [Sugerir uma função](../../issues/new?template=feature_request.yml)

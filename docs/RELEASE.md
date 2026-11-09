@@ -23,11 +23,13 @@ branch da mudança ──PR──▶ staging ──PR──▶ main ──▶ (d
 
 ### Regras do PR
 
+- **Só o dono abre PR**: em Settings → General → Features → **Pull requests**, a opção
+  **"Collaborators only"**. Quem é de fora contribui com **issues** (erro e sugestão); as mudanças
+  são feitas pelo dono.
 - Ao abrir o PR, o CI roda **testes e lint**.
-- O merge só é liberado com o **CI verde** e a **aprovação do dono** (`.github/CODEOWNERS`).
-- Só o dono do repositório faz o merge (quem não é colaborador não tem permissão de escrita).
-- No merge na `staging`, o fluxo Staging publica o APK e **comenta no PR** com o link para baixar,
-  então quem fez o PR recebe o aviso e testa no celular.
+- O merge só é liberado com o **CI verde** e a **aprovação do dono** (`.github/CODEOWNERS`), ou com o
+  bypass marcado pelo dono no próprio PR.
+- No merge na `staging`, o fluxo Staging publica o APK e **comenta no PR** com o link para baixar.
 
 Configuração no GitHub (Settings → Branches → regra para `staging` e para `main`):
 
@@ -36,9 +38,6 @@ Configuração no GitHub (Settings → Branches → regra para `staging` e para 
 3. **Do not allow bypassing the above settings** desligado: o GitHub não deixa o autor aprovar o
    próprio PR, então o dono precisa poder fazer o merge dos PRs dele (marcando "merge without
    waiting for requirements").
-
-Em Settings → Actions → General, deixe **"Require approval for first-time contributors"** ligado:
-o CI de um PR vindo de fork só roda depois que o dono olha o código.
 
 | Fluxo | Quando | Etapas |
 |---|---|---|

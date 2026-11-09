@@ -108,7 +108,7 @@ The `core` modules do not depend on Android, so the readers are tested quickly o
 
 ## Contributing
 
-Bug reports, ideas and pull requests are welcome. **Photos where the app reads wrong are especially useful.** See [CONTRIBUTING.md](CONTRIBUTING.md).
+Found a problem or have an idea? **Open an issue**: the maintainer makes the changes (pull requests are limited to the maintainer). **Photos where the app reads wrong are especially useful.** See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 - [Report a bug](../../issues/new?template=bug_report.yml)
 - [Suggest a feature](../../issues/new?template=feature_request.yml)
