@@ -40,6 +40,7 @@ data class ReadingEntity(
         const val KIND_QR = "qr"
         const val KIND_NOTE = "note"
         const val KIND_VIDEO = "video"
+        const val KIND_COMMANDS = "commands"
     }
 }
 
@@ -72,6 +73,10 @@ interface ReadingDao {
 
     @Query("DELETE FROM readings WHERE id = :id")
     suspend fun delete(id: Long)
+
+    /** Conserta os itens que ficaram com o nome do arquivo da foto no lugar do nome (erro já corrigido). */
+    @Query("UPDATE readings SET name = '' WHERE name = imageFile")
+    suspend fun clearFileNames()
 }
 
 /** Glifo ensinado pelo usuário ao corrigir uma letra: desenho como foi lido (25 caracteres # ou .) → letra. */

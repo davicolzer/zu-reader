@@ -48,6 +48,7 @@ import com.davicolzer.zureader.ui.components.SourceDialog
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import com.davicolzer.zureader.ui.commands.CommandsScreen
 
 @Composable
 fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
@@ -90,6 +91,22 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
             onCamera = { chooseQrSource = false; viewModel.openCameraForQr() },
             onGallery = { chooseQrSource = false; qrPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
             onDismiss = { chooseQrSource = false },
+        )
+    }
+    // "Ler comandos": a imagem escolhida vai para o recorte e depois para a leitura das peças
+    val commandsPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) viewModel.readCommands(uri)
+    }
+    val pickCommands = { commandsPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }
+    var chooseCommandsSource by remember { mutableStateOf(false) }
+    if (chooseCommandsSource) {
+        SourceDialog(
+            title = R.string.commands_source_title,
+            body = R.string.commands_source_body,
+            icon = R.drawable.ic_pixel_commands,
+            onCamera = { chooseCommandsSource = false; viewModel.openCameraForCommands() },
+            onGallery = { chooseCommandsSource = false; pickCommands() },
+            onDismiss = { chooseCommandsSource = false },
         )
     }
     // "Gravar vídeo": gravar agora ou escolher um vídeo da galeria
@@ -149,6 +166,7 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
                 onAnnotate = { chooseNoteSource = true },
                 onReadQr = { chooseQrSource = true },
                 onRecordVideo = { chooseVideoSource = true },
+                onReadCommands = { chooseCommandsSource = true },
             )
             is ReaderUiState.Video -> {
                 BackHandler(onBack = viewModel::leaveVideo)
@@ -249,6 +267,7 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
                             CameraPurpose.QR -> { { qrPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) } }
                             CameraPurpose.READ -> pickImage
                             CameraPurpose.VIDEO -> pickVideo
+                            CameraPurpose.COMMANDS -> pickCommands
                         },
                         onVideoRecorded = viewModel::onVideoRecorded,
                         purpose = s.purpose,
@@ -281,6 +300,24 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
                     onConfirm = viewModel::confirmCrop,
                     onUseWhole = viewModel::useWholePhoto,
                     onRetake = viewModel::leaveCrop,
+                    confirmLabel = if (s.commands) R.string.crop_read_commands else R.string.crop_confirm,
+                )
+            }
+            is ReaderUiState.CommandsResult -> {
+                val back = if (s.savedId != null) viewModel::openHistory else viewModel::goHome
+                BackHandler(onBack = back)
+                CommandsScreen(
+                    reading = s.reading,
+                    image = s.image,
+                    onBack = back,
+                    onReadAnother = { chooseCommandsSource = true },
+                    savedId = s.savedId,
+                    onAdjustCrop = if (s.crop != null && s.savedId == null) viewModel::adjustCommandsCrop else null,
+                    onSave = viewModel::saveCommands,
+                    onDelete = viewModel::deleteCommands,
+                    name = s.name,
+                    description = s.description,
+                    onDetails = viewModel::setDetails,
                 )
             }
             ReaderUiState.Reading -> ReadingProgress()

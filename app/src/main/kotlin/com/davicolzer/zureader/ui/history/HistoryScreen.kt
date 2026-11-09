@@ -57,6 +57,8 @@ import java.util.Date
 import com.davicolzer.zureader.ui.components.AppTopBar
 import com.davicolzer.zureader.ui.components.BarAction
 import com.davicolzer.zureader.ui.components.DeleteDialog
+import com.davicolzer.zureader.ui.commands.commandSummary
+import com.davicolzer.zureader.vision.CommandReading
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -164,6 +166,7 @@ private val SavedKind.filterLabel: Int
         SavedKind.QR -> R.string.history_kind_qr
         SavedKind.NOTE -> R.string.history_kind_note
         SavedKind.VIDEO -> R.string.history_kind_video
+        SavedKind.COMMANDS -> R.string.history_kind_commands
     }
 
 private val SavedKind.badge: Int
@@ -173,6 +176,7 @@ private val SavedKind.badge: Int
         SavedKind.QR -> R.string.history_badge_qr
         SavedKind.NOTE -> R.string.history_note_badge
         SavedKind.VIDEO -> R.string.history_badge_video
+        SavedKind.COMMANDS -> R.string.history_badge_commands
     }
 
 private val SavedKind.icon: Int
@@ -182,6 +186,7 @@ private val SavedKind.icon: Int
         SavedKind.QR -> R.drawable.ic_pixel_qr
         SavedKind.NOTE -> R.drawable.ic_pixel_note
         SavedKind.VIDEO -> R.drawable.ic_pixel_video
+        SavedKind.COMMANDS -> R.drawable.ic_pixel_commands
     }
 
 @Composable
@@ -191,6 +196,7 @@ private fun SavedKind.color(): Color = when (this) {
     SavedKind.QR -> MaterialTheme.colorScheme.onSurfaceVariant
     SavedKind.NOTE -> ZuTheme.colors.gold
     SavedKind.VIDEO -> MaterialTheme.colorScheme.primary
+    SavedKind.COMMANDS -> MaterialTheme.colorScheme.secondary
 }
 
 /** Quadrado do mosaico: a foto grande, o ícone do tipo num canto e o texto numa linha embaixo. */
@@ -239,7 +245,7 @@ private fun HistoryTile(item: HistoryItem, onOpen: (Long) -> Unit, onDelete: (Hi
         }
         Text(
             description,
-            style = if (item.kind == SavedKind.QR) MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace) else MaterialTheme.typography.labelMedium,
+            style = if (item.kind == SavedKind.QR || item.kind == SavedKind.COMMANDS) MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace) else MaterialTheme.typography.labelMedium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
@@ -259,6 +265,7 @@ private fun contentText(item: HistoryItem): String = when (item.kind) {
     SavedKind.QR -> item.text.removePrefix("QR: ")
     SavedKind.NOTE -> item.text.ifBlank { stringResource(R.string.note_default_name) }
     SavedKind.VIDEO -> item.description
+    SavedKind.COMMANDS -> commandSummary(CommandReading.parse(item.text))
     else -> ReadingMode.of(item.text.firstOrNull { !it.isWhitespace() } ?: 'A').display(item.text).replace('\n', ' ').ifBlank { "—" }
 }
 
@@ -286,9 +293,17 @@ fun HistoryRow(item: HistoryItem, onOpen: (Long) -> Unit, onDelete: ((HistoryIte
                 Text(item.name, style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold), maxLines = 1, overflow = TextOverflow.Ellipsis)
                 if (contentText(item).isNotBlank()) Text(
                     contentText(item),
-                    style = if (item.kind == SavedKind.QR) MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace) else MaterialTheme.typography.bodySmall,
+                    style = if (item.kind == SavedKind.QR || item.kind == SavedKind.COMMANDS) MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace) else MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            } else if (item.kind == SavedKind.COMMANDS) {
+                // sequência: as peças em texto ("T T S A …"), como no QR
+                Text(
+                    contentText(item),
+                    style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
             } else if (item.kind == SavedKind.QR) {

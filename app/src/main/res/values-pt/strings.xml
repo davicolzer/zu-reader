@@ -235,4 +235,31 @@
     <string name="result_low_confidence_numbers">Números em dourado têm dúvida. Toque num número, aqui ou na foto, para corrigir.</string>
     <string name="correct_body_numbers">Lido como %1$s. Se estiver errado, toque no número certo.</string>
     <string name="correct_body_doubt_numbers">Confiança baixa. Escolha uma sugestão ou toque no número certo.</string>
+    <!-- Ler comandos (sequências de peças de 4 blocos) -->
+    <string name="home_read_commands">Ler comandos</string>
+    <string name="commands_source_title">Ler sequência de comandos</string>
+    <string name="commands_source_body">Tire uma foto ou escolha uma imagem das peças (blocos como os do Tetris). Depois, recorte só em volta da sequência.</string>
+    <string name="camera_commands_hint">Ler comandos</string>
+    <string name="camera_commands_aim">Enquadre a sequência inteira de peças</string>
+    <string name="crop_read_commands">Ler peças</string>
+    <string name="commands_title">Comandos</string>
+    <string name="commands_label">SEQUÊNCIA</string>
+    <plurals name="commands_count">
+        <item quantity="one">%1$d peça</item>
+        <item quantity="other">%1$d peças</item>
+    </plurals>
+    <string name="commands_hint">O quadrado é pular (A). As outras peças vão mostrar o botão quando a tabela do jogo for confirmada.</string>
+    <string name="commands_unknown">As peças com ? não foram reconhecidas: recorte mais justo em volta da sequência.</string>
+    <string name="commands_none_title">Nenhuma peça encontrada</string>
+    <string name="commands_none_body">Recorte só em volta da sequência, com as peças em linha ou em coluna.</string>
+    <string name="commands_adjust">Ajustar recorte</string>
+    <string name="commands_another">Ler outra</string>
+    <string name="commands_image_description">Foto da sequência de comandos</string>
+    <string name="commands_delete_title">Apagar esta sequência?</string>
+    <string name="commands_delete_body">Ela sai da coleção.</string>
+    <string name="commands_piece">Peça %1$s</string>
+    <string name="commands_piece_jump">peça quadrada: pular (A)</string>
+    <string name="commands_piece_unknown">peça não reconhecida</string>
+    <string name="history_kind_commands">Comandos</string>
+    <string name="history_badge_commands">COMANDOS</string>
 </resources>

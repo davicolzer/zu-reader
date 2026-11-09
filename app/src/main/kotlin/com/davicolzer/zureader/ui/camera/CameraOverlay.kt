@@ -141,6 +141,7 @@ fun CameraOverlay(
                                 CameraPurpose.QR -> R.string.camera_qr_hint
                                 CameraPurpose.NOTE -> R.string.camera_note_hint
                                 CameraPurpose.VIDEO -> R.string.camera_video_hint
+                                CameraPurpose.COMMANDS -> R.string.camera_commands_hint
                                 CameraPurpose.READ -> R.string.home_read_zu
                             },
                         ),
@@ -230,6 +231,7 @@ private fun Hints(reading: Boolean, quality: PhotoQuality?, frameColor: Color, p
                     CameraPurpose.QR -> R.string.camera_qr_aim
                     CameraPurpose.NOTE -> R.string.camera_note_aim
                     CameraPurpose.VIDEO -> R.string.camera_video_aim
+                    CameraPurpose.COMMANDS -> R.string.camera_commands_aim
                     CameraPurpose.READ -> R.string.camera_aim
                 },
             ),
