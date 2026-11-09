@@ -119,7 +119,7 @@ private fun CorrectionBody(glyph: GlyphReading, rotation: Int, onSelect: (Char) 
 
         val twin = if (mode != ReadingMode.NUMBERS) ZuAlphabet.twin(glyph.letter) else null
         val suggestions = (listOfNotNull(glyph.letter, twin) + glyph.alternatives.map { it.letter })
-            .filter { it in mode.keyboard }.distinct().take(3)
+            .filter { it in ReadingMode.MIXED.keyboard }.distinct().take(3)
         if (suggestions.isNotEmpty()) {
             Text(stringResource(R.string.correct_suggestions), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -138,7 +138,7 @@ private fun CorrectionBody(glyph: GlyphReading, rotation: Int, onSelect: (Char) 
                     ) {
                         MiniGlyph(ZuMixed.glyphFor(letter).pattern, if (current) ZuTheme.colors.teal else MaterialTheme.colorScheme.onSurface, size = 26.dp)
                         Spacer(Modifier.height(4.dp))
-                        Text(mode.symbolLabel(letter), style = MaterialTheme.typography.titleMedium, color = if (current) ZuTheme.colors.teal else MaterialTheme.colorScheme.onSurface)
+                        Text(ReadingMode.MIXED.symbolLabel(letter), style = MaterialTheme.typography.titleMedium, color = if (current) ZuTheme.colors.teal else MaterialTheme.colorScheme.onSurface)
                         if (current) Text(stringResource(R.string.correct_current), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
@@ -146,16 +146,14 @@ private fun CorrectionBody(glyph: GlyphReading, rotation: Int, onSelect: (Char) 
         }
 
         // teclado pelo desenho: cada tecla mostra o glifo (e a letra pequena), para achar o igual
-        // ao da foto; cada coluna é uma forma com as suas 4 rotações; os números ficam embaixo
-        val letters = if (mode != ReadingMode.NUMBERS) {
-            (0..3).map { q -> ZuAlphabet.shapes.map { it[q] } }
-        } else {
-            emptyList()
-        }
-        val numbers = if (mode != ReadingMode.TEXT) ZuNumerals.glyphs.chunked(KEYS_PER_ROW) else emptyList()
+        // ao da foto; cada coluna é uma forma com as suas 4 rotações. Letras e números sempre: um
+        // glifo lido como letra pode ser número (e vice-versa); na leitura de números, eles vêm primeiro
+        val letters = (0..3).map { q -> ZuAlphabet.shapes.map { it[q] } }
+        val numbers = ZuNumerals.glyphs.chunked(KEYS_PER_ROW)
+        val groups = if (mode == ReadingMode.NUMBERS) listOf(numbers, letters) else listOf(letters, numbers)
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            for ((index, row) in (letters + numbers).withIndex()) {
-                if (index == letters.size && letters.isNotEmpty() && numbers.isNotEmpty()) {
+            for ((index, row) in (groups[0] + groups[1]).withIndex()) {
+                if (index == groups[0].size) {
                     Box(Modifier.fillMaxWidth().height(8.dp), contentAlignment = Alignment.Center) {
                         Box(Modifier.fillMaxWidth().height(1.dp).background(MaterialTheme.colorScheme.outlineVariant))
                     }
@@ -163,7 +161,7 @@ private fun CorrectionBody(glyph: GlyphReading, rotation: Int, onSelect: (Char) 
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     for (key in row) {
                         // K/Q e U/V dividem o glifo: a tecla escolhe a primeira; a outra aparece nas sugestões
-                        val label = key.letters.map(mode::symbolLabel).joinToString("/")
+                        val label = key.letters.map(ReadingMode.MIXED::symbolLabel).joinToString("/")
                         Column(
                             Modifier
                                 .weight(1f)

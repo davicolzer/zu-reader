@@ -546,7 +546,9 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         val current = _state.value as? ReaderUiState.Result ?: return
         val reading = current.result.reading
         val glyph = reading.glyphs.getOrNull(index) ?: return
-        val updated = current.copy(result = current.result.copy(reading = reading.withLetter(index, letter)))
+        // um número numa leitura de texto (ou uma letra numa de números): passa a ser misturada
+        val result = current.result.copy(reading = reading.withLetter(index, letter), mode = current.result.mode.withSymbol(letter))
+        val updated = current.copy(result = result)
         _state.value = updated
         viewModelScope.launch { app.learned.learn(glyph.source.bits.rotate(reading.rotation), letter) }
         updated.savedId?.let { id -> viewModelScope.launch { history.update(id, updated.result) } }
