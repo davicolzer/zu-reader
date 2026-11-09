@@ -1,0 +1,33 @@
+name: Bug report / Relatar erro
+description: Something doesn't work, or the app read a photo wrong. / Algo não funciona, ou o app leu uma foto errado.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks! English or Portuguese is fine. / Obrigado! Pode escrever em inglês ou português.
+        **Wrong reading?** Attach the photo; it is the most useful thing. / **Leitura errada?** Anexe a foto, é o que mais ajuda.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened? / O que aconteceu?
+      description: What you did, what you expected and what you got. / O que você fez, o que esperava e o que aconteceu.
+    validations:
+      required: true
+  - type: textarea
+    id: photo
+    attributes:
+      label: Photo or screenshot / Foto ou print
+      description: Drag images here. For a wrong reading, also write the correct text. / Arraste as imagens para cá. Numa leitura errada, escreva também o texto certo.
+  - type: input
+    id: version
+    attributes:
+      label: App version / Versão do app
+      description: Settings → About, or the APK name (e.g. 1.0.0-beta-build.141). / Configurações → Sobre, ou o nome do APK.
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Phone and Android version / Celular e versão do Android
+      placeholder: Pixel 8, Android 16

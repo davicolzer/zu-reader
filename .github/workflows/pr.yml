@@ -59,10 +59,7 @@ jobs:
       - name: Preparar ambiente
         uses: ./.github/actions/preparar
 
+      # sem a chave de publicação: o APK de teste do PR é assinado com a chave do projeto,
+      # e código que ainda não entrou na main nunca tem acesso à chave
       - name: Gerar APKs
         uses: ./.github/actions/gerar-apks
-        with:
-          keystore-base64: ${{ secrets.ZU_KEYSTORE_BASE64 }}
-          keystore-password: ${{ secrets.ZU_KEYSTORE_PASSWORD }}
-          key-alias: ${{ secrets.ZU_KEY_ALIAS }}
-          key-password: ${{ secrets.ZU_KEY_PASSWORD }}

@@ -45,12 +45,12 @@ import com.davicolzer.zureader.ui.note.renderMarks
 import com.davicolzer.zureader.ui.note.NoteScreen
 import com.davicolzer.zureader.ui.qr.QrScreen
 import com.davicolzer.zureader.ui.components.SourceDialog
+import com.davicolzer.zureader.ui.components.rememberInBackground
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.davicolzer.zureader.ui.commands.CommandsScreen
 import com.davicolzer.zureader.ui.commands.CommandsWriteScreen
-import com.davicolzer.zureader.ui.components.PixelOutlinedButton
 
 @Composable
 fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
@@ -226,7 +226,7 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
             is ReaderUiState.AnnotateCrop -> {
                 BackHandler(onBack = viewModel::leaveAnnotationCrop)
                 // mostra a foto com os desenhos; o recorte vale para a foto e para eles
-                val shown = remember(s) { renderMarks(s.editing.image, s.editing.marks) }
+                val shown = rememberInBackground(s) { renderMarks(s.editing.image, s.editing.marks) } ?: s.editing.image
                 CropScreen(
                     image = shown,
                     suggestion = com.davicolzer.zureader.vision.Quad.inset(shown.width, shown.height, 0.05f),

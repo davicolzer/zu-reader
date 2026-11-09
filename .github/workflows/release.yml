@@ -1,12 +1,17 @@
 name: Release
 
-# Depois do merge na main (ou rodando à mão em Actions → Release → Run workflow):
-# gera os APKs e publica uma release com o APK para instalar no celular.
-# Os testes já rodaram no PR.
+# Depois do merge na main: gera os APKs e publica uma pré-release com o APK para instalar.
+# À mão (Actions → Release → Run workflow), com "estável" marcado: publica uma versão estável,
+# que vira a "Latest" da página de releases. Os testes já rodaram no PR.
 on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      estavel:
+        description: "Versão estável (Latest), não pré-release"
+        type: boolean
+        default: false
 
 concurrency:
   group: release-${{ github.ref }}
@@ -55,30 +60,25 @@ jobs:
           name: zu-reader
           path: dist
 
+      - name: Deixar só o que o usuário precisa
+        # o APK de depuração e o sem assinatura ficam nos artefatos da execução, não na release
+        run: |
+          rm -f dist/*-debug.apk dist/*-sem-assinatura.apk
+          ls -la dist
+
       - name: Escrever notas da release
         env:
           VERSION: ${{ needs.apk.outputs.version }}
-          SIGNED: ${{ needs.apk.outputs.signed }}
         run: |
           {
-            echo "Build automático do Zu Reader a partir de \`${GITHUB_REF_NAME}\` (${GITHUB_SHA::7})."
+            echo "## Install / Instalar"
             echo
-            echo "## Instalar no celular"
+            echo "1. On your phone, download **zu-reader-${VERSION}.apk** below. / No celular, baixe **zu-reader-${VERSION}.apk** abaixo."
+            echo "2. Open it and allow installs from this source if Android asks. / Abra e, se o Android pedir, permita instalar dessa fonte."
+            echo "3. It installs over the previous version and keeps your collection. / Instala por cima da versão anterior e mantém a coleção."
             echo
-            echo "1. No celular, abra esta página e baixe **zu-reader-${VERSION}.apk**."
-            echo "2. Abra o arquivo baixado. Se o Android pedir, permita instalar apps dessa fonte."
-            echo "3. Versões novas instalam por cima da anterior; o histórico é mantido."
+            echo "\`zu-reader-${VERSION}.aab\`: Play Store bundle / pacote para a Play Store."
             echo
-            echo "## Arquivos"
-            echo
-            if [ "$SIGNED" = "true" ]; then
-              echo "- \`zu-reader-${VERSION}.apk\`: para instalar e usar (release assinado com a chave de publicação)."
-              echo "- \`zu-reader-${VERSION}-debug.apk\`: versão de depuração, assinada com a chave do projeto."
-            else
-              echo "- \`zu-reader-${VERSION}.apk\`: para instalar e usar (assinado com a chave do projeto)."
-              echo "- \`zu-reader-${VERSION}-sem-assinatura.apk\`: release sem assinatura (não instala; ver docs/RELEASE.md)."
-            fi
-            echo "- \`zu-reader-${VERSION}.aab\`: pacote para a Play Store."
           } > notas.md
           cat notas.md
 
@@ -86,10 +86,19 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ needs.apk.outputs.version }}
+          STABLE: ${{ inputs.estavel == true }}
         run: |
+          if [ "$STABLE" = "true" ]; then
+            # mudanças desde a última versão estável; ela vira a "Latest"
+            START=$(gh release list --repo "$GITHUB_REPOSITORY" --exclude-pre-releases --limit 1 --json tagName --jq '.[0].tagName // empty')
+            KIND=(--latest ${START:+--notes-start-tag "$START"})
+          else
+            KIND=(--prerelease)
+          fi
           gh release create "v${VERSION}" dist/* \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
             --title "Zu Reader ${VERSION}" \
             --notes-file notas.md \
-            --prerelease
+            --generate-notes \
+            "${KIND[@]}"
