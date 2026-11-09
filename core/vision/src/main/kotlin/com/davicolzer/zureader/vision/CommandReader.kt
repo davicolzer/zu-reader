@@ -65,7 +65,8 @@ internal fun normalize(cells: Collection<Cell>): List<Cell> {
  * Como funciona: separa a tinta do fundo (testa limiar global e local, peça clara ou escura) e
  * junta as partes de cada peça (sombras e bordas a separam); cada mancha vira uma grade de blocos
  * pelo tamanho da própria mancha (4 blocos); fica a combinação que dá mais peças reconhecidas.
- * Manchas com 8, 12… blocos são peças coladas: são divididas em peças de 4, na ordem de leitura.
+ * Peças coladas numa linha só (o jeito mais comum no jogo) são lidas como uma mancha comprida:
+ * endireitada, coberta pela grade de blocos mais nítida e dividida em peças de 4, na ordem de leitura.
  * Numa coluna (lida de cima para baixo), cada peça é girada um quarto de volta no sentido
  * anti-horário, como se a coluna fosse deitada: a mesma sequência dá o mesmo código em linha ou coluna.
  */
@@ -89,21 +90,137 @@ object CommandReader {
 
     fun read(image: RgbImage): CommandReading {
         val gray = downscale(image.luma())
+        val masks = inkMasks(gray)
+        // peças coladas numa linha só: uma mancha comprida, que cobre o recorte e se divide em peças
+        // de 4; quando existe, vale ela (lida como separadas, a linha colada vira pedaços soltos)
+        val chain = masks.mapNotNull { readChain(it, gray.width, gray.height) }.minByOrNull { it.first }?.second
+        return chain ?: readSeparate(masks, gray.width, gray.height)
+    }
+
+    /** Peças separadas (cada uma é uma mancha). */
+    private fun readSeparate(masks: List<BooleanArray>, width: Int, height: Int): CommandReading {
         var best: Candidate? = null
-        for (mask in inkMasks(gray)) {
+        for (mask in masks) {
             for (close in CLOSINGS) {
-                val found = blobs(mask, gray.width, gray.height, close)
+                val found = blobs(mask, width, height, close)
                 val candidate = Candidate(found)
                 if (best == null || candidate.score > best.score) best = candidate
             }
         }
-        val blobs = best?.blobs ?: return CommandReading(emptyList())
+        val found = best?.blobs ?: return CommandReading(emptyList())
+        // manchas não reconhecidas bem menores que as peças são sujeira (um símbolo ao lado, um risco)
+        val pieceArea = found.filter { it.piece.shape != null && it.area > 0 }.map { it.area }.sorted().let { if (it.isEmpty()) 0 else it[it.size / 2] }
+        val blobs = found.filter { it.piece.shape != null || it.area == 0 || it.area >= 0.6f * pieceArea }
         if (blobs.isEmpty()) return CommandReading(emptyList())
         val xs = blobs.map { it.cx }
         val ys = blobs.map { it.cy }
         val horizontal = (xs.max() - xs.min()) >= (ys.max() - ys.min())
         val ordered = blobs.sortedBy { if (horizontal) it.cx else it.cy }
         return CommandReading(ordered.map { if (horizontal) it.piece else turnCounterClockwise(it.piece) })
+    }
+
+    /**
+     * Peças coladas numa linha só (o caso comum nas sequências do jogo): a maior mancha cobre quase
+     * todo o comprimento do recorte. Ela é posta em pé (uma linha é girada ¼ de volta no sentido
+     * horário), endireitada (cada fileira de pixels é deslocada pela inclinação do eixo) e coberta
+     * por grades de 2 a 5 blocos de largura; fica a grade com as células mais nítidas (bem cheias
+     * ou bem vazias) que se divide em peças de 4. Devolve a nitidez (menor = melhor) e a leitura.
+     */
+    private fun readChain(ink: BooleanArray, w: Int, h: Int): Pair<Float, CommandReading>? {
+        val mask = fillHoles(dilate(erode(ink, w, h, 1), w, h, 1), w, h)
+        val labels = label(mask, w, h)
+        if (labels.areas.isEmpty()) return null
+        val i = labels.areas.indices.maxBy { labels.areas[it] }
+        val box = labels.boxes[i]
+        val bw = box[2] - box[0]
+        val bh = box[3] - box[1]
+        if (maxOf(bw, bh) < 0.7f * maxOf(w, h) || minOf(bw, bh) < 4) return null
+        // a mancha em pé: linha → girada ¼ de volta no sentido horário (o começo fica em cima)
+        val horizontal = bw > bh
+        val sh = if (horizontal) bw else bh
+        val sw = if (horizontal) bh else bw
+        val sub = BooleanArray(sw * sh) { k ->
+            val r = k / sw
+            val c = k % sw
+            val (x, y) = if (horizontal) (box[0] + r) to (box[1] + bh - 1 - c) else (box[0] + c) to (box[1] + r)
+            labels.ids[y * w + x] == i + 1
+        }
+        val (straight, sw2) = straighten(sub, sw, sh)
+        // nitidez de cada grade: a soma, por célula, do quanto ela está longe de cheia ou vazia
+        val integral = IntArray((sw2 + 1) * (sh + 1))
+        for (y in 0 until sh) {
+            var row = 0
+            for (x in 0 until sw2) {
+                if (straight[y * sw2 + x]) row++
+                integral[(y + 1) * (sw2 + 1) + x + 1] = integral[y * (sw2 + 1) + x + 1] + row
+            }
+        }
+        fun fill(x0: Int, y0: Int, x1: Int, y1: Int): Float {
+            val area = (x1 - x0) * (y1 - y0)
+            if (area <= 0) return 0f
+            val count = integral[y1 * (sw2 + 1) + x1] - integral[y0 * (sw2 + 1) + x1] - integral[y1 * (sw2 + 1) + x0] + integral[y0 * (sw2 + 1) + x0]
+            return count.toFloat() / area
+        }
+        val grids = mutableListOf<Triple<Float, Int, List<Cell>>>()
+        for (cols in 2..5) {
+            val block = sw2.toFloat() / cols
+            val minRows = maxOf(4, (sh / block / 2.5f).toInt())
+            val maxRows = (sh / block * 1.6f).toInt() + 1
+            for (rows in minRows..maxRows) {
+                // depois de endireitada, os blocos são quase quadrados
+                val aspect = (sh.toFloat() / rows) / block
+                if (aspect < 0.7f || aspect > 1.45f) continue
+                var crisp = 0f
+                val cells = mutableListOf<Cell>()
+                for (r in 0 until rows) for (c in 0 until cols) {
+                    val f = fill(c * sw2 / cols, r * sh / rows, (c + 1) * sw2 / cols, (r + 1) * sh / rows)
+                    crisp += minOf(f, 1 - f)
+                    if (f > 0.5f) cells += Cell(r, c)
+                }
+                if (cells.size >= 8 && cells.size % 4 == 0) grids += Triple(crisp / (rows * cols), rows, cells)
+            }
+        }
+        for ((crisp, _, cells) in grids.sortedBy { it.first }.take(12)) {
+            if (crisp > MAX_CHAIN_BLUR) break
+            val pieces = split(cells, horizontal = false) ?: continue
+            // em pé, como uma coluna: cada peça é deitada de volta
+            return crisp to CommandReading(pieces.map { turnCounterClockwise(byCells.getValue(normalize(it))) })
+        }
+        return null
+    }
+
+    /** Grades mais borradas que isso não são uma sequência de blocos. */
+    private const val MAX_CHAIN_BLUR = 0.13f
+
+    /** Endireita uma mancha em pé e inclinada: desloca cada fileira pela reta que passa pelos centros. */
+    private fun straighten(mask: BooleanArray, w: Int, h: Int): Pair<BooleanArray, Int> {
+        var n = 0
+        var sy = 0.0
+        var sx = 0.0
+        var syy = 0.0
+        var sxy = 0.0
+        for (y in 0 until h) {
+            var left = -1
+            var right = -1
+            for (x in 0 until w) if (mask[y * w + x]) { if (left < 0) left = x; right = x }
+            if (left < 0) continue
+            val cx = (left + right) / 2.0
+            n++; sy += y; sx += cx; syy += y.toDouble() * y; sxy += y * cx
+        }
+        if (n < 2) return mask to w
+        val slope = (n * sxy - sy * sx) / (n * syy - sy * sy)
+        val shifts = IntArray(h) { (-slope * it).roundToInt() }
+        val minShift = shifts.min()
+        val maxShift = shifts.max()
+        val wide = w + maxShift - minShift
+        val out = BooleanArray(wide * h)
+        for (y in 0 until h) for (x in 0 until w) if (mask[y * w + x]) out[y * wide + x + shifts[y] - minShift] = true
+        // corta as colunas vazias dos lados
+        val used = (0 until wide).filter { x -> (0 until h).any { y -> out[y * wide + x] } }
+        val x0 = used.first()
+        val x1 = used.last() + 1
+        val tight = BooleanArray((x1 - x0) * h) { k -> out[(k / (x1 - x0)) * wide + x0 + k % (x1 - x0)] }
+        return tight to (x1 - x0)
     }
 
     /** A peça como fica com a coluna deitada (um quarto de volta no sentido anti-horário). */
@@ -113,7 +230,7 @@ object CommandReader {
         return byCells.getValue(cells)
     }
 
-    private class Blob(val cx: Float, val cy: Float, val piece: CommandPiece)
+    private class Blob(val cx: Float, val cy: Float, val piece: CommandPiece, val area: Int = 0)
 
     private class Candidate(val blobs: List<Blob>) {
         private val ok = blobs.count { it.piece.shape != null }
@@ -197,7 +314,7 @@ object CommandReader {
             val piece = if (cells.size == 4) byCells[normalize(cells)] else null
             if (piece != null) {
                 singles += side
-                out += Blob((box[0] + box[2]) / 2f, (box[1] + box[3]) / 2f, piece)
+                out += Blob((box[0] + box[2]) / 2f, (box[1] + box[3]) / 2f, piece, labels.areas[i])
             } else {
                 pending += i to box
             }
@@ -210,7 +327,7 @@ object CommandReader {
             val bh = (box[3] - box[1]).toFloat()
             val split = if (cells.size % 4 == 0 && cells.size in 8..40) split(cells, horizontal = bw >= bh) else null
             if (split == null) {
-                out += Blob(box[0] + bw / 2, box[1] + bh / 2, CommandPiece(null))
+                out += Blob(box[0] + bw / 2, box[1] + bh / 2, CommandPiece(null), labels.areas[i])
             } else {
                 val rows = maxOf(1, (bh / side).roundToInt())
                 val cols = maxOf(1, (bw / side).roundToInt())

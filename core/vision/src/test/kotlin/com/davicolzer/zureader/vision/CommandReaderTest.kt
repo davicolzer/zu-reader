@@ -57,9 +57,17 @@ class CommandReaderTest {
     }
 
     @Test
-    fun `mural - pecas coladas (ainda experimental)`() {
-        val image = load("comandos-mural-coladas.jpg")
-        assumeTrue(image != null, "sem testdata/real")
-        println("mural, coladas: ${CommandReader.read(image!!).code}")
+    fun `mural endireitado - a mesma sequencia com pecas separadas e coladas`() {
+        // como no app: a foto do mural endireitada pelos 4 cantos, depois recortada em volta de cada coluna
+        val separate = load("comandos-mural-reto-separadas.jpg")
+        val glued = load("comandos-mural-reto-coladas.jpg")
+        assumeTrue(separate != null && glued != null, "sem testdata/real")
+        val a = CommandReader.read(separate!!)
+        val b = CommandReader.read(glued!!)
+        println("mural endireitado, separadas: ${a.code}")
+        println("mural endireitado, coladas: ${b.code}")
+        // as duas colunas e a linha de baixo são a mesma sequência
+        assertEquals("T2 T1 S0 O0 Z0 T3 O0 T0", a.code)
+        assertEquals("T2 T1 S0 O0 Z0 T3 O0 T0", b.code)
     }
 }
