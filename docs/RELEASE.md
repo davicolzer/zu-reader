@@ -71,6 +71,40 @@ propósito em vez de publicar um APK com a chave de teste.
 Para assinar localmente, exporte `ZU_KEYSTORE_PATH` (caminho do `.jks`) e as três variáveis acima e
 rode `./gradlew bundleRelease`.
 
+## Verificação de desenvolvedor do Android (Google)
+
+Desde **30/09/2026**, no **Brasil**, na Indonésia, em Singapura e na Tailândia (no mundo todo em 2027),
+os celulares Android certificados conferem se o **nome do pacote + chave de assinatura** do app estão
+registrados por um desenvolvedor verificado. Um APK **não registrado** só instala pelo "fluxo
+avançado" (aviso de "desenvolvedor não verificado") ou por ADB. Registrado, instala normalmente.
+
+Dados do app oficial:
+
+| | |
+|---|---|
+| Pacote | `com.davicolzer.zureader` |
+| Certificado (SHA-256) | `75:83:05:03:22:DA:39:AF:A9:B6:A4:01:B1:D9:EE:D2:67:08:52:C2:C1:BF:39:34:01:67:5E:88:FE:15:AD:10` |
+
+Passos (uma vez só):
+
+1. Criar a conta no **[Android Developer Console](https://android.google.com/developerconsole/developers)**
+   como **distribuição completa** (*full distribution*): instalações ilimitadas; pede documento com
+   foto, comprovante de endereço e taxa única de US$ 25. A conta de **distribuição limitada** (grátis,
+   sem documento) só vale para até 20 aparelhos convidados, então não serve para download público.
+   Quem já tem conta no **Play Console** usa a mesma (página "Android developer verification").
+2. Em **Packages → Register package name**: informar `com.davicolzer.zureader` e, em **Add key**, o
+   SHA-256 acima.
+3. Para provar que a chave é sua, o console mostra um trecho de texto. Salve-o como
+   **`app/src/main/assets/adi-registration.properties`** (o conteúdo não é segredo: ele vai dentro do
+   APK público), faça o merge na `main`, baixe o `zu-reader.apk` da release gerada e envie em
+   **Upload APK** no console.
+4. Quando o status mudar para **Registered**, o APK das releases instala sem aviso nesses países.
+
+O app de teste (`com.davicolzer.zureader.debug`) não precisa ser registrado: ele é só para quem
+desenvolve, e pode ser instalado pelo fluxo avançado ou por ADB.
+
+Fonte: [developer.android.com/developer-verification](https://developer.android.com/developer-verification).
+
 ## Antes de publicar na Play Store
 
 - Testar o APK de release num aparelho (câmera, galeria, coleção).
