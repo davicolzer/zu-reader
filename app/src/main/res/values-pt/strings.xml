@@ -144,12 +144,12 @@
     <string name="video_default_name">Vídeo</string>
     <string name="home_record_video">Gravar vídeo</string>
     <string name="video_source_title">Gravar vídeo</string>
-    <string name="video_source_body">Grave até 1 minuto do jogo (sem som) ou escolha um vídeo da galeria.</string>
+    <string name="video_source_body">Grave até 10 minutos do jogo (sem som) ou escolha um vídeo da galeria.</string>
     <string name="source_record">Gravar agora</string>
     <string name="source_video_gallery">Escolher vídeo da galeria</string>
     <string name="camera_video_hint">Gravar vídeo</string>
-    <string name="camera_video_aim">Toque para gravar (até 1 minuto)</string>
-    <string name="camera_video_recording">Gravando · %1$s de 1:00</string>
+    <string name="camera_video_aim">Toque para gravar (até 10 minutos)</string>
+    <string name="camera_video_recording">Gravando · %1$s de 10:00</string>
     <string name="camera_record">Gravar</string>
     <string name="camera_stop">Parar de gravar</string>
     <string name="video_title">VÍDEO</string>
@@ -269,7 +269,7 @@
     <string name="button_lt">girar para a esquerda (LT)</string>
     <string name="button_rt">girar para a direita (RT)</string>
     <string name="commands_fix">Corrigir à mão</string>
-    <string name="commands_write_hand">Escrever à mão</string>
+    <string name="commands_write_hand">Comandos à mão</string>
     <string name="commands_write_title">Escrever comandos</string>
     <string name="commands_write_empty">Toque nos botões para montar a sequência. Toque numa peça para trocar ou apagar; ◀ ▶ movem o cursor.</string>
     <string name="cursor_left">Mover o cursor para a esquerda</string>

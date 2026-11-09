@@ -3,6 +3,8 @@ package com.davicolzer.zureader.ui.components
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
@@ -17,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -26,6 +29,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.davicolzer.zureader.ui.theme.ZuTheme
 
 private val ButtonShape = RoundedCornerShape(14.dp)
@@ -97,5 +101,16 @@ fun PixelOutlinedButton(
 private fun ButtonContent(text: String, @DrawableRes icon: Int, compact: Boolean = false) {
     Icon(painterResource(icon), contentDescription = null, modifier = Modifier.size(20.dp))
     Spacer(Modifier.width(if (compact) 8.dp else 10.dp))
-    Text(text, style = MaterialTheme.typography.labelLarge, maxLines = 1, softWrap = !compact)
+    if (compact) {
+        // lado a lado com outro botão: o texto diminui um pouco em vez de ser cortado
+        val style = MaterialTheme.typography.labelLarge
+        BasicText(
+            text,
+            style = style.copy(color = LocalContentColor.current),
+            maxLines = 1,
+            autoSize = TextAutoSize.StepBased(minFontSize = 11.sp, maxFontSize = style.fontSize),
+        )
+    } else {
+        Text(text, style = MaterialTheme.typography.labelLarge, maxLines = 1)
+    }
 }

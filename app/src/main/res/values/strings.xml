@@ -143,12 +143,12 @@
     <string name="video_default_name">Video</string>
     <string name="home_record_video">Record video</string>
     <string name="video_source_title">Record video</string>
-    <string name="video_source_body">Record up to 1 minute of the game (no sound) or choose a video from the gallery.</string>
+    <string name="video_source_body">Record up to 10 minutes of the game (no sound) or choose a video from the gallery.</string>
     <string name="source_record">Record now</string>
     <string name="source_video_gallery">Choose video from gallery</string>
     <string name="camera_video_hint">Record video</string>
-    <string name="camera_video_aim">Tap to record (up to 1 minute)</string>
-    <string name="camera_video_recording">Recording · %1$s of 1:00</string>
+    <string name="camera_video_aim">Tap to record (up to 10 minutes)</string>
+    <string name="camera_video_recording">Recording · %1$s of 10:00</string>
     <string name="camera_record">Record</string>
     <string name="camera_stop">Stop recording</string>
     <string name="video_title">VIDEO</string>
@@ -269,7 +269,7 @@
     <string name="button_lt">rotate left (LT)</string>
     <string name="button_rt">rotate right (RT)</string>
     <string name="commands_fix">Fix by hand</string>
-    <string name="commands_write_hand">Write by hand</string>
+    <string name="commands_write_hand">Commands by hand</string>
     <string name="commands_write_title">Write commands</string>
     <string name="commands_write_empty">Tap the buttons to build the sequence. Tap a piece to replace or delete it; ◀ ▶ move the cursor.</string>
     <string name="cursor_left">Move the cursor left</string>
