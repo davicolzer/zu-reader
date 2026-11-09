@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="../../releases"><img alt="Download" src="https://img.shields.io/github/v/release/davicolzer/zu-reader?include_prereleases&label=download&color=d7263d"></a>
+  <a href="../../releases"><img alt="Download" src="https://img.shields.io/github/v/release/davicolzer/zu-reader?label=download&color=d7263d"></a>
   <a href="../../actions/workflows/release.yml"><img alt="Build" src="https://img.shields.io/github/actions/workflow/status/davicolzer/zu-reader/release.yml?branch=main&label=build"></a>
   <img alt="Android 8.0+" src="https://img.shields.io/badge/Android-8.0%2B-3ddc84">
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue"></a>
@@ -39,7 +39,11 @@
 
 ## Install
 
-1. On your phone, open the [latest release](../../releases) and download `zu-reader-<version>.apk`.
+<p>
+  <a href="https://github.com/davicolzer/zu-reader/releases/latest/download/zu-reader.apk"><img alt="Download the APK" src="https://img.shields.io/badge/Download-APK-d7263d?style=for-the-badge&logo=android&logoColor=white"></a>
+</p>
+
+1. On your phone, tap **Download APK** above (or get it from the [latest release](https://github.com/davicolzer/zu-reader/releases/latest)).
 2. Open the file. If Android asks, allow installs from that source.
 3. New versions install over the old one and keep your collection.
 
