@@ -29,8 +29,8 @@ and run `./gradlew :core:vision:test` without an emulator.
    - reader accuracy must not drop on the existing real photos (`RealPhotosTest`, `CommandReaderTest`).
 4. App texts go in **both** `app/src/main/res/values/strings.xml` (English) and `values-pt/strings.xml` (Portuguese).
 5. Screens must work in the **light and dark themes**. Attach screenshots of both for UI changes.
-6. Run `./gradlew build` before opening the pull request. CI runs the same checks and builds a test APK,
-   which you can download from the run's artifacts.
+6. Run `./gradlew build` before opening the pull request. CI runs the same tests and lint. After the
+   merge into `staging`, a comment on your pull request brings the link to download the test APK.
 
 ## Code style
 

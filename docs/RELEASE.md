@@ -16,7 +16,8 @@ branch da mudança ──PR──▶ staging ──PR──▶ main ──▶ (d
    (também na página da [pré-release staging](https://github.com/davicolzer/zu-reader/releases/tag/staging),
    que lista o que está na staging e ainda não está na main). Instala como **Zu Reader Staging**,
    ao lado do app oficial, sem mexer na coleção dele.
-3. Testou no celular e está bom → **PR da `staging` para a `main`**. O merge publica a release oficial.
+3. Testou no celular e está bom → **PR da `staging` para a `main`** (de novo, só testes e lint). O merge
+   gera o build e publica a release oficial, que atualiza o botão de download do README.
 4. **Deploy na Play Store**: fica para depois de criar as contas (Play Console e verificação de
    desenvolvedor); entra como uma etapa a mais no fluxo da `main`.
 
@@ -41,7 +42,7 @@ o CI de um PR vindo de fork só roda depois que o dono olha o código.
 
 | Fluxo | Quando | Etapas |
 |---|---|---|
-| **PR** (`.github/workflows/pr.yml`) | em cada PR (também de forks) | 1 · Testes e lint; nos PRs para a `main`, também 2 · Build dos APKs (ficam nos artefatos da execução) |
+| **PR** (`.github/workflows/pr.yml`) | em cada PR para a `staging` ou a `main` (também de forks) | 1 · Testes e lint (sem build: o APK sai no merge) |
 | **Staging** (`.github/workflows/staging.yml`) | merge na `staging`, ou à mão em **Actions → Staging → Run workflow** | 1 · Build do APK de staging → 2 · Publicar na pré-release staging |
 | **Release** (`.github/workflows/release.yml`) | merge na `main`, ou à mão em **Actions → Release → Run workflow** | 1 · Build dos APKs → 2 · Publicar release |
 
@@ -53,7 +54,7 @@ duas branches exigindo o check "1 · Testes e lint").
 
 | Build | App no celular | Chave | De onde vem |
 |---|---|---|---|
-| `debug` | **Zu Reader Teste** (`…zureader.debug`) | de teste | Android Studio e artefatos dos PRs |
+| `debug` | **Zu Reader Teste** (`…zureader.debug`) | de teste | Android Studio (`./gradlew :app:installDebug`) |
 | `staging` | **Zu Reader Staging** (`…zureader.staging`) | de publicação | pré-release **staging** |
 | `release` | **Zu Reader** (`com.davicolzer.zureader`) | de publicação | releases oficiais |
 
