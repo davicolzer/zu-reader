@@ -2,6 +2,7 @@ package com.davicolzer.zureader.ui.components
 
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
@@ -36,6 +37,8 @@ fun ActionKey(
     content: Color = MaterialTheme.colorScheme.onSurface,
     showLabel: Boolean = icon == null,
     height: Dp = 52.dp,
+    /** Borda de destaque (sem borda se nula). */
+    border: Color? = null,
     enabled: Boolean = true,
     onClick: () -> Unit,
 ) {
@@ -43,6 +46,7 @@ fun ActionKey(
         modifier
             .height(height)
             .clip(RoundedCornerShape(12.dp))
+            .then(if (border != null && enabled) Modifier.border(2.dp, border, RoundedCornerShape(12.dp)) else Modifier)
             .background(if (enabled) container else MaterialTheme.colorScheme.surfaceContainer)
             .clickable(enabled = enabled, role = Role.Button, onClickLabel = label, onClick = onClick)
             .semantics { contentDescription = label },

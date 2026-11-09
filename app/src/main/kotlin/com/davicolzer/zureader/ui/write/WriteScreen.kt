@@ -215,8 +215,9 @@ fun WriteScreen(
                     stringResource(R.string.write_space),
                     R.drawable.ic_pixel_space,
                     Modifier.width(52.dp),
-                    container = MaterialTheme.colorScheme.secondaryContainer,
-                    content = MaterialTheme.colorScheme.onSecondaryContainer,
+                    container = ZuTheme.colors.gold.copy(alpha = 0.22f),
+                    content = ZuTheme.colors.gold,
+                    border = ZuTheme.colors.gold,
                     height = 40.dp,
                     onClick = space,
                 )
@@ -224,8 +225,9 @@ fun WriteScreen(
                     breakLabel,
                     R.drawable.ic_pixel_newline,
                     Modifier.width(52.dp),
-                    container = MaterialTheme.colorScheme.secondaryContainer,
-                    content = MaterialTheme.colorScheme.onSecondaryContainer,
+                    container = ZuTheme.colors.gold.copy(alpha = 0.22f),
+                    content = ZuTheme.colors.gold,
+                    border = ZuTheme.colors.gold,
                     height = 40.dp,
                     onClick = newColumn,
                 )
