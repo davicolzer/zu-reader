@@ -248,7 +248,7 @@
         <item quantity="one">%1$d peça</item>
         <item quantity="other">%1$d peças</item>
     </plurals>
-    <string name="commands_hint">O quadrado é pular (A). As outras peças vão mostrar o botão quando a tabela do jogo for confirmada.</string>
+    <string name="commands_hint">Setas: a perna do T aponta a direção. A: pular. LT e RT: girar o mundo (peças S e Z). Ainda não confirmado no jogo: se o código não funcionar, toque em “Trocar LT e RT”.</string>
     <string name="commands_unknown">As peças com ? não foram reconhecidas: recorte mais justo em volta da sequência.</string>
     <string name="commands_none_title">Nenhuma peça encontrada</string>
     <string name="commands_none_body">Recorte só em volta da sequência, com as peças em linha ou em coluna.</string>
@@ -258,8 +258,15 @@
     <string name="commands_delete_title">Apagar esta sequência?</string>
     <string name="commands_delete_body">Ela sai da coleção.</string>
     <string name="commands_piece">Peça %1$s</string>
-    <string name="commands_piece_jump">peça quadrada: pular (A)</string>
     <string name="commands_piece_unknown">peça não reconhecida</string>
     <string name="history_kind_commands">Comandos</string>
     <string name="history_badge_commands">COMANDOS</string>
+    <string name="commands_swap">Trocar LT e RT</string>
+    <string name="button_up">cima</string>
+    <string name="button_down">baixo</string>
+    <string name="button_left">esquerda</string>
+    <string name="button_right">direita</string>
+    <string name="button_jump">pular (A)</string>
+    <string name="button_lt">girar para a esquerda (LT)</string>
+    <string name="button_rt">girar para a direita (RT)</string>
 </resources>

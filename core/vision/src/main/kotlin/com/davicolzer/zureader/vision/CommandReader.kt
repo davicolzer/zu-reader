@@ -38,6 +38,34 @@ data class CommandPiece(val shape: Tetromino?, val rotation: Int = 0) {
     }
 }
 
+/** Os botões do jogo que as peças representam. [label] = o que mostrar e copiar. */
+enum class GameButton(val label: String) {
+    UP("↑"), DOWN("↓"), LEFT("←"), RIGHT("→"), JUMP("A"), ROTATE_LEFT("LT"), ROTATE_RIGHT("RT");
+
+    companion object {
+        /**
+         * O botão de cada peça (na orientação de leitura, com a coluna já deitada):
+         * - quadrado (O) = pular (A);
+         * - T = seta: a perna aponta a direção (┴ cima, ┬ baixo, ┤ esquerda, ├ direita);
+         * - S e Z = girar o mundo; qual é LT e qual é RT ainda não foi confirmado com a legenda do
+         *   jogo: [swapRotation] troca (S = RT, Z = LT).
+         * I, L e J (e peça não reconhecida) não têm botão: `null`.
+         */
+        fun of(piece: CommandPiece, swapRotation: Boolean = false): GameButton? = when (piece.shape) {
+            Tetromino.O -> JUMP
+            Tetromino.T -> when (piece.rotation) {
+                0 -> DOWN
+                1 -> LEFT
+                2 -> UP
+                else -> RIGHT
+            }
+            Tetromino.S -> if (swapRotation) ROTATE_RIGHT else ROTATE_LEFT
+            Tetromino.Z -> if (swapRotation) ROTATE_LEFT else ROTATE_RIGHT
+            else -> null
+        }
+    }
+}
+
 /** A sequência lida, na ordem de leitura (uma coluna já vem girada como se fosse uma linha). */
 data class CommandReading(val pieces: List<CommandPiece>) {
     val code: String get() = pieces.joinToString(" ") { it.code }

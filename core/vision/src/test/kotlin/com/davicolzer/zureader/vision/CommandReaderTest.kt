@@ -31,6 +31,17 @@ class CommandReaderTest {
     }
 
     @Test
+    fun `cada peca vira o botao do jogo`() {
+        val mural = CommandReading.parse("T2 T1 S0 O0 Z0 T3 O0 T0")
+        assertEquals("↑ ← LT A RT → A ↓", mural.pieces.joinToString(" ") { GameButton.of(it)!!.label })
+        assertEquals("↑ ← RT A LT → A ↓", mural.pieces.joinToString(" ") { GameButton.of(it, swapRotation = true)!!.label })
+        // a seta é a perna do T: ┴ (T2) tem a perna em cima
+        assertEquals(listOf(Cell(0, 1), Cell(1, 0), Cell(1, 1), Cell(1, 2)), CommandPiece(Tetromino.T, 2).cells)
+        assertEquals(null, GameButton.of(CommandPiece(Tetromino.L, 0)))
+        assertEquals(null, GameButton.of(CommandPiece(null)))
+    }
+
+    @Test
     fun `parede roxa - coluna de pecas S e Z escuras`() {
         val image = load("comandos-parede-roxa.jpg")
         assumeTrue(image != null, "sem testdata/real")

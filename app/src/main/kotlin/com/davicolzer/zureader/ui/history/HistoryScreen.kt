@@ -59,6 +59,7 @@ import com.davicolzer.zureader.ui.components.BarAction
 import com.davicolzer.zureader.ui.components.DeleteDialog
 import com.davicolzer.zureader.ui.commands.commandSummary
 import com.davicolzer.zureader.vision.CommandReading
+import com.davicolzer.zureader.ui.commands.LocalSwapRotation
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -265,7 +266,7 @@ private fun contentText(item: HistoryItem): String = when (item.kind) {
     SavedKind.QR -> item.text.removePrefix("QR: ")
     SavedKind.NOTE -> item.text.ifBlank { stringResource(R.string.note_default_name) }
     SavedKind.VIDEO -> item.description
-    SavedKind.COMMANDS -> commandSummary(CommandReading.parse(item.text))
+    SavedKind.COMMANDS -> commandSummary(CommandReading.parse(item.text), LocalSwapRotation.current)
     else -> ReadingMode.of(item.text.firstOrNull { !it.isWhitespace() } ?: 'A').display(item.text).replace('\n', ' ').ifBlank { "—" }
 }
 

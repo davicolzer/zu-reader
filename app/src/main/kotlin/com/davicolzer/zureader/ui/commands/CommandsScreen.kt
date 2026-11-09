@@ -28,6 +28,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -63,6 +64,7 @@ import com.davicolzer.zureader.ui.components.copyText
 import com.davicolzer.zureader.ui.theme.ZuTheme
 import com.davicolzer.zureader.vision.CommandPiece
 import com.davicolzer.zureader.vision.CommandReading
+import com.davicolzer.zureader.vision.GameButton
 import com.davicolzer.zureader.vision.Tetromino
 import kotlinx.coroutines.launch
 
@@ -85,7 +87,10 @@ fun CommandsScreen(
     name: String = "",
     description: String = "",
     onDetails: (name: String, description: String) -> Unit = { _, _ -> },
+    /** S = RT e Z = LT (a troca é guardada nas configurações). */
+    onSwapRotation: (Boolean) -> Unit = {},
 ) {
+    val swap = LocalSwapRotation.current
     val context = LocalContext.current
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -93,7 +98,7 @@ fun CommandsScreen(
     val saved = stringResource(R.string.result_saved_message)
     var confirmDelete by remember { mutableStateOf(false) }
     val found = reading.pieces.isNotEmpty()
-    val summary = commandSummary(reading)
+    val summary = commandSummary(reading, swap)
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(snackbar) },
@@ -153,9 +158,13 @@ fun CommandsScreen(
                         }
                         // as peças na ordem de leitura, quebrando a linha quando não cabem
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            reading.pieces.forEach { PieceTile(it) }
+                            reading.pieces.forEach { PieceTile(it, swap) }
                         }
                         Text(stringResource(R.string.commands_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        // qual peça é LT e qual é RT ainda não está confirmado: um toque troca
+                        if (reading.pieces.any { it.shape == Tetromino.S || it.shape == Tetromino.Z }) {
+                            PixelOutlinedButton(stringResource(R.string.commands_swap), R.drawable.ic_pixel_undo, onClick = { onSwapRotation(!swap) }, compact = true)
+                        }
                         if (reading.recognized < reading.pieces.size) {
                             Text(stringResource(R.string.commands_unknown), style = MaterialTheme.typography.bodySmall, color = ZuTheme.colors.gold)
                         }
@@ -206,30 +215,30 @@ fun CommandsScreen(
     }
 }
 
+/** Comandos: S = RT e Z = LT (escolha guardada nas configurações), para a tela e a coleção. */
+val LocalSwapRotation = compositionLocalOf { false }
+
 /**
- * A sequência em texto, para copiar, compartilhar e mostrar na coleção: o quadrado é "A" (pular);
- * as outras peças, a letra do formato (até a tabela de botões do jogo ser confirmada); "?" = não reconhecida.
+ * A sequência em texto, para copiar, compartilhar e mostrar na coleção: os botões do jogo
+ * ("↑ ← LT A …"); peça sem botão, a letra do formato; "?" = não reconhecida.
  */
-fun commandSummary(reading: CommandReading): String = reading.pieces.joinToString(" ") { piece ->
-    when (piece.shape) {
-        null -> "?"
-        Tetromino.O -> "A"
-        else -> piece.shape!!.name
-    }
+fun commandSummary(reading: CommandReading, swapRotation: Boolean = false): String = reading.pieces.joinToString(" ") { piece ->
+    GameButton.of(piece, swapRotation)?.label ?: piece.shape?.name ?: "?"
 }
 
-/** Uma peça: o desenho dos 4 blocos e, no quadrado, "A". Não reconhecida: "?" em dourado. */
+/** Uma peça: o desenho dos 4 blocos e, embaixo, o botão a apertar. Não reconhecida: "?" em dourado. */
 @Composable
-private fun PieceTile(piece: CommandPiece) {
-    val label = when (piece.shape) {
-        null -> stringResource(R.string.commands_piece_unknown)
-        Tetromino.O -> stringResource(R.string.commands_piece_jump)
+private fun PieceTile(piece: CommandPiece, swap: Boolean) {
+    val button = GameButton.of(piece, swap)
+    val label = when {
+        piece.shape == null -> stringResource(R.string.commands_piece_unknown)
+        button != null -> stringResource(button.spoken)
         else -> stringResource(R.string.commands_piece, piece.shape!!.name)
     }
     val known = piece.shape != null
     Column(
         Modifier
-            .size(width = 56.dp, height = 68.dp)
+            .size(width = 56.dp, height = 74.dp)
             .clip(RoundedCornerShape(10.dp))
             .background(MaterialTheme.colorScheme.background)
             .border(1.dp, if (known) MaterialTheme.colorScheme.outline else ZuTheme.colors.gold, RoundedCornerShape(10.dp))
@@ -238,13 +247,30 @@ private fun PieceTile(piece: CommandPiece) {
         verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
     ) {
         if (known) {
-            PieceDrawing(piece, MaterialTheme.colorScheme.onBackground, 34.dp)
-            if (piece.shape == Tetromino.O) Text("A", style = MaterialTheme.typography.labelMedium, color = ZuTheme.colors.teal)
+            PieceDrawing(piece, MaterialTheme.colorScheme.onBackground, 30.dp)
+            Text(
+                button?.label ?: piece.shape!!.name,
+                // as setas são finas na fonte: maiores, para ficarem do peso de "LT" e "A"
+                style = if (button?.label?.length == 1 && button != GameButton.JUMP) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.titleMedium,
+                color = if (button != null) ZuTheme.colors.teal else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         } else {
             Text("?", style = MaterialTheme.typography.headlineSmall, color = ZuTheme.colors.gold)
         }
     }
 }
+
+/** Como o leitor de tela fala cada botão. */
+private val GameButton.spoken: Int
+    get() = when (this) {
+        GameButton.UP -> R.string.button_up
+        GameButton.DOWN -> R.string.button_down
+        GameButton.LEFT -> R.string.button_left
+        GameButton.RIGHT -> R.string.button_right
+        GameButton.JUMP -> R.string.button_jump
+        GameButton.ROTATE_LEFT -> R.string.button_lt
+        GameButton.ROTATE_RIGHT -> R.string.button_rt
+    }
 
 /** O desenho de uma peça (os 4 blocos), centralizado num quadrado de lado [size]. */
 @Composable

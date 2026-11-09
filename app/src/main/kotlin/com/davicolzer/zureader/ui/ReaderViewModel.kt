@@ -818,6 +818,11 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch { app.settings.setHistoryGrid(grid) }
     }
 
+    /** Comandos: troca qual peça (S ou Z) é LT e qual é RT. */
+    fun setSwapRotation(swap: Boolean) {
+        viewModelScope.launch { app.settings.setSwapRotation(swap) }
+    }
+
     fun goHome() {
         _state.value = ReaderUiState.Home
     }

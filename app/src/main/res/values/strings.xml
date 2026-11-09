@@ -248,7 +248,7 @@
         <item quantity="one">%1$d piece</item>
         <item quantity="other">%1$d pieces</item>
     </plurals>
-    <string name="commands_hint">The square is jump (A). The other pieces will show their buttons once the game\'s table is confirmed.</string>
+    <string name="commands_hint">Arrows: the stem of the T points the way. A: jump. LT and RT: rotate the world (S and Z pieces). Not confirmed in the game yet: if the code doesn\'t work, tap “Swap LT and RT”.</string>
     <string name="commands_unknown">Pieces marked ? were not recognized: crop tighter around the sequence.</string>
     <string name="commands_none_title">No pieces found</string>
     <string name="commands_none_body">Crop just around the sequence, with the pieces in a row or a column.</string>
@@ -258,8 +258,15 @@
     <string name="commands_delete_title">Delete this sequence?</string>
     <string name="commands_delete_body">It will be removed from the collection.</string>
     <string name="commands_piece">%1$s piece</string>
-    <string name="commands_piece_jump">square piece: jump (A)</string>
     <string name="commands_piece_unknown">piece not recognized</string>
     <string name="history_kind_commands">Commands</string>
     <string name="history_badge_commands">COMMANDS</string>
+    <string name="commands_swap">Swap LT and RT</string>
+    <string name="button_up">up</string>
+    <string name="button_down">down</string>
+    <string name="button_left">left</string>
+    <string name="button_right">right</string>
+    <string name="button_jump">jump (A)</string>
+    <string name="button_lt">rotate left (LT)</string>
+    <string name="button_rt">rotate right (RT)</string>
 </resources>
