@@ -36,6 +36,16 @@ enum class ReadingMode(val glyphSet: GlyphSet, val usesLanguageModel: Boolean) {
     /** Como mostrar um símbolo sozinho (ex.: num botão do teclado de correção). */
     fun symbolLabel(symbol: Char): String = if (this != TEXT && symbol == TEN) "10" else symbol.toString()
 
+    /**
+     * O modo depois de corrigir um glifo para [symbol]: um número numa leitura de texto (ou uma
+     * letra numa leitura de números) faz a leitura passar a ter letras e números.
+     */
+    fun withSymbol(symbol: Char): ReadingMode = when {
+        this == TEXT && ZuNumerals.contains(symbol) -> MIXED
+        this == NUMBERS && ZuAlphabet.contains(symbol) -> MIXED
+        else -> this
+    }
+
     /** Símbolos que o usuário pode escolher ao corrigir, na ordem do teclado. */
     val keyboard: List<Char>
         get() = when (this) {
