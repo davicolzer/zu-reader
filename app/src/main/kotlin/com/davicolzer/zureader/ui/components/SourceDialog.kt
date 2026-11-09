@@ -40,8 +40,6 @@ fun SourceDialog(
     @StringRes cameraLabel: Int = R.string.source_camera,
     @StringRes galleryLabel: Int = R.string.source_gallery,
     @DrawableRes cameraIcon: Int = R.drawable.ic_pixel_camera,
-    /** Outras opções, depois da galeria (ex.: "Escrever à mão" nos comandos). */
-    more: (@Composable () -> Unit)? = null,
 ) {
     Dialog(onDismissRequest = onDismiss) {
         Surface(
@@ -65,7 +63,6 @@ fun SourceDialog(
                 extra?.invoke()
                 PixelPrimaryButton(stringResource(cameraLabel), cameraIcon, onClick = onCamera)
                 PixelOutlinedButton(stringResource(galleryLabel), R.drawable.ic_pixel_gallery, onClick = onGallery)
-                more?.invoke()
                 PixelOutlinedButton(stringResource(R.string.cancel), R.drawable.ic_pixel_close, onClick = onDismiss)
             }
         }

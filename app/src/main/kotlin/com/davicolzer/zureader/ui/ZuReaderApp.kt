@@ -109,13 +109,6 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
             onCamera = { chooseCommandsSource = false; viewModel.openCameraForCommands() },
             onGallery = { chooseCommandsSource = false; pickCommands() },
             onDismiss = { chooseCommandsSource = false },
-            // ou montar a sequência à mão, sem foto
-            more = {
-                PixelOutlinedButton(stringResource(R.string.commands_write_hand), R.drawable.ic_pixel_keyboard, onClick = {
-                    chooseCommandsSource = false
-                    viewModel.openCommandsWriter()
-                })
-            },
         )
     }
     // "Gravar vídeo": gravar agora ou escolher um vídeo da galeria
@@ -176,6 +169,7 @@ fun ZuReaderApp(viewModel: ReaderViewModel = viewModel()) {
                 onReadQr = { chooseQrSource = true },
                 onRecordVideo = { chooseVideoSource = true },
                 onReadCommands = { chooseCommandsSource = true },
+                onWriteCommands = viewModel::openCommandsWriter,
             )
             is ReaderUiState.Video -> {
                 BackHandler(onBack = viewModel::leaveVideo)

@@ -259,7 +259,7 @@ private fun CameraContent(
             recordingMs = if (recording != null) recordedMs else null,
             onShutter = shutter@{
                 if (purpose == CameraPurpose.VIDEO) {
-                    // vídeo: toca para começar; toca de novo (ou 1 minuto) para parar
+                    // vídeo: toca para começar; toca de novo (ou ao chegar a 10 minutos) para parar
                     recording?.let { it.stop(); return@shutter }
                     val file = newVideoFile(context)
                     val options = FileOutputOptions.Builder(file).setDurationLimitMillis(MAX_VIDEO_MS).build()
@@ -298,7 +298,7 @@ private fun CameraContent(
 }
 
 /** Duração máxima de um vídeo. */
-private const val MAX_VIDEO_MS = 60_000L
+private const val MAX_VIDEO_MS = 10 * 60_000L
 
 /** Fotografa, gira para ficar em pé e reduz fora da thread principal. */
 private fun takePhoto(context: Context, capture: ImageCapture, onDone: (Bitmap) -> Unit, onError: () -> Unit) {

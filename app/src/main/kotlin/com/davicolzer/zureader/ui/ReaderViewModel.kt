@@ -298,7 +298,7 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    /** "Ler comandos" → "Escrever à mão": uma sequência nova, sem foto. */
+    /** "Comandos à mão" (início): uma sequência nova, sem foto. */
     fun openCommandsWriter() {
         _state.value = ReaderUiState.CommandsWrite(emptyList())
     }
