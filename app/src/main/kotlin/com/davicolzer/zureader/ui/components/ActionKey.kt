@@ -20,6 +20,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
@@ -34,12 +35,13 @@ fun ActionKey(
     container: Color = MaterialTheme.colorScheme.surfaceContainerHigh,
     content: Color = MaterialTheme.colorScheme.onSurface,
     showLabel: Boolean = icon == null,
+    height: Dp = 52.dp,
     enabled: Boolean = true,
     onClick: () -> Unit,
 ) {
     Row(
         modifier
-            .height(52.dp)
+            .height(height)
             .clip(RoundedCornerShape(12.dp))
             .background(if (enabled) container else MaterialTheme.colorScheme.surfaceContainer)
             .clickable(enabled = enabled, role = Role.Button, onClickLabel = label, onClick = onClick)

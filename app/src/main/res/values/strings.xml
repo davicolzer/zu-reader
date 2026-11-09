@@ -85,7 +85,7 @@
     <string name="write_title">Write in Zu</string>
     <string name="write_empty">Tap the glyphs to write. The message shows up here in Zu.</string>
     <string name="write_by_glyphs">Glyphs</string>
-    <string name="write_by_letters">Letters and numbers</string>
+    <string name="write_by_letters">ABC 123</string>
     <string name="write_space">Space</string>
     <string name="write_new_column">New column</string>
     <string name="write_new_line">New line</string>
