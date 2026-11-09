@@ -121,6 +121,8 @@ object CommandReader {
         val masks = inkMasks(gray)
         // peças coladas numa linha só: uma mancha comprida, que cobre o recorte e se divide em peças
         // de 4; quando existe, vale ela (lida como separadas, a linha colada vira pedaços soltos)
+        // entre as máscaras, a leitura com menos peças fora dos códigos e de blocos maiores (menos
+        // células): uma máscara que pega só pedaços da tinta dá grades finas e nítidas que não são a sequência
         val chain = masks.mapNotNull { readChain(it, gray.width, gray.height) }.minByOrNull { it.first }?.second
         return chain ?: readSeparate(masks, gray.width, gray.height)
     }
@@ -152,9 +154,9 @@ object CommandReader {
      * todo o comprimento do recorte. Ela é posta em pé (uma linha é girada ¼ de volta no sentido
      * horário), endireitada (cada fileira de pixels é deslocada pela inclinação do eixo) e coberta
      * por grades de 2 a 5 blocos de largura; fica a grade com as células mais nítidas (bem cheias
-     * ou bem vazias) que se divide em peças de 4. Devolve a nitidez (menor = melhor) e a leitura.
+     * ou bem vazias) que se divide em peças de 4. Devolve o número de células e a leitura.
      */
-    private fun readChain(ink: BooleanArray, w: Int, h: Int): Pair<Float, CommandReading>? {
+    private fun readChain(ink: BooleanArray, w: Int, h: Int): Pair<Int, CommandReading>? {
         val mask = fillHoles(dilate(erode(ink, w, h, 1), w, h, 1), w, h)
         val labels = label(mask, w, h)
         if (labels.areas.isEmpty()) return null
@@ -173,7 +175,19 @@ object CommandReader {
             val (x, y) = if (horizontal) (box[0] + r) to (box[1] + bh - 1 - c) else (box[0] + c) to (box[1] + r)
             labels.ids[y * w + x] == i + 1
         }
-        val (straight, sw2) = straighten(sub, sw, sh)
+        // a coluna como está e endireitada (a inclinação medida pelos centros das fileiras pode
+        // ser falsa numa coluna reta com dentes de um lado só): fica a grade mais nítida
+        val straightened = straighten(sub, sw, sh)
+        val options = listOf(sub to sw, straightened).flatMap { (m, mw) -> readGrid(m, mw, sh) }
+        if (options.isEmpty()) return null
+        // a com menos peças que não aparecem nos códigos (I, L, J: sinal de grade errada) e, depois,
+        // a de blocos maiores (menos células)
+        return options.minWith(compareBy({ odd(it.third) }, { it.second }))
+            .let { odd(it.third) * 10_000 + it.second to it.third }
+    }
+
+    /** A melhor grade de blocos sobre a mancha em pé [straight] (largura [sw2], altura [sh]), dividida em peças. */
+    private fun readGrid(straight: BooleanArray, sw2: Int, sh: Int): List<Triple<Float, Int, CommandReading>> {
         // nitidez de cada grade: a soma, por célula, do quanto ela está longe de cheia ou vazia
         val integral = IntArray((sw2 + 1) * (sh + 1))
         for (y in 0 until sh) {
@@ -208,13 +222,20 @@ object CommandReader {
                 if (cells.size >= 8 && cells.size % 4 == 0) grids += Triple(crisp / (rows * cols), rows, cells)
             }
         }
-        for ((crisp, _, cells) in grids.sortedBy { it.first }.take(12)) {
-            if (crisp > MAX_CHAIN_BLUR) break
+        // só as grades quase tão nítidas quanto a melhor (uma mais fina, de blocos divididos, é tão
+        // nítida quanto a certa), dos blocos maiores para os menores; a primeira que se divide só em
+        // formatos dos códigos é a escolhida (dividir é o passo caro)
+        val sharpest = grids.minOfOrNull { it.first } ?: return emptyList()
+        if (sharpest > MAX_CHAIN_BLUR) return emptyList()
+        val out = mutableListOf<Triple<Float, Int, CommandReading>>()
+        for ((crisp, _, cells) in grids.filter { it.first <= minOf(sharpest + 0.03f, MAX_CHAIN_BLUR) }.sortedBy { it.third.size }.take(8)) {
             val pieces = split(cells, horizontal = false) ?: continue
             // em pé, como uma coluna: cada peça é deitada de volta
-            return crisp to CommandReading(pieces.map { turnCounterClockwise(byCells.getValue(normalize(it))) })
+            val reading = CommandReading(pieces.map { turnCounterClockwise(byCells.getValue(normalize(it))) })
+            out += Triple(crisp, cells.size, reading)
+            if (odd(reading) == 0) break
         }
-        return null
+        return out
     }
 
     /** Grades mais borradas que isso não são uma sequência de blocos. */
@@ -333,38 +354,21 @@ object CommandReader {
             val side = sqrt(labels.areas[i] / 4f)
             Triple(i, box, side)
         }
-        // tamanho de bloco das peças inteiras, para dividir as coladas
-        val singles = mutableListOf<Float>()
         val out = mutableListOf<Blob>()
         val pending = mutableListOf<Pair<Int, IntArray>>()
         for ((i, box, side) in raw) {
             val cells = cellsOf(labels.ids, w, box, i + 1, side)
             val piece = if (cells.size == 4) byCells[normalize(cells)] else null
             if (piece != null) {
-                singles += side
                 out += Blob((box[0] + box[2]) / 2f, (box[1] + box[3]) / 2f, piece, labels.areas[i])
             } else {
                 pending += i to box
             }
         }
-        val block = singles.sorted().let { if (it.isEmpty()) null else it[it.size / 2] }
+        // mancha que não é uma peça (peças fundidas, sujeira): conta como não reconhecida; peças
+        // coladas de propósito são lidas por readChain
         for ((i, box) in pending) {
-            val side = block ?: sqrt(labels.areas[i] / 4f)
-            val cells = cellsOf(labels.ids, w, box, i + 1, side)
-            val bw = (box[2] - box[0]).toFloat()
-            val bh = (box[3] - box[1]).toFloat()
-            val split = if (cells.size % 4 == 0 && cells.size in 8..40) split(cells, horizontal = bw >= bh) else null
-            if (split == null) {
-                out += Blob(box[0] + bw / 2, box[1] + bh / 2, CommandPiece(null), labels.areas[i])
-            } else {
-                val rows = maxOf(1, (bh / side).roundToInt())
-                val cols = maxOf(1, (bw / side).roundToInt())
-                for (p in split) {
-                    val cx = box[0] + (p.map { it.col }.average().toFloat() + 0.5f) * bw / cols
-                    val cy = box[1] + (p.map { it.row }.average().toFloat() + 0.5f) * bh / rows
-                    out += Blob(cx, cy, byCells.getValue(normalize(p)))
-                }
-            }
+            out += Blob((box[0] + box[2]) / 2f, (box[1] + box[3]) / 2f, CommandPiece(null), labels.areas[i])
         }
         return out
     }
@@ -391,8 +395,9 @@ object CommandReader {
 
     /**
      * Divide células coladas em peças de 4, na ordem de leitura: a primeira célula que falta
-     * (no eixo de leitura) é sempre de uma peça nova; fica a divisão em que as peças menos se
-     * sobrepõem ao longo do eixo.
+     * (no eixo de leitura) é sempre de uma peça nova. Entre as divisões possíveis, fica a com menos
+     * peças que não aparecem nos códigos do jogo (I, L, J: os códigos usam T, quadrado, S e Z) e,
+     * depois, a em que as peças menos se sobrepõem ao longo do eixo.
      */
     private fun split(cells: List<Cell>, horizontal: Boolean): List<List<Cell>>? {
         val along = { c: Cell -> if (horizontal) c.col else c.row }
@@ -400,14 +405,16 @@ object CommandReader {
         val order = compareBy<Cell>({ along(it) }, { across(it) })
         var best: Pair<Int, List<List<Cell>>>? = null
         var calls = 0
-        fun overlap(pieces: List<List<Cell>>): Int = pieces.zipWithNext { a, b ->
-            maxOf(0, a.maxOf(along) - b.minOf(along) + 1)
-        }.sum()
+        fun cost(pieces: List<List<Cell>>): Int {
+            val odd = pieces.count { byCells.getValue(normalize(it)).shape !in CODE_SHAPES }
+            val overlap = pieces.zipWithNext { a, b -> maxOf(0, a.maxOf(along) - b.minOf(along) + 1) }.sum()
+            return odd * 1000 + overlap
+        }
         fun rec(left: Set<Cell>, pieces: List<List<Cell>>) {
-            if (++calls > 20_000 || best?.first == 0) return
+            if (++calls > 15_000 || best?.first == 0) return
             if (left.isEmpty()) {
-                val ov = overlap(pieces)
-                if (best == null || ov < best!!.first) best = ov to pieces
+                val c = cost(pieces)
+                if (best == null || c < best!!.first) best = c to pieces
                 return
             }
             val start = left.minWith(order)
@@ -419,6 +426,12 @@ object CommandReader {
         rec(cells.toSet(), emptyList())
         return best?.second
     }
+
+    /** Quantas peças da leitura não aparecem nos códigos do jogo. */
+    private fun odd(reading: CommandReading) = reading.pieces.count { it.shape !in CODE_SHAPES }
+
+    /** Os formatos que aparecem nos códigos do jogo (setas, pular, girar). */
+    private val CODE_SHAPES = setOf(Tetromino.T, Tetromino.O, Tetromino.S, Tetromino.Z)
 
     // --- morfologia ---
 
