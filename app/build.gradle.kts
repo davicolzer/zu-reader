@@ -58,6 +58,16 @@ android {
                 "proguard-rules.pro",
             )
         }
+        // versão para testar no celular antes de ir para a main (branch staging): igual à oficial
+        // (otimizada, assinada com a chave de publicação), mas outro app, que instala ao lado dela
+        create("staging") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".staging"
+            versionNameSuffix = "-staging"
+            // sem a chave de publicação (no computador), assina com a de teste para poder instalar
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
+            matchingFallbacks += listOf("release")
+        }
     }
 
     compileOptions {

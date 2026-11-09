@@ -20,7 +20,8 @@ and run `./gradlew :core:vision:test` without an emulator.
 
 ## Making a change
 
-1. Create a branch from `main`.
+1. Create a branch from `staging` and open the pull request **against `staging`** (merged changes are tested
+   on a phone there before going to `main`).
 2. Keep the change focused: one fix or feature per pull request.
 3. Add or update tests:
    - reader changes: a test in `core/vision` or `core/zu` (real photos in `testdata/real/`,

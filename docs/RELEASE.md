@@ -1,15 +1,45 @@
 # Release do Zu Reader
 
-Há dois fluxos no GitHub Actions:
+## Caminho de uma mudança
+
+```
+branch da mudança ──PR──▶ staging ──PR──▶ main ──▶ (depois) Play Store
+                   testes   │       testes   │
+                            ▼                ▼
+                   APK de staging     release oficial
+                   (para testar)      (Latest, download do README)
+```
+
+1. A mudança vai num **PR para a `staging`**. O CI roda testes e lint.
+2. **Merge na `staging`** → o APK de teste é publicado na pré-release fixa **staging**. Link que não muda:
+   **https://github.com/davicolzer/zu-reader/releases/download/staging/zu-reader-staging.apk**
+   (também na página da [pré-release staging](https://github.com/davicolzer/zu-reader/releases/tag/staging),
+   que lista o que está na staging e ainda não está na main). Instala como **Zu Reader Staging**,
+   ao lado do app oficial, sem mexer na coleção dele.
+3. Testou no celular e está bom → **PR da `staging` para a `main`**. O merge publica a release oficial.
+4. **Deploy na Play Store**: fica para depois de criar as contas (Play Console e verificação de
+   desenvolvedor); entra como uma etapa a mais no fluxo da `main`.
 
 | Fluxo | Quando | Etapas |
 |---|---|---|
 | **PR** (`.github/workflows/pr.yml`) | em cada PR (também de forks) | 1 · Testes e lint → 2 · Build dos APKs (ficam nos artefatos da execução) |
+| **Staging** (`.github/workflows/staging.yml`) | merge na `staging`, ou à mão em **Actions → Staging → Run workflow** | 1 · Build do APK de staging → 2 · Publicar na pré-release staging |
 | **Release** (`.github/workflows/release.yml`) | merge na `main`, ou à mão em **Actions → Release → Run workflow** | 1 · Build dos APKs → 2 · Publicar release |
 
 As etapas comuns ficam em `.github/actions/preparar` (JDK, Gradle, SDK) e `.github/actions/gerar-apks`.
-Como a `main` não roda testes, o que entra nela deve passar por PR (vale ativar a proteção da branch
-`main` exigindo o check "1 · Testes e lint").
+Como `staging` e `main` não rodam testes no merge, o que entra nelas deve passar por PR (proteja as
+duas branches exigindo o check "1 · Testes e lint").
+
+### Os três apps
+
+| Build | App no celular | Chave | De onde vem |
+|---|---|---|---|
+| `debug` | **Zu Reader Teste** (`…zureader.debug`) | de teste | Android Studio e artefatos dos PRs |
+| `staging` | **Zu Reader Staging** (`…zureader.staging`) | de publicação | pré-release **staging** |
+| `release` | **Zu Reader** (`com.davicolzer.zureader`) | de publicação | releases oficiais |
+
+O de staging é igual ao oficial (otimizado com R8, mesma chave), só muda o pacote e o nome: o que
+você testa nele é o que vai para a `main`.
 
 ## Releases
 
