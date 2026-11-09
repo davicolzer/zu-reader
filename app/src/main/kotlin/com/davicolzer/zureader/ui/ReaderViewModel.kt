@@ -45,6 +45,9 @@ import com.davicolzer.zureader.media.VideoResize
 import com.davicolzer.zureader.media.newVideoFile
 import com.davicolzer.zureader.vision.CommandReader
 import com.davicolzer.zureader.vision.CommandReading
+import com.davicolzer.zureader.vision.CommandPiece
+import com.davicolzer.zureader.ui.commands.drawSequence
+import com.davicolzer.zureader.vision.PixelBox
 
 /** Para que a câmera foi aberta. */
 enum class CameraPurpose { READ, NOTE, QR, VIDEO, COMMANDS }
@@ -79,7 +82,12 @@ sealed interface ReaderUiState {
         val savedId: Long? = null,
         val name: String = "",
         val description: String = "",
+        /** Feita à mão: a imagem é o desenho das peças. */
+        val handMade: Boolean = false,
     ) : ReaderUiState
+
+    /** Escrevendo (ou corrigindo) uma sequência de comandos à mão; [from] = a sequência sendo corrigida. */
+    data class CommandsWrite(val pieces: List<CommandPiece>, val from: CommandsResult? = null) : ReaderUiState
 
     /** Recortando a imagem de um QR antes de salvar. */
     data class QrCrop(val result: QrResult, val image: Bitmap) : ReaderUiState
@@ -224,7 +232,7 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
             CameraPurpose.NOTE -> _state.value = editing(photo)
             // fotografou em vez de esperar a leitura ao vivo: procura o QR na foto
             CameraPurpose.QR -> work { ReaderUiState.QrResult(withContext(Dispatchers.Default) { QrReader.read(ImageLoading.toRgb(photo)) }, photo) }
-            CameraPurpose.COMMANDS -> _state.value = commandsCrop(photo, fromCamera = true)
+            CameraPurpose.COMMANDS -> work { commandsCrop(photo, fromCamera = true) }
             else -> work { prepareCrop(photo, fromCamera = true) }
         }
     }
@@ -239,10 +247,29 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         commandsCrop(withContext(Dispatchers.IO) { ImageLoading.decode(getApplication(), uri) }, fromCamera = false)
     }
 
-    /** Recorte para uma sequência de comandos: sem sugestão de texto, uma margem pequena. */
-    private fun commandsCrop(image: Bitmap, fromCamera: Boolean): ReaderUiState.Crop {
+    /**
+     * Recorte para uma sequência de comandos: o app lê a foto antes e sugere os cantos em volta das
+     * peças achadas (com uma margem de meia peça); achando menos de 3, a foto com uma margem pequena.
+     */
+    private suspend fun commandsCrop(image: Bitmap, fromCamera: Boolean): ReaderUiState.Crop = withContext(Dispatchers.Default) {
         val rgb = ImageLoading.toRgb(image)
-        return ReaderUiState.Crop(image, rgb, Quad.inset(rgb.width, rgb.height, 0.08f), fromCamera, commands = true)
+        val quick = CommandReader.read(rgb)
+        val boxes = quick.boxes.takeIf { quick.recognized >= 3 && it.size == quick.pieces.size }
+        val suggestion = if (boxes == null) {
+            Quad.inset(rgb.width, rgb.height, 0.08f)
+        } else {
+            val side = boxes.map { maxOf((it.right - it.left) * rgb.width, (it.bottom - it.top) * rgb.height) }.sorted()[boxes.size / 2]
+            val margin = side / 2
+            Quad.of(
+                PixelBox(
+                    (boxes.minOf { it.left } * rgb.width - margin).toInt().coerceAtLeast(0),
+                    (boxes.minOf { it.top } * rgb.height - margin).toInt().coerceAtLeast(0),
+                    (boxes.maxOf { it.right } * rgb.width + margin).toInt().coerceAtMost(rgb.width),
+                    (boxes.maxOf { it.bottom } * rgb.height + margin).toInt().coerceAtMost(rgb.height),
+                ),
+            )
+        }
+        ReaderUiState.Crop(image, rgb, suggestion, fromCamera, commands = true)
     }
 
     /** Lê as peças na imagem já recortada. */
@@ -263,12 +290,51 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
         val current = _state.value as? ReaderUiState.CommandsResult ?: return
         if (current.savedId != null || current.reading.pieces.isEmpty()) return
         viewModelScope.launch {
-            val id = history.saveCommands(current.image, current.reading, current.name, current.description)
+            val id = history.saveCommands(current.image, current.reading, current.name, current.description, current.handMade)
             (_state.value as? ReaderUiState.CommandsResult)?.let {
                 // salvo: só a foto em HD fica; o recorte original sai da memória
                 if (it.reading == current.reading) _state.value = it.copy(savedId = id, image = ImageLoading.hd(it.image), crop = null)
             }
         }
+    }
+
+    /** "Ler comandos" → "Escrever à mão": uma sequência nova, sem foto. */
+    fun openCommandsWriter() {
+        _state.value = ReaderUiState.CommandsWrite(emptyList())
+    }
+
+    /** Corrigir à mão a sequência aberta. */
+    fun fixCommands() {
+        val current = _state.value as? ReaderUiState.CommandsResult ?: return
+        _state.value = ReaderUiState.CommandsWrite(current.reading.pieces, current)
+    }
+
+    fun leaveCommandsWriter() {
+        val writing = _state.value as? ReaderUiState.CommandsWrite ?: return
+        _state.value = writing.from ?: ReaderUiState.Home
+    }
+
+    /**
+     * Terminou de escrever: corrigindo, a sequência aberta muda (as marcas na foto ficam se o
+     * número de peças não mudou; feita à mão, o desenho é refeito) e, se já está salva, é gravada;
+     * nova, vira uma sequência com o desenho das peças no lugar da foto.
+     */
+    fun finishCommandsWriting(pieces: List<CommandPiece>) {
+        val writing = _state.value as? ReaderUiState.CommandsWrite ?: return
+        val from = writing.from
+        if (from == null || from.handMade) {
+            // o desenho já mostra o número e o botão de cada peça: sem marcas por cima
+            val image = drawSequence(pieces)
+            val reading = CommandReading(pieces)
+            val updated = from?.copy(reading = reading, image = image) ?: ReaderUiState.CommandsResult(reading, image, handMade = true)
+            _state.value = updated
+            updated.savedId?.let { id -> viewModelScope.launch { history.updateCommands(id, reading, image) } }
+            return
+        }
+        val boxes = if (pieces.size == from.reading.pieces.size) from.reading.boxes else emptyList()
+        val reading = CommandReading(pieces, boxes)
+        _state.value = from.copy(reading = reading)
+        from.savedId?.let { id -> viewModelScope.launch { history.updateCommands(id, reading, null) } }
     }
 
     /** Apaga a sequência aberta e volta para a coleção. */
@@ -761,7 +827,7 @@ class ReaderViewModel(application: Application) : AndroidViewModel(application) 
     fun openSaved(id: Long) = work {
         if (history.kindOf(id) == com.davicolzer.zureader.data.SavedKind.COMMANDS) {
             val saved = history.loadCommands(id) ?: throw IllegalStateException("Sequência $id não encontrada")
-            return@work ReaderUiState.CommandsResult(saved.reading, saved.image, savedId = saved.id, name = saved.name, description = saved.description)
+            return@work ReaderUiState.CommandsResult(saved.reading, saved.image, savedId = saved.id, name = saved.name, description = saved.description, handMade = saved.handMade)
         }
         if (history.kindOf(id) == com.davicolzer.zureader.data.SavedKind.VIDEO) {
             val video = history.loadVideo(id) ?: throw IllegalStateException("Vídeo $id não encontrado")

@@ -268,4 +268,10 @@
     <string name="button_jump">jump (A)</string>
     <string name="button_lt">rotate left (LT)</string>
     <string name="button_rt">rotate right (RT)</string>
+    <string name="commands_fix">Fix by hand</string>
+    <string name="commands_write_hand">Write by hand</string>
+    <string name="commands_write_title">Write commands</string>
+    <string name="commands_write_empty">Tap the buttons to build the sequence. Tap a piece to replace or delete it; ◀ ▶ move the cursor.</string>
+    <string name="cursor_left">Move the cursor left</string>
+    <string name="cursor_right">Move the cursor right</string>
 </resources>

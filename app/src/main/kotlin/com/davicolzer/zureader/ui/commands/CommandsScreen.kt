@@ -87,6 +87,8 @@ fun CommandsScreen(
     name: String = "",
     description: String = "",
     onDetails: (name: String, description: String) -> Unit = { _, _ -> },
+    /** Corrigir a sequência à mão (trocar, apagar ou acrescentar peças). */
+    onFixByHand: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val snackbar = remember { SnackbarHostState() }
@@ -157,8 +159,8 @@ fun CommandsScreen(
                         }
                         // as peças na ordem de leitura, quebrando a linha quando não cabem
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            // cada peça desenhada como está na foto (em pé, numa coluna)
-                            reading.pieces.forEachIndexed { i, piece -> PieceTile(i + 1, piece, reading.vertical) }
+                            // cada peça na posição de leitura (uma coluna da foto aparece deitada aqui)
+                            reading.pieces.forEachIndexed { i, piece -> PieceTile(i + 1, piece) }
                         }
                         Text(stringResource(R.string.commands_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         if (reading.recognized < reading.pieces.size) {
@@ -166,6 +168,8 @@ fun CommandsScreen(
                         }
                     }
                 }
+                // a leitura errou? corrigir à mão, como um texto (também serve para acrescentar peças)
+                PixelOutlinedButton(stringResource(R.string.commands_fix), R.drawable.ic_pixel_keyboard, onClick = onFixByHand)
                 if (found) DetailsFields(name, description, onDetails, showName = false)
                 if (onAdjustCrop != null) {
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -221,7 +225,7 @@ fun commandSummary(reading: CommandReading): String = reading.pieces.joinToStrin
 
 /** Uma peça: o desenho dos 4 blocos e, embaixo, o botão a apertar. Não reconhecida: "?" em dourado. */
 @Composable
-private fun PieceTile(number: Int, piece: CommandPiece, inColumn: Boolean) {
+private fun PieceTile(number: Int, piece: CommandPiece) {
     val button = GameButton.of(piece)
     val label = when {
         piece.shape == null -> stringResource(R.string.commands_piece_unknown)
@@ -250,7 +254,7 @@ private fun PieceTile(number: Int, piece: CommandPiece, inColumn: Boolean) {
         verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
     ) {
         if (known) {
-            PieceDrawing(if (inColumn) piece.cellsInColumn else piece.cells, MaterialTheme.colorScheme.onBackground, 30.dp)
+            PieceDrawing(piece.cells, MaterialTheme.colorScheme.onBackground, 30.dp)
             Text(
                 button?.label ?: piece.shape!!.name,
                 // as setas são finas na fonte: maiores, para ficarem do peso de "LT" e "A"
@@ -306,7 +310,7 @@ private const val MARK_GOLD = 0xFFF5B700.toInt()
 private const val MARK_INK = 0xFF14122A.toInt()
 
 /** Como o leitor de tela fala cada botão. */
-private val GameButton.spoken: Int
+internal val GameButton.spoken: Int
     get() = when (this) {
         GameButton.UP -> R.string.button_up
         GameButton.DOWN -> R.string.button_down
@@ -334,4 +338,44 @@ fun PieceDrawing(cells: List<Cell>, color: Color, size: Dp) {
             }
         }
     }
+}
+
+/**
+ * Uma sequência feita à mão (sem foto): a imagem com as peças desenhadas lado a lado (na posição
+ * de leitura) e, embaixo de cada uma, o número e o botão. Quebra a linha a cada 8 peças.
+ */
+fun drawSequence(pieces: List<CommandPiece>): Bitmap {
+    val block = 24f
+    val gap = block
+    val perRow = 8
+    val label = 2 * block
+    val cellW = 4 * block + gap
+    val cellH = 4 * block + label + gap
+    val rows = maxOf(1, (pieces.size + perRow - 1) / perRow)
+    val cols = pieces.size.coerceIn(1, perRow)
+    val width = (cols * cellW + gap).toInt()
+    val height = (rows * cellH + gap).toInt()
+    val out = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+    val canvas = android.graphics.Canvas(out)
+    canvas.drawColor(MARK_INK)
+    val paint = android.graphics.Paint().apply { color = 0xFFFFF6E5.toInt() }
+    val text = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+        color = MARK_TEAL
+        typeface = android.graphics.Typeface.DEFAULT_BOLD
+        textSize = block * 1.1f
+        textAlign = android.graphics.Paint.Align.CENTER
+    }
+    pieces.forEachIndexed { i, piece ->
+        val cells = piece.cells
+        val pw = (cells.maxOf { it.col } + 1) * block
+        val ph = (cells.maxOf { it.row } + 1) * block
+        val cellLeft = gap + (i % perRow) * cellW
+        val cellTop = gap + (i / perRow) * cellH
+        val left = cellLeft + (4 * block - pw) / 2
+        val top = cellTop + (4 * block - ph) / 2
+        for (c in cells) canvas.drawRect(left + c.col * block + 1, top + c.row * block + 1, left + (c.col + 1) * block - 1, top + (c.row + 1) * block - 1, paint)
+        val button = GameButton.of(piece)?.label ?: piece.shape?.name ?: "?"
+        canvas.drawText("${i + 1} $button", cellLeft + 2 * block, cellTop + 4 * block + label * 0.75f, text)
+    }
+    return out
 }

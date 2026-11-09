@@ -61,7 +61,18 @@ data class SavedReading(
 )
 
 /** Sequência de comandos salva: a foto recortada e as peças lidas. */
-data class SavedCommands(val id: Long, val image: Bitmap, val reading: CommandReading, val name: String, val description: String)
+data class SavedCommands(
+    val id: Long,
+    val image: Bitmap,
+    val reading: CommandReading,
+    val name: String,
+    val description: String,
+    /** Feita à mão: a imagem é o desenho das peças (redesenhada ao corrigir). */
+    val handMade: Boolean = false,
+)
+
+/** Marca, no começo dos dados, de uma sequência feita à mão. */
+private const val HAND_MADE = "hand|"
 
 /** Vídeo salvo: o arquivo na pasta da coleção, com nome e descrição. */
 data class SavedVideo(val id: Long, val file: File, val name: String, val description: String)
@@ -83,14 +94,14 @@ class HistoryRepository(private val dao: ReadingDao, filesDir: File) {
     suspend fun repairNames() = withContext(Dispatchers.IO) { dao.clearFileNames() }
 
     /** Guarda uma sequência de comandos: a foto (em HD) e o código das peças no texto. */
-    suspend fun saveCommands(image: Bitmap, reading: CommandReading, name: String, description: String): Long = withContext(Dispatchers.IO) {
+    suspend fun saveCommands(image: Bitmap, reading: CommandReading, name: String, description: String, handMade: Boolean = false): Long = withContext(Dispatchers.IO) {
         dao.insert(
             ReadingEntity(
                 createdAt = System.currentTimeMillis(),
                 text = reading.code,
                 imageFile = writeImage(image),
                 // onde cada peça está na foto, para marcar de novo ao abrir
-                data = reading.boxesCode,
+                data = (if (handMade) HAND_MADE else "") + reading.boxesCode,
                 kind = ReadingEntity.KIND_COMMANDS,
                 name = name.trim(),
                 description = description.trim(),
@@ -101,7 +112,22 @@ class HistoryRepository(private val dao: ReadingDao, filesDir: File) {
     suspend fun loadCommands(id: Long): SavedCommands? = withContext(Dispatchers.IO) {
         val row = dao.get(id)?.takeIf { it.kind == ReadingEntity.KIND_COMMANDS } ?: return@withContext null
         val image = BitmapFactory.decodeFile(File(imagesDir, row.imageFile).path) ?: return@withContext null
-        SavedCommands(row.id, image, CommandReading.parse(row.text, row.data), row.name, row.description)
+        val handMade = row.data.startsWith(HAND_MADE)
+        SavedCommands(row.id, image, CommandReading.parse(row.text, row.data.removePrefix(HAND_MADE)), row.name, row.description, handMade)
+    }
+
+    /** Grava a sequência corrigida; [image] (feita à mão, redesenhada) troca a imagem. */
+    suspend fun updateCommands(id: Long, reading: CommandReading, image: Bitmap?) = withContext(Dispatchers.IO) {
+        val row = dao.get(id) ?: return@withContext
+        val handMade = row.data.startsWith(HAND_MADE)
+        val data = (if (handMade) HAND_MADE else "") + reading.boxesCode
+        if (image != null) {
+            val old = row.imageFile
+            dao.updateWithImage(id, reading.code, data, writeImage(image))
+            File(imagesDir, old).delete()
+        } else {
+            dao.update(id, reading.code, data)
+        }
     }
 
     /** `true` se o item [id] é uma foto anotada. */

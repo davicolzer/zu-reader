@@ -24,9 +24,6 @@ data class Cell(val row: Int, val col: Int)
  * Peças simétricas têm menos rotações: O só 0; I, S e Z só 0 e 1.
  */
 data class CommandPiece(val shape: Tetromino?, val rotation: Int = 0) {
-    /** As células como a peça aparece numa coluna (em pé: ¼ de volta no sentido horário). */
-    val cellsInColumn: List<Cell> get() = cells.takeIf { it.isNotEmpty() }?.let(::rotateClockwise) ?: emptyList()
-
     /** Código curto, como "T2" (ou "?"); a sequência inteira é guardada assim. */
     val code: String get() = shape?.let { "${it.name}$rotation" } ?: "?"
 

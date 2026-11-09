@@ -74,6 +74,9 @@ interface ReadingDao {
     @Query("DELETE FROM readings WHERE id = :id")
     suspend fun delete(id: Long)
 
+    @Query("UPDATE readings SET text = :text, data = :data, imageFile = :imageFile WHERE id = :id")
+    suspend fun updateWithImage(id: Long, text: String, data: String, imageFile: String)
+
     /** Conserta os itens que ficaram com o nome do arquivo da foto no lugar do nome (erro já corrigido). */
     @Query("UPDATE readings SET name = '' WHERE name = imageFile")
     suspend fun clearFileNames()
