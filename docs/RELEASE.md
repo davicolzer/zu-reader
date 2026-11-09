@@ -10,7 +10,7 @@ branch da mudança ──PR──▶ staging ──PR──▶ main ──▶ (d
                    (para testar)      (Latest, download do README)
 ```
 
-1. A mudança vai num **PR para a `staging`**. O CI roda testes e lint.
+1. A mudança vai num **PR para a `staging`**. O CI roda só testes e lint (o APK é gerado no merge).
 2. **Merge na `staging`** → o APK de teste é publicado na pré-release fixa **staging**. Link que não muda:
    **https://github.com/davicolzer/zu-reader/releases/download/staging/zu-reader-staging.apk**
    (também na página da [pré-release staging](https://github.com/davicolzer/zu-reader/releases/tag/staging),
@@ -22,7 +22,7 @@ branch da mudança ──PR──▶ staging ──PR──▶ main ──▶ (d
 
 | Fluxo | Quando | Etapas |
 |---|---|---|
-| **PR** (`.github/workflows/pr.yml`) | em cada PR (também de forks) | 1 · Testes e lint → 2 · Build dos APKs (ficam nos artefatos da execução) |
+| **PR** (`.github/workflows/pr.yml`) | em cada PR (também de forks) | 1 · Testes e lint; nos PRs para a `main`, também 2 · Build dos APKs (ficam nos artefatos da execução) |
 | **Staging** (`.github/workflows/staging.yml`) | merge na `staging`, ou à mão em **Actions → Staging → Run workflow** | 1 · Build do APK de staging → 2 · Publicar na pré-release staging |
 | **Release** (`.github/workflows/release.yml`) | merge na `main`, ou à mão em **Actions → Release → Run workflow** | 1 · Build dos APKs → 2 · Publicar release |
 

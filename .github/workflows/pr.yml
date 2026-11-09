@@ -1,6 +1,7 @@
 name: PR
 
-# Em cada PR: confere o código e gera os APKs (o APK de teste fica nos artefatos da execução).
+# Em cada PR: confere o código (testes e lint). Nos PRs para a staging, só isso: o APK é gerado no
+# merge (fluxo Staging). Nos PRs para a main, também gera os APKs (ficam nos artefatos da execução).
 on:
   pull_request:
 
@@ -48,6 +49,7 @@ jobs:
   apk:
     name: 2 · Build dos APKs
     needs: testes
+    if: github.base_ref != 'staging'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
